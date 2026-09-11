@@ -1,8 +1,18 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// ============================================================================
+//  MN.KP — Portfolio · Blog · Affiliate Store Platform
+//  Local sandbox schema (SQLite) — 1:1 mirror of supabase/schema.sql
+// ----------------------------------------------------------------------------
+//  MIRROR CONVENTIONS (see worklog Task 1 / BUILD CONTRACT §0.50):
+//  · uuid PKs            → String @id @default(uuid())
+//  · text[] arrays       → String holding a JSON array   ("[]")
+//  · jsonb               → String holding a JSON object ("{}")
+//  · numeric(10,2)       → Float
+//  · enum CHECKs         → plain String (+ zod validation in src/lib/validation.ts)
+//  · RLS / triggers / GIN&partial indexes → not applicable on SQLite;
+//    enforced in the API layer instead (src/lib/auth.ts guards).
+//  · Production keeps Supabase Auth; the sandbox adds local-auth columns
+//    (passwordHash, emailVerified, verificationToken, resetToken*) to User.
+// ============================================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +23,293 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ----------------------------------------------------------------------------
+//  USERS (mirror of public.profiles + sandbox-only local-auth columns)
+// ----------------------------------------------------------------------------
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  fullName            String    @default("")
+  displayName         String?
+  headline            String?
+  bio                 String?
+  avatarUrl           String?
+  location            String?
+  websiteUrl          String?
+  socials             String    @default("{}") // JSON object: {platform:url}
+  role                String    @default("reader") // reader|author|editor|admin
+  onboardingCompleted Boolean   @default(false)
+  onboardingStep      Int       @default(0) // 0..4
+  marketingOptIn      Boolean   @default(true)
+  isActive            Boolean   @default(true)
+  lastLoginAt         DateTime?
+
+  // sandbox local-auth (production: Supabase Auth manages these)
+  passwordHash        String
+  emailVerified       Boolean   @default(false)
+  verificationToken   String?
+  resetToken          String?
+  resetTokenExpires   DateTime?
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  posts               Post[]
+  inquiries           Inquiry[]
+  subscriptions       Subscription[]
+  subscriptionEvents  SubscriptionEvent[]
+  affiliateClicks     AffiliateClick[]
+  visitorSessions     VisitorSession[]
+  settingsUpdated     SiteSetting[]
 }
 
+// ----------------------------------------------------------------------------
+//  CATEGORIES (shared by blog + store)
+// ----------------------------------------------------------------------------
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  scope       String   @default("blog") // blog|store
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  posts    Post[]
+  products Product[]
+}
+
+// ----------------------------------------------------------------------------
+//  POSTS
+// ----------------------------------------------------------------------------
 model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String    @id @default(uuid())
+  slug               String    @unique
+  title              String
+  excerpt            String?
+  content            String    @default("") // markdown
+  coverImageUrl      String?
+  status             String    @default("draft") // draft|published|archived
+  isFeatured         Boolean   @default(false)
+  tags               String    @default("[]") // JSON array of strings
+  readingTimeMinutes Int       @default(1)
+  viewsCount         Int       @default(0)
+  // SEO columns
+  seoTitle           String?
+  seoDescription     String?
+  ogImageUrl         String?
+  canonicalUrl       String?
+  authorId           String?
+  categoryId         String?
+  publishedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  author   User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([isFeatured, status])
+}
+
+// ----------------------------------------------------------------------------
+//  PRODUCTS (affiliate store)
+// ----------------------------------------------------------------------------
+model Product {
+  id             String   @id @default(uuid())
+  slug           String   @unique
+  name           String
+  tagline        String?
+  description    String? // markdown
+  brand          String?
+  merchant       String? // e.g. 'Amazon', 'Flipkart', 'MN.KP Digital'
+  imageUrl       String?
+  gallery        String   @default("[]") // JSON array of strings
+  price          Float?
+  compareAtPrice Float?
+  currency       String   @default("INR")
+  affiliateUrl   String
+  pros           String   @default("[]") // JSON array of strings
+  cons           String   @default("[]") // JSON array of strings
+  keySpecs       String   @default("{}") // JSON object {key:value}
+  rating         Float    @default(0) // 0..5
+  reviewCount    Int      @default(0)
+  status         String   @default("active") // active|draft|archived
+  isFeatured     Boolean  @default(false)
+  clicksCount    Int      @default(0) // maintained on affiliate_clicks insert (API layer)
+  categoryId     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  category Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  clicks   AffiliateClick[]
+
+  @@index([categoryId])
+  @@index([price])
+  @@index([status, isFeatured])
+}
+
+// ----------------------------------------------------------------------------
+//  INQUIRIES (contact / sponsorship / partnership)
+// ----------------------------------------------------------------------------
+model Inquiry {
+  id           String    @id @default(uuid())
+  userId       String?
+  name         String
+  email        String
+  phone        String?
+  type         String    @default("general") // general|sponsorship|partnership|advertising|support|feedback
+  subject      String?
+  message      String
+  status       String    @default("new") // new|in_progress|replied|closed|spam
+  priority     String    @default("normal") // low|normal|high|urgent
+  internalNote String? // admin-only
+  repliedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([email])
+}
+
+// ----------------------------------------------------------------------------
+//  PLANS (billing catalog)
+// ----------------------------------------------------------------------------
+model Plan {
+  id           String   @id @default(uuid())
+  code         String   @unique // free | pro | business
+  name         String
+  description  String?
+  priceMonthly Float    @default(0)
+  priceYearly  Float    @default(0)
+  currency     String   @default("INR")
+  features     String   @default("[]") // JSON array of strings
+  limits       String   @default("{}") // JSON object {key:value}
+  isActive     Boolean  @default(true)
+  isDefault    Boolean  @default(false)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+// ----------------------------------------------------------------------------
+//  SUBSCRIPTIONS (mock billing lifecycle) + audit events
+// ----------------------------------------------------------------------------
+model Subscription {
+  id                 String    @id @default(uuid())
+  userId             String
+  planId             String
+  billingInterval    String    @default("monthly") // monthly|yearly
+  status             String    @default("trialing") // trialing|active|past_due|canceled|expired
+  currentPeriodStart DateTime  @default(now())
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean   @default(false)
+  canceledAt         DateTime?
+  paymentBrand       String? // mock, e.g. 'Visa'
+  paymentLast4       String? // mock, e.g. '4242'
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan   Plan                @relation(fields: [planId], references: [id], onDelete: Restrict)
+  events SubscriptionEvent[]
+
+  // Production has a partial unique index (one active per user); not
+  // expressible in Prisma/SQLite — the API layer enforces it instead.
+  @@index([userId])
+  @@index([status])
+}
+
+// append-only audit trail (doubles as mock invoice history)
+model SubscriptionEvent {
+  id             String   @id @default(uuid())
+  subscriptionId String
+  userId         String
+  type           String // created|plan_changed|interval_changed|renewed|canceled|resumed|payment_succeeded|payment_failed|trial_ended
+  amount         Float?
+  currency       String?
+  payload        String   @default("{}") // JSON object
+  createdAt      DateTime @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+// ----------------------------------------------------------------------------
+//  NEWSLETTER SUBSCRIBERS
+// ----------------------------------------------------------------------------
+model NewsletterSubscriber {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  status         String    @default("pending") // pending|confirmed|unsubscribed
+  confirmToken   String?   @unique
+  source         String    @default("blog") // blog|store|footer|lead_magnet
+  subscribedAt   DateTime  @default(now())
+  confirmedAt    DateTime?
+  unsubscribedAt DateTime?
+}
+
+// ----------------------------------------------------------------------------
+//  AFFILIATE CLICKS (outbound tracking)
+// ----------------------------------------------------------------------------
+model AffiliateClick {
+  id        String   @id @default(uuid())
+  productId String
+  userId    String?
+  sessionId String
+  ipHash    String? // hashed, PII-safe
+  userAgent String?
+  referrer  String?
+  device    String? // mobile|desktop|tablet
+  country   String?
+  clickedAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([productId, clickedAt(sort: Desc)])
+  @@index([sessionId])
+}
+
+// ----------------------------------------------------------------------------
+//  VISITOR SESSIONS (presence — REST fallback for the live counter)
+// ----------------------------------------------------------------------------
+model VisitorSession {
+  id             String   @id @default(uuid())
+  sessionId      String   @unique
+  userId         String?
+  path           String   @default("/")
+  referrer       String?
+  device         String? // mobile|desktop|tablet
+  country        String?
+  firstSeenAt    DateTime @default(now())
+  lastSeenAt     DateTime @default(now())
+  heartbeatCount Int      @default(1)
+  isOnline       Boolean  @default(true)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([lastSeenAt])
+  @@index([userId])
+}
+
+// ----------------------------------------------------------------------------
+//  SITE SETTINGS (maintenance mode & runtime flags; value = JSON string)
+// ----------------------------------------------------------------------------
+model SiteSetting {
+  key            String   @id
+  value          String   @default("{}") // JSON object
+  updatedBy      String?
+  updatedAt      DateTime @updatedAt
+
+  updatedByUser User? @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
 }

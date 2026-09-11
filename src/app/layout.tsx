@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { SITE, SOCIALS } from "@/lib/constants";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,25 +15,106 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
-  authors: [{ name: "Z.ai Team" }],
+  metadataBase: new URL(SITE.url),
+  title: {
+    default: "MN.KP | AI-Powered Web & App Development in Calicut — MOHAMMED NIHAD KP",
+    template: "%s | MN.KP",
+  },
+  description: `MOHAMMED NIHAD KP is a Calicut-based AI-first developer and freelancer delivering fast websites, apps, photo and video services, plus an honestly curated affiliate store. ${SITE.tagline}`,
+  keywords: [
+    "AI developer Calicut",
+    "web development Kerala",
+    "photography Calicut",
+    "videography Kozhikode",
+    "affiliate store",
+    "MOHAMMED NIHAD KP",
+  ],
+  authors: [{ name: SITE.owner }],
+  creator: SITE.owner,
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: ["/favicon.svg", "/favicon-32.png", "/icon-192.png"],
+    apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
+    title: "MN.KP | AI-Powered Web & App Development in Calicut — MOHAMMED NIHAD KP",
+    description: `Hire MOHAMMED NIHAD KP — Calicut-based AI-first developer and freelancer. ${SITE.tagline}`,
     type: "website",
+    url: SITE.url,
+    siteName: "MN.KP",
+    images: [
+      {
+        url: "/images/brand/og-cover.png",
+        width: 1344,
+        height: 768,
+        alt: "MN.KP — MOHAMMED NIHAD KP, AI-first developer from Calicut, Kerala",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
+    title: "MN.KP | AI-Powered Web & App Development in Calicut",
+    description: `AI-first websites, apps and creative media from Calicut, Kerala. ${SITE.tagline}`,
+    images: ["/images/brand/og-cover.png"],
   },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FAFAF7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0C0F0E" },
+  ],
+};
+
+/** Static site-level structured data (WebSite + Person + LocalBusiness). */
+const siteJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${SITE.url}/#website`,
+      name: "MN.KP",
+      url: SITE.url,
+    },
+    {
+      "@type": "Person",
+      "@id": `${SITE.url}/#person`,
+      name: "MOHAMMED NIHAD KP",
+      jobTitle: "Freelancer · Businessman · AI-First Developer",
+      url: SITE.url,
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Calicut (Kozhikode)",
+        addressRegion: "Kerala",
+        addressCountry: "IN",
+      },
+      sameAs: SOCIALS.map((s) => s.url),
+    },
+    {
+      "@type": "LocalBusiness",
+      "@id": `${SITE.url}/#localbusiness`,
+      name: "MN.KP — MOHAMMED NIHAD KP",
+      url: SITE.url,
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Kozhikode",
+        addressRegion: "Kerala",
+        addressCountry: "IN",
+      },
+      geo: {
+        "@type": "GeoCoordinates",
+        latitude: SITE.geo.lat,
+        longitude: SITE.geo.lng,
+      },
+      areaServed: ["Calicut", "Kozhikode", "Kerala", "India", "Remote — Global"],
+      sameAs: SOCIALS.map((s) => s.url),
+    },
+  ],
 };
 
 export default function RootLayout({
@@ -45,6 +127,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
+        <script
+          id="site-jsonld"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }}
+        />
         {children}
         <Toaster />
       </body>
