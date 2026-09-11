@@ -7,7 +7,7 @@ export const SITE = {
   location: "Calicut (Kozhikode), Kerala, India",
   tagline:
     "I build apps, websites and digital solutions — not by writing every line from scratch, but by mastering the AI tools of tomorrow.",
-  email: "hello@mnkp.dev",
+  email: "intobusyness@gmail.com",
   phone: "+91 98467 50898",
   phoneRaw: "919846750898",
   whatsappUrl: "https://api.whatsapp.com/send?phone=919846750898&text=Hello...!",
@@ -16,7 +16,7 @@ export const SITE = {
   mapEmbedUrl: "https://maps.google.com/maps?q=Kozhikode,+Kerala,+India&output=embed",
   cvUrl: "https://drive.google.com/file/d/1wzvYQdy3LTLekoCOhytPM5m0AGO0n9nr/preview",
   /** Change to the production domain on deploy (used for canonical/sitemap/JSON-LD). */
-  url: "https://mnkp.vercel.app",
+  url: "https://mohdnihadkp.vercel.app",
   ogImage: "/images/brand/og-cover.png",
 } as const;
 
@@ -109,7 +109,7 @@ export const FOOTER_DEFAULT: {
 };
 
 export const DEMO_CREDENTIALS = {
-  admin: { email: "admin@mnkp.dev", password: "Nihad@Admin2025", hint: "Admin & Developer console" },
+  admin: { email: "intobusyness@gmail.com", password: "Nihad@Admin2025", hint: "Admin & Developer console" },
   author: { email: "author@mnkp.dev", password: "Author@2025", hint: "Content author" },
   user: { email: "user@mnkp.dev", password: "User@2025", hint: "Customer account" },
 } as const;

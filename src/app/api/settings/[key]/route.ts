@@ -4,14 +4,16 @@ import { STAFF_ROLES, requireRole } from "@/lib/auth";
 import { settingsUpdateSchema } from "@/lib/validation";
 import { toJson } from "@/types";
 import { SETTING_KEYS, asJsonRecord, parseSettingObject, type SettingKey } from "@/app/api/settings/_lib";
+import { writeAudit } from "@/app/api/audit/_lib";
 
 /**
  * PATCH /api/settings/:key — ADMIN (STAFF_ROLES).
  *
- * Upserts one site_settings row. Keys are limited to the five managed
- * groups (brand/footer/media/ads/maintenance); value must be a JSON object
- * (settingsUpdateSchema). updatedBy tracks the acting admin. Returns the
- * stored value parsed back into JSON.
+ * Upserts one site_settings row. Keys are limited to the managed groups
+ * (brand/footer/media/ads/features/seo/maintenance); value must be a JSON
+ * object (settingsUpdateSchema). updatedBy tracks the acting admin. Returns
+ * the stored value parsed back into JSON. Every change is audit-logged with
+ * before/after snapshots so it can be undone/redone.
  */
 
 interface Ctx {
@@ -33,10 +35,25 @@ export const PATCH = withApi<Ctx>(async (req, ctx) => {
   const user = await requireRole(req, STAFF_ROLES);
   const body = settingsUpdateSchema.parse(await readJson(req));
 
+  const previous = await db.siteSetting.findUnique({ where: { key } });
+  const beforeSnapshot = previous
+    ? { key, value: parseSettingObject(previous.value) }
+    : { key, value: null };
+
   await db.siteSetting.upsert({
     where: { key },
     update: { value: toJson(body.value), updatedBy: user.id },
     create: { key, value: toJson(body.value), updatedBy: user.id },
+  });
+
+  await writeAudit({
+    user,
+    action: "update",
+    entity: "setting",
+    entityId: key,
+    label: `${key.charAt(0).toUpperCase()}${key.slice(1)} settings`,
+    before: beforeSnapshot,
+    after: { key, value: body.value },
   });
 
   return ok({ key: key as SettingKey, value: parseSettingObject(toJson(body.value)) });

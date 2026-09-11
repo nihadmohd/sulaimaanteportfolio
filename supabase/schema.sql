@@ -606,3 +606,72 @@ on conflict (code) do nothing;
 -- BOOTSTRAP FIRST ADMIN (run once after your first signup):
 --   update public.profiles set role = 'admin' where email = 'you@example.com';
 -- ============================================================================
+
+-- ============================================================================
+--  ADS — full ad management (Task 9 update). Mirrors prisma Ad model.
+-- ============================================================================
+create table if not exists public.ads (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  type        text not null default 'image' check (type in ('image','gif','sticker','text','marquee')),
+  placement   text not null default 'blog-inline'
+              check (placement in ('header-banner','blog-inline','blog-sidebar','between-cards','home-strip','store-side','footer-banner','product-inline','marquee','sticker')),
+  title       text,
+  body        text,
+  image_url   text,
+  image_alt   text,
+  images      jsonb not null default '[]'::jsonb,
+  link_url    text,
+  link_label  text not null default 'Learn more',
+  active      boolean not null default true,
+  priority    int not null default 0,
+  start_at    timestamptz,
+  end_at      timestamptz,
+  impressions int not null default 0,
+  clicks      int not null default 0,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists ads_placement_active_idx on public.ads (placement, active);
+create index if not exists ads_active_priority_idx on public.ads (active, priority desc);
+create index if not exists ads_created_at_idx on public.ads (created_at desc);
+
+alter table public.ads enable row level security;
+create policy "ads public read active" on public.ads for select using (true);
+create policy "ads staff write" on public.ads for all
+  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('editor','admin')))
+  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('editor','admin')));
+
+-- ============================================================================
+--  AUDIT LOG — staff mutation snapshots powering Undo/Redo + activity feed.
+-- ============================================================================
+create table if not exists public.audit_log (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid references public.profiles(id) on delete set null,
+  user_name  text,
+  action     text not null check (action in ('create','update','delete','toggle','undo','redo','import')),
+  entity     text not null,
+  entity_id  text,
+  label      text not null default '',
+  before     jsonb,
+  after      jsonb,
+  undone_at  timestamptz,
+  redone_at  timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists audit_created_at_idx on public.audit_log (created_at desc);
+create index if not exists audit_entity_idx on public.audit_log (entity, entity_id);
+create index if not exists audit_undone_idx on public.audit_log (undone_at);
+
+alter table public.audit_log enable row level security;
+create policy "audit staff read" on public.audit_log for select
+  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('editor','admin')));
+create policy "audit staff write" on public.audit_log for all
+  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('editor','admin')))
+  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('editor','admin')));
+
+-- Settings keys for the update wave (features + seo groups)
+insert into public.site_settings (key, value) values
+  ('features', '{"newsletter":true,"shareButtons":true,"presenceBadge":true,"cookieConsent":true,"registration":true,"trendingBadge":true,"viewCounts":true,"readingTime":true}'::jsonb),
+  ('seo', '{"titleSuffix":"| MN.KP","defaultDescription":"AI-powered web, app, photo and video solutions from Calicut, Kerala — by MOHAMMED NIHAD KP.","keywords":["AI development Calicut","freelance developer Kerala","web development Kozhikode"],"googleVerification":"","bingVerification":""}'::jsonb)
+on conflict (key) do nothing;

@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ALink } from "@/components/router/link";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import { AffiliateAdSlot } from "@/components/shared/affiliate-ad-slot";
 import { ProductCard, Stars, formatINR, type ProductCardData } from "@/components/shared/product-card";
 import { formatCompact } from "@/components/shared/post-card";
 import { SocialShare } from "@/components/shared/social-share";
@@ -35,6 +36,7 @@ import type { Paginated, ProductDTO } from "@/types";
  *
  * Gallery with thumbnails, honest-review content, key specs, pros/cons,
  * tracked affiliate CTA (click logged BEFORE the merchant tab opens),
+ * a compact "product-inline" sponsored slot under the price/CTA card,
  * disclosure, share, related gear and Product JSON-LD with INR offers.
  */
 
@@ -252,7 +254,7 @@ function ProductDetail({ product }: { product: ProductDTO }) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 md:py-14 lg:px-8">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 md:py-14 lg:px-8">
       <SEOHead
         title={`${product.name} — Honest Review & Best Price | MN.KP`}
         description={`${seoDescription} Honest review, key specs, pros and cons — curated in Calicut, priced in INR.`.slice(0, 180)}
@@ -273,7 +275,7 @@ function ProductDetail({ product }: { product: ProductDTO }) {
         ]}
       />
 
-      <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-12">
+      <div className="mt-6 grid grid-cols-1 gap-8 sm:mt-8 sm:gap-10 lg:grid-cols-2 lg:gap-12">
         {/* gallery */}
         <div>
           <ProductGallery product={product} />
@@ -389,6 +391,9 @@ function ProductDetail({ product }: { product: ProductDTO }) {
               />
             </div>
           </div>
+
+          {/* sponsored slot right below the purchase CTA card */}
+          <AffiliateAdSlot placement="product-inline" className="mt-6" />
 
           {/* key specs */}
           {Object.keys(product.keySpecs).length > 0 ? (

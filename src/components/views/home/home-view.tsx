@@ -144,21 +144,21 @@ function HeroSection() {
         aria-hidden="true"
         className="absolute inset-0 -z-10 bg-gradient-to-b from-emerald-950/85 via-emerald-950/75 to-emerald-950/90"
       />
-      <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-20 sm:px-6 md:py-28 lg:px-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-10 sm:px-6 sm:py-16 md:py-28 lg:px-8">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold-soft">
           Calicut · Kerala · Worldwide
         </p>
-        <h1 className="mt-4 max-w-3xl text-balance text-4xl font-semibold leading-[1.1] tracking-tight text-white sm:text-5xl">
+        <h1 className="mt-3 max-w-3xl text-balance text-3xl font-semibold leading-[1.1] tracking-tight text-white sm:mt-4 sm:text-4xl md:text-5xl">
           <span className="text-gold-gradient block">MOHAMMED NIHAD KP</span>
-          <span className="mt-2 block text-2xl font-semibold sm:text-3xl">
+          <span className="mt-2 block text-xl font-semibold sm:text-2xl md:text-3xl">
             AI-Powered Web &amp; App Development in Calicut
           </span>
         </h1>
-        <p className="mt-6 max-w-2xl text-pretty text-base leading-relaxed text-emerald-50/85 md:text-lg">
+        <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-emerald-50/85 sm:mt-6 md:text-lg">
           {SITE.tagline}
         </p>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3">
+        <div className="mt-6 flex flex-wrap items-center gap-3 sm:mt-8">
           <ALink href="#/services">
             <Button size="lg" className="gap-2">
               Hire me
@@ -183,7 +183,7 @@ function HeroSection() {
           </ALink>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-6 sm:mt-8">
           <LiveVisitorBadge className="border-gold-soft/30 bg-white/10 text-gold-soft" />
         </div>
       </div>
@@ -198,7 +198,7 @@ function HeroMarquee() {
   if (!marquee?.enabled || images.length === 0) return null;
 
   return (
-    <section aria-hidden="true" className="border-y border-gold/20 bg-muted/50 py-4 md:py-5">
+    <section aria-hidden="true" className="border-y border-gold/20 bg-muted/50 py-3 sm:py-4 md:py-5">
       <style>{MARQUEE_CSS}</style>
       <div className="mnkp-marquee">
         <div className="mnkp-marquee__track">
@@ -209,7 +209,7 @@ function HeroMarquee() {
               alt=""
               loading="lazy"
               decoding="async"
-              className="mx-3 h-28 w-auto max-w-none rounded-lg border border-border/60 object-cover grayscale transition-all duration-300 hover:scale-[1.04] hover:grayscale-0 md:h-36"
+              className="mx-3 h-14 w-auto max-w-none rounded-lg border border-border/60 object-cover grayscale transition-all duration-300 hover:scale-[1.04] hover:grayscale-0 sm:h-24 md:h-36"
             />
           ))}
         </div>
@@ -250,8 +250,8 @@ function NewsletterBand() {
   };
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
-      <div className="rounded-2xl border border-gold/40 bg-gold/[0.05] p-6 md:p-10">
+    <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-14 lg:px-8">
+      <div className="rounded-2xl border border-gold/40 bg-gold/[0.05] p-4 sm:p-6 md:p-10">
         <div className="grid items-center gap-6 md:grid-cols-[1.2fr_1fr]">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">Newsletter</p>
@@ -337,26 +337,25 @@ export default function HomeView() {
       <HeroSection />
       <HeroMarquee />
 
-      {/* at a glance — horizontally scrollable on mobile */}
-      <section aria-label="MN.KP at a glance" className="mx-auto w-full max-w-6xl px-4 pt-10 sm:px-6 lg:px-8">
+      {/* at a glance — 2x2 grid on mobile, 4-up from md */}
+      <section aria-label="MN.KP at a glance" className="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6 sm:pt-10 lg:px-8">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
           At a glance
         </p>
-        <div className="scrollbar-slim mt-4 flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:overflow-visible md:pb-0">
+        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
           {STATS.map((stat, index) => (
             <StatChip
               key={stat.label}
               value={stat.value}
               label={stat.label}
               icon={STAT_ICONS[index % STAT_ICONS.length]}
-              className="min-w-44 shrink-0 md:min-w-0 md:shrink"
             />
           ))}
         </div>
       </section>
 
       {/* services preview */}
-      <section className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
+      <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-14 lg:px-8">
         <SectionHeading
           microLabel="Services"
           title="What I do"
@@ -421,7 +420,7 @@ export default function HomeView() {
       </section>
 
       {/* featured posts */}
-      <section className="mx-auto w-full max-w-6xl px-4 pb-14 sm:px-6 lg:px-8">
+      <section className="mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 sm:pb-14 lg:px-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <SectionHeading
             microLabel="Fresh writing"
@@ -451,12 +450,12 @@ export default function HomeView() {
       </section>
 
       {/* affiliate strip */}
-      <div className="mx-auto w-full max-w-6xl px-4 pb-14 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 sm:pb-14 lg:px-8">
         <AffiliateAdSlot placement="home-strip" />
       </div>
 
       {/* featured products */}
-      <section className="mx-auto w-full max-w-6xl px-4 pb-14 sm:px-6 lg:px-8">
+      <section className="mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 sm:pb-14 lg:px-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <SectionHeading
             microLabel="Affiliate picks"
@@ -486,7 +485,7 @@ export default function HomeView() {
       </section>
 
       {/* brands + projects band */}
-      <section className="border-y bg-muted/40 py-14">
+      <section className="border-y bg-muted/40 py-8 sm:py-14">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
           <SectionHeading
             microLabel="The ecosystem"
@@ -529,7 +528,7 @@ export default function HomeView() {
       </section>
 
       {/* about teaser */}
-      <section className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[280px_1fr] lg:px-8">
+      <section className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-4 py-8 sm:px-6 sm:py-14 lg:grid-cols-[280px_1fr] lg:px-8">
         <div className="mx-auto w-full max-w-[280px]">
           <img
             src="/images/brand/portrait.png"
@@ -570,8 +569,8 @@ export default function HomeView() {
       <NewsletterBand />
 
       {/* final CTA band */}
-      <section className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6 lg:px-8">
-        <div className="relative isolate overflow-hidden rounded-2xl bg-primary px-6 py-12 text-center md:px-12 md:py-16">
+      <section className="mx-auto w-full max-w-6xl px-4 pb-10 sm:px-6 sm:pb-16 lg:px-8">
+        <div className="relative isolate overflow-hidden rounded-2xl bg-primary px-4 py-8 text-center sm:px-6 sm:py-12 md:px-12 md:py-16">
           <div
             aria-hidden="true"
             className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/90 via-transparent to-gold/20"

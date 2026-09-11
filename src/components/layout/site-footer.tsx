@@ -13,7 +13,10 @@ import { SITE, SOCIALS } from "@/lib/constants";
 /**
  * SiteFooter — admin-editable via GET /api/settings (data?.footer with
  * FOOTER_DEFAULT fallback). Rich internal linking for SEO: brand block,
- * three link columns, socials, newsletter mini-form and a legal bottom bar.
+ * three link columns (2-col compact grid on mobile), socials, newsletter
+ * mini-form and a legal bottom bar. The root carries bottom padding on
+ * mobile so the fixed bottom tab bar (MobileNav) never overlaps content,
+ * including safe-area-inset-bottom.
  */
 
 function NewsletterForm() {
@@ -87,11 +90,11 @@ export function SiteFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="mt-auto w-full border-t bg-muted/40">
-      <div className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
-        <div className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr_1fr] md:gap-8">
+    <footer className="mt-auto w-full border-t bg-muted/40 pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:py-12 md:px-6 md:py-16">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-[1.5fr_1fr_1fr_1fr] md:gap-8">
           {/* Brand block */}
-          <div className="max-w-xs">
+          <div className="col-span-2 max-w-xs md:col-span-1">
             <div className="flex items-center gap-2.5">
               <img src="/logo.svg" alt="" className="h-9 w-9" width={36} height={36} loading="lazy" />
               <p className="text-lg font-semibold tracking-tight">
@@ -100,7 +103,7 @@ export function SiteFooter() {
             </div>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{footer.tagline}</p>
 
-            <ul className="mt-5 space-y-2.5 text-sm">
+            <ul className="mt-4 space-y-2 text-xs text-muted-foreground sm:mt-5 sm:space-y-2.5 sm:text-sm">
               <li>
                 <a
                   href={`mailto:${SITE.email}`}
@@ -136,7 +139,7 @@ export function SiteFooter() {
               </li>
             </ul>
 
-            <div className="mt-6">
+            <div className="mt-5 sm:mt-6">
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
                 Newsletter
               </p>
@@ -153,7 +156,7 @@ export function SiteFooter() {
                 {column.title}
               </p>
               <div className="gold-rule mt-3 mb-4 w-16" aria-hidden="true" />
-              <ul className="space-y-2.5 text-sm">
+              <ul className="space-y-2 text-xs sm:space-y-2.5 sm:text-sm">
                 {column.links.map((link) => (
                   <li key={`${column.title}-${link.label}`}>
                     <ALink
@@ -171,7 +174,7 @@ export function SiteFooter() {
 
         {/* Socials */}
         {footer.socialsEnabled ? (
-          <div className="mt-10 border-t pt-6">
+          <div className="mt-8 border-t pt-6 sm:mt-10">
             <ul className="flex flex-wrap items-center gap-2" aria-label="MN.KP on social media">
               {SOCIALS.map((social) => (
                 <li key={social.name}>
@@ -192,7 +195,7 @@ export function SiteFooter() {
         ) : null}
 
         {/* Bottom bar */}
-        <div className="mt-8 flex flex-col gap-3 border-t pt-6 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between">
+        <div className="mt-6 flex flex-col gap-3 border-t pt-6 text-xs text-muted-foreground sm:mt-8 md:flex-row md:items-center md:justify-between">
           <p>
             © {year} {footer.copyright}
           </p>

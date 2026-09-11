@@ -145,7 +145,7 @@ export default function AdminLoginView() {
                       type="email"
                       inputMode="email"
                       autoComplete="email"
-                      placeholder="admin@mnkp.dev"
+                      placeholder="intobusyness@gmail.com"
                       className={t.input}
                       {...field}
                     />

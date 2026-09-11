@@ -120,12 +120,12 @@ export function ProductCard({ product, size = "default", className }: ProductCar
             </Badge>
           ) : null}
         </div>
-        <div className="flex flex-1 flex-col gap-1 p-3">
+        <div className="flex flex-1 flex-col gap-1 p-2">
           <h3 className="line-clamp-2 text-xs font-semibold leading-snug tracking-tight group-hover:text-primary">
             {product.name}
           </h3>
           <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-            <span className="text-sm font-semibold tabular-nums text-primary">
+            <span className="text-xs font-semibold tabular-nums text-primary">
               {formatINR(product.price)}
             </span>
             <Stars rating={product.rating} />

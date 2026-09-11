@@ -33,9 +33,10 @@ import { NAV_MAIN, SITE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 /**
- * SiteHeader — slim sticky top bar (h-16), backdrop blur, gold-underlined
- * active nav, live badge + bell + theme toggle + auth area. Below md the
- * nav collapses to a hamburger sheet; the mobile tab bar lives in MobileNav.
+ * SiteHeader — slim sticky top bar (h-14 mobile / h-16 desktop), backdrop
+ * blur, gold-underlined active nav, live badge + bell + theme toggle + auth
+ * area. Below lg the nav collapses to a hamburger sheet; the mobile tab bar
+ * lives in MobileNav.
  */
 
 function ThemeToggle() {
@@ -154,15 +155,15 @@ export function SiteHeader() {
       </a>
 
       <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 md:px-6">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 md:h-16 md:px-6">
           {/* Brand */}
           <ALink
             href="#/"
             className="flex shrink-0 items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label={`${SITE.name} — home`}
           >
-            <img src="/logo.svg" alt="" className="h-8 w-8" width={32} height={32} />
-            <span className="text-lg font-semibold tracking-tight">
+            <img src="/logo.svg" alt="" className="h-7 w-7 md:h-8 md:w-8" width={32} height={32} />
+            <span className="text-base font-semibold tracking-tight md:text-lg">
               MN<span className="text-gold">.KP</span>
             </span>
           </ALink>
@@ -209,7 +210,7 @@ export function SiteHeader() {
             <Button
               variant="ghost"
               size="icon"
-              className="size-9 md:hidden"
+              className="size-10 md:hidden"
               aria-label="Open navigation menu"
               aria-expanded={mobileNavOpen}
               aria-controls="mobile-nav-sheet"

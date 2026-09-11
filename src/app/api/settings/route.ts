@@ -4,18 +4,20 @@ import {
   parseSettingObject,
   resolveAds,
   resolveBrand,
+  resolveFeatures,
   resolveFooter,
   resolveMaintenance,
   resolveMedia,
+  resolveSeo,
 } from "@/app/api/settings/_lib";
 
 /**
  * GET /api/settings — PUBLIC sanitized site settings (BUILD CONTRACT §4).
  *
- * Reads the five site_settings rows, merges each over the constants.ts
- * defaults (missing rows / partial values degrade gracefully) and returns
- * {brand, footer, media, ads, maintenance}. The app shell (3-a useSettings)
- * polls this — no secrets live in these blobs by design.
+ * Reads the site_settings rows, merges each over the constants.ts defaults
+ * (missing rows / partial values degrade gracefully) and returns
+ * {brand, footer, media, ads, features, seo, maintenance}. The app shell
+ * (useSettings) polls this — no secrets live in these blobs by design.
  */
 
 export const GET = withApi(async () => {
@@ -27,6 +29,8 @@ export const GET = withApi(async () => {
     footer: resolveFooter(parseSettingObject(byKey.get("footer")?.value)),
     media: resolveMedia(parseSettingObject(byKey.get("media")?.value)),
     ads: resolveAds(parseSettingObject(byKey.get("ads")?.value)),
+    features: resolveFeatures(parseSettingObject(byKey.get("features")?.value)),
+    seo: resolveSeo(parseSettingObject(byKey.get("seo")?.value)),
     maintenance: resolveMaintenance(parseSettingObject(byKey.get("maintenance")?.value)),
   });
 });

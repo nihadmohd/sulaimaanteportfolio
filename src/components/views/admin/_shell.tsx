@@ -6,14 +6,18 @@ import {
   ExternalLink,
   FileText,
   FolderTree,
+  History,
   Inbox,
   LayoutDashboard,
   LogOut,
   Mail,
+  Megaphone,
   PanelLeft,
   Settings,
   ShoppingBag,
   Terminal,
+  TrendingUp,
+  Upload,
   UserCog,
   Users,
   type LucideIcon,
@@ -91,8 +95,19 @@ const NAV_GROUPS: NavGroup[] = [
     items: [{ label: "Users", href: "/admin/users", icon: UserCog }],
   },
   {
+    label: "GROWTH",
+    items: [
+      { label: "Ad Manager", href: "/admin/ads", icon: Megaphone },
+      { label: "Marketing", href: "/admin/marketing", icon: TrendingUp },
+    ],
+  },
+  {
     label: "SYSTEM",
-    items: [{ label: "Settings", href: "/admin/settings", icon: Settings }],
+    items: [
+      { label: "Settings", href: "/admin/settings", icon: Settings },
+      { label: "Activity & Undo", href: "/admin/activity", icon: History },
+      { label: "Import", href: "/admin/import", icon: Upload },
+    ],
   },
 ];
 

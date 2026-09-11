@@ -36,8 +36,10 @@ import type { Paginated, PostDTO } from "@/types";
  * BlogView — route key "blog" (#/blog).
  *
  * Debounced search + sort + category chips (?category=) + tag filter (?tag=)
- * + pagination (?page=), compact 2-col mobile grid / 3-col desktop, inline
- * affiliate slot above the grid. JSON-LD: Blog.
+ * + pagination (?page=). Mobile (<sm) renders posts as a single-column
+ * list of horizontal row cards (fixes the old 2-col overflow); sm+ keeps
+ * the 1/2/3-col card grid. A "between-cards" sponsored slot appears after
+ * the 6th post. JSON-LD: Blog.
  */
 
 type CategoryChip = { id: string; name: string; slug: string; postCount: number };
@@ -86,16 +88,34 @@ function useDebounced<T>(value: T, delay = 300): T {
 function PostGrid({ posts }: { posts: PostCardData[] }) {
   return (
     <>
-      {/* mobile: compact 2-col glanceable grid */}
-      <div className="grid grid-cols-2 gap-3 sm:hidden">
-        {posts.map((post) => (
-          <PostCard key={post.slug} post={post} size="compact" />
+      {/* mobile: single-column LIST — thumbnail left, text right (no overflow) */}
+      <ul className="space-y-3 sm:hidden">
+        {posts.map((post, index) => (
+          <React.Fragment key={post.slug}>
+            <li>
+              <PostCard post={post} size="row" />
+            </li>
+            {/* between-cards sponsored slot flows after the 6th post */}
+            {index === 5 ? (
+              <li>
+                <AffiliateAdSlot placement="between-cards" />
+              </li>
+            ) : null}
+          </React.Fragment>
         ))}
-      </div>
-      {/* sm and up: full cards */}
+      </ul>
+      {/* sm and up: full cards grid, sponsored slot as a full-row item */}
       <div className="hidden grid-cols-1 gap-5 sm:grid md:grid-cols-2 lg:grid-cols-3">
-        {posts.map((post) => (
-          <PostCard key={post.slug} post={post} />
+        {posts.map((post, index) => (
+          <React.Fragment key={post.slug}>
+            <PostCard post={post} />
+            {index === 5 ? (
+              <AffiliateAdSlot
+                placement="between-cards"
+                className="self-start md:col-span-2 lg:col-span-3"
+              />
+            ) : null}
+          </React.Fragment>
         ))}
       </div>
     </>
@@ -177,7 +197,7 @@ export default function BlogView() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 md:py-14 lg:px-8">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 md:py-14 lg:px-8">
       <SEOHead
         title="Blog — AI Tools, Development & Business Growth | MN.KP"
         description="Practical guides on AI tools, rapid development workflows, freelancing and business growth — written from Calicut, useful everywhere."
@@ -187,7 +207,7 @@ export default function BlogView() {
 
       <Breadcrumbs items={[{ label: "Home", href: "#/" }, { label: "Blog" }]} />
 
-      <header className="mt-8">
+      <header className="mt-6 sm:mt-8">
         <SectionHeading
           microLabel="The MN.KP blog"
           title="Guides worth your screen time"
@@ -196,7 +216,7 @@ export default function BlogView() {
       </header>
 
       {/* controls */}
-      <div className="mt-8 space-y-4">
+      <div className="mt-6 space-y-4 sm:mt-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search
@@ -232,9 +252,9 @@ export default function BlogView() {
           </div>
         </div>
 
-        {/* category chips */}
+        {/* category chips — full-bleed horizontal scroll on mobile */}
         <div
-          className="scrollbar-slim flex items-center gap-2 overflow-x-auto pb-1"
+          className="scrollbar-slim -mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
           role="group"
           aria-label="Filter by category"
         >
@@ -243,7 +263,7 @@ export default function BlogView() {
             onClick={() => setCategory(null)}
             aria-pressed={!category}
             className={cn(
-              "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+              "shrink-0 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors sm:py-1.5",
               !category
                 ? "border-gold/60 bg-gold/10 text-gold"
                 : "bg-card text-muted-foreground hover:border-gold/40 hover:text-foreground"
@@ -258,7 +278,7 @@ export default function BlogView() {
               onClick={() => setCategory(cat.slug)}
               aria-pressed={category === cat.slug}
               className={cn(
-                "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                "shrink-0 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors sm:py-1.5",
                 category === cat.slug
                   ? "border-gold/60 bg-gold/10 text-gold"
                   : "bg-card text-muted-foreground hover:border-gold/40 hover:text-foreground"
@@ -289,7 +309,7 @@ export default function BlogView() {
       </div>
 
       {/* inline affiliate slot above the grid */}
-      <div className="mt-8">
+      <div className="mt-6 sm:mt-8">
         <AffiliateAdSlot placement="blog-inline" />
       </div>
 

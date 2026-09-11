@@ -3,6 +3,7 @@ import { ApiError, ok, readJson, withApi } from "@/lib/api-helpers";
 import { STAFF_ROLES, getSessionUser, requireRole } from "@/lib/auth";
 import { productUpdateSchema } from "@/lib/validation";
 import { toJson } from "@/types";
+import { writeAudit } from "@/app/api/audit/_lib";
 import {
   findProductByIdOrSlug,
   productInclude,
@@ -45,7 +46,7 @@ export const PATCH = withApi<Ctx>(async (req, ctx) => {
     throw new ApiError(404, "NOT_FOUND", "Product not found.");
   }
 
-  await requireRole(req, STAFF_ROLES);
+  const user = await requireRole(req, STAFF_ROLES);
   const body = productUpdateSchema.parse(await readJson(req));
 
   if (body.categoryId) {
@@ -90,6 +91,16 @@ export const PATCH = withApi<Ctx>(async (req, ctx) => {
     include: productInclude,
   });
 
+  await writeAudit({
+    user,
+    action: "update",
+    entity: "product",
+    entityId: product.id,
+    label: `Product — ${updated.name}`,
+    before: JSON.parse(JSON.stringify(product)) as Record<string, unknown>,
+    after: JSON.parse(JSON.stringify(updated)) as Record<string, unknown>,
+  });
+
   return ok(serializeProduct(updated));
 });
 
@@ -100,7 +111,17 @@ export const DELETE = withApi<Ctx>(async (req, ctx) => {
     throw new ApiError(404, "NOT_FOUND", "Product not found.");
   }
 
-  await requireRole(req, STAFF_ROLES);
+  const staff = await requireRole(req, STAFF_ROLES);
+  const before = await db.product.findUnique({ where: { id: product.id } });
   await db.product.delete({ where: { id: product.id } });
+  await writeAudit({
+    user: staff,
+    action: "delete",
+    entity: "product",
+    entityId: product.id,
+    label: `Product — ${product.name}`,
+    before: before ? (JSON.parse(JSON.stringify(before)) as Record<string, unknown>) : null,
+    after: null,
+  });
   return ok({ id: product.id, deleted: true });
 });

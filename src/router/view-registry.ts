@@ -45,4 +45,8 @@ export const viewRegistry: Record<string, React.LazyExoticComponent<ComponentTyp
   "admin-subscribers": lazy(() => import("@/components/views/admin/subscribers-view")),
   "admin-plans": lazy(() => import("@/components/views/admin/plans-view")),
   "admin-settings": lazy(() => import("@/components/views/admin/settings-view")),
+  "admin-ads": lazy(() => import("@/components/views/admin/ads-view")),
+  "admin-marketing": lazy(() => import("@/components/views/admin/marketing-view")),
+  "admin-activity": lazy(() => import("@/components/views/admin/activity-view")),
+  "admin-import": lazy(() => import("@/components/views/admin/import-view")),
 };

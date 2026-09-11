@@ -66,7 +66,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: "Your rights and how to exercise them",
         paragraphs: [
-          "You can exercise any of the following rights at any time, free of charge, by emailing hello@mnkp.dev or messaging WhatsApp +91 98467 50898. Requests are verified and actioned within 30 days — usually much faster:",
+          "You can exercise any of the following rights at any time, free of charge, by emailing intobusyness@gmail.com or messaging WhatsApp +91 98467 50898. Requests are verified and actioned within 30 days — usually much faster:",
         ],
         bullets: [
           "Access — receive a copy of the personal data we hold about you.",
@@ -117,7 +117,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "Liability, law and disputes",
         paragraphs: [
           "The platform is provided on an \"as is\" basis to the fullest extent permitted by law. MN.KP is not liable for indirect or consequential losses, or for merchant-side issues such as delivery delays or product defects on affiliate purchases. Total liability for any claim is limited to the amount you paid MN.KP in the 12 months before the claim.",
-          "These terms are governed by the laws of India, with exclusive jurisdiction in the courts at Kozhikode, Kerala. Disputes are first addressed through good-faith discussion — email hello@mnkp.dev and every effort is made to resolve matters directly, quickly and fairly.",
+          "These terms are governed by the laws of India, with exclusive jurisdiction in the courts at Kozhikode, Kerala. Disputes are first addressed through good-faith discussion — email intobusyness@gmail.com and every effort is made to resolve matters directly, quickly and fairly.",
         ],
       },
     ],
@@ -173,7 +173,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
           "Digital products sold directly by MN.KP — templates, preset packs and similar items — carry a 7-day refund window starting from the delivery email. Because digital goods are delivered instantly and cannot literally be returned, the window exists to make sure you got what you expected:",
         ],
         bullets: [
-          "The request reaches hello@mnkp.dev within 7 days of the delivery email.",
+          "The request reaches intobusyness@gmail.com within 7 days of the delivery email.",
           "The product is defective, materially different from its description, or the purchase was accidental or duplicated.",
           "Refunds are issued to the original payment method, typically within 5–7 working days, with any GST charged adjusted per applicable law.",
         ],
@@ -182,14 +182,14 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "Purchases made through affiliate links",
         paragraphs: [
           "When you buy a product via an Amazon.in or Flipkart link on this site, the merchant is the seller of record. Refunds, returns and replacements are governed by that merchant's own policy — for example Amazon.in return windows or Flipkart replacement and refund options — and must be initiated from your merchant account.",
-          "MN.KP cannot force or promise merchant-side outcomes, and any commission earned on a refunded order is reversed automatically. What we can do is help you find the right channel and vouch for the facts you need — email hello@mnkp.dev and we will point you in the right direction.",
+          "MN.KP cannot force or promise merchant-side outcomes, and any commission earned on a refunded order is reversed automatically. What we can do is help you find the right channel and vouch for the facts you need — email intobusyness@gmail.com and we will point you in the right direction.",
         ],
       },
       {
         heading: "Services and subscriptions",
         paragraphs: [
           "For service engagements, refunds follow the Cancellation Policy: advances are returned minus invoiced, completed milestones. For subscriptions, monthly plans simply run to the end of the paid period, while yearly plans can be refunded pro-rata within 14 days of a renewal.",
-          "Approved refunds are returned to the original payment method — typically within 5–7 working days for digital products and within 7 working days for engagement balances — with GST adjustments made per applicable law. If a refund is ever refused and you disagree, escalate it to hello@mnkp.dev for a direct review by the owner.",
+          "Approved refunds are returned to the original payment method — typically within 5–7 working days for digital products and within 7 working days for engagement balances — with GST adjustments made per applicable law. If a refund is ever refused and you disagree, escalate it to intobusyness@gmail.com for a direct review by the owner.",
         ],
       },
     ],
@@ -226,7 +226,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "Affiliate orders",
         paragraphs: [
           "Orders placed with Amazon, Flipkart or other merchants through MN.KP links must be cancelled on the merchant's own order page — most marketplaces allow cancellation until dispatch. MN.KP has no access to merchant order systems and cannot cancel on your behalf.",
-          "If a cancellation window has already closed, the merchant's return or replacement process usually remains open after delivery — see the Returns Policy for how that works. Stuck finding the right option? Email hello@mnkp.dev and we will help you locate it.",
+          "If a cancellation window has already closed, the merchant's return or replacement process usually remains open after delivery — see the Returns Policy for how that works. Stuck finding the right option? Email intobusyness@gmail.com and we will help you locate it.",
         ],
       },
     ],
@@ -250,7 +250,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: "First-party digital products — instant delivery",
         paragraphs: [
-          "First-party digital products — templates, presets and other MN.KP-created items — are delivered instantly by email at checkout, to any country, with no shipping charges. If the email has not arrived within a few minutes, check the spam folder, then write to hello@mnkp.dev and the download link will be resent.",
+          "First-party digital products — templates, presets and other MN.KP-created items — are delivered instantly by email at checkout, to any country, with no shipping charges. If the email has not arrived within a few minutes, check the spam folder, then write to intobusyness@gmail.com and the download link will be resent.",
           "Digital delivery means no shipping address, no customs and no waiting — downloads remain available through the link in the delivery email.",
         ],
       },
@@ -364,7 +364,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "Known limitations and feedback",
         paragraphs: [
           "Some embedded third-party content — the Google Map embed on the contact page, and merchant widgets reached through affiliate links — sits outside our control and may not fully conform. Where a limitation is known, it is documented here or beside the component itself.",
-          "If you hit a barrier, email hello@mnkp.dev or message WhatsApp +91 98467 50898 with the page and a short description; accessibility reports are triaged with priority and acknowledged within 5 working days.",
+          "If you hit a barrier, email intobusyness@gmail.com or message WhatsApp +91 98467 50898 with the page and a short description; accessibility reports are triaged with priority and acknowledged within 5 working days.",
         ],
       },
     ],
@@ -441,7 +441,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "Enforcement",
         paragraphs: [
           "Violations typically follow a graduated path: a warning, then temporary suspension, then termination — and, for unlawful activity, referral to the authorities under the Information Technology Act, 2000 and the rules made under it.",
-          "Report abuse to hello@mnkp.dev with the page and a description; reports are reviewed within 24 hours. Access may be suspended immediately, without prior notice, where ongoing harm or a security risk is involved.",
+          "Report abuse to intobusyness@gmail.com with the page and a description; reports are reviewed within 24 hours. Access may be suspended immediately, without prior notice, where ongoing harm or a security risk is involved.",
         ],
       },
     ],
@@ -477,7 +477,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         bullets: [
           "Using a strong, unique password for your MN.KP account and not reusing it elsewhere.",
           "Signing out on shared or public devices.",
-          "Treating email as suspect: MN.KP only writes from hello@mnkp.dev and never asks for your password.",
+          "Treating email as suspect: MN.KP only writes from intobusyness@gmail.com and never asks for your password.",
           "Reporting anything odd — phishing, suspicious \"MN.KP\" messages, unexpected password-reset emails.",
         ],
       },
@@ -502,7 +502,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: "Scope and how to report",
         paragraphs: [
-          "If you believe you have found a security vulnerability on mnkp.dev or its subdomains, MN.KP wants to hear about it. Send details to hello@mnkp.dev with the subject line \"Security disclosure\" — a plain email is preferred over web forms or public channels.",
+          "If you believe you have found a security vulnerability on mohdnihadkp.vercel.app or its subdomains, MN.KP wants to hear about it. Send details to intobusyness@gmail.com with the subject line \"Security disclosure\" — a plain email is preferred over web forms or public channels.",
           "Please include reproduction steps, the potential impact, and any proof-of-concept you can share. Coordinated disclosure with a 90-day remediation window is honoured in both directions.",
         ],
         bullets: [
@@ -552,7 +552,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "Moderation, reporting and appeals",
         paragraphs: [
           "Moderation is carried out by MOHAMMED NIHAD KP and is deliberately light — most spaces require no intervention at all. Removals, suspensions and bans are logged with reasons.",
-          "To report a problem, use the contact form or email hello@mnkp.dev with a link and a one-line description. If your content was actioned and you believe the call was wrong, reply to the moderation note — appeals are reviewed within 3 working days and reversed when the decision was incorrect.",
+          "To report a problem, use the contact form or email intobusyness@gmail.com with a link and a one-line description. If your content was actioned and you believe the call was wrong, reply to the moderation note — appeals are reviewed within 3 working days and reversed when the decision was incorrect.",
         ],
       },
     ],
@@ -609,7 +609,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "Independence is not for sale",
         paragraphs: [
           "Payment — commission, sponsorship or advertising — never buys a positive review, a rating change, or the quiet removal of cons. Sponsored slots rotate from the same honestly-reviewed catalog that the store lists, and categories misaligned with MN.KP's audience (get-rich-quick schemes, misleading health claims and the like) are declined outright.",
-          "Questions about any specific placement can be sent to hello@mnkp.dev — the answer will be boring, and honest.",
+          "Questions about any specific placement can be sent to intobusyness@gmail.com — the answer will be boring, and honest.",
         ],
       },
     ],
@@ -646,7 +646,7 @@ export const LEGAL_DOCS: LegalDoc[] = [
         heading: "Corrections and updates",
         paragraphs: [
           "Mistakes are fixed visibly: articles carry an \"updated\" date, and material corrections are noted at the end of the piece. If new information — a failing batch, a firmware controversy, a price collapse — changes the verdict, the review is updated and the change is visible rather than silent.",
-          "If you spot an error, email hello@mnkp.dev or message WhatsApp +91 98467 50898 — corrections from readers are the oldest quality-control system on the internet, and the most effective one.",
+          "If you spot an error, email intobusyness@gmail.com or message WhatsApp +91 98467 50898 — corrections from readers are the oldest quality-control system on the internet, and the most effective one.",
         ],
       },
     ],

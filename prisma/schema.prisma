@@ -303,6 +303,65 @@ model VisitorSession {
 }
 
 // ----------------------------------------------------------------------------
+//  ADS — full ad management system (create from Admin & Developer, on/off,
+//  placement control, schedule, priority, impression + click tracking).
+//  Mirrors the ads table appended to supabase/schema.sql.
+// ----------------------------------------------------------------------------
+model Ad {
+  id          String    @id @default(uuid())
+  name        String
+  // image|gif|sticker|text|marquee
+  type        String    @default("image")
+  // header-banner|blog-inline|blog-sidebar|between-cards|home-strip|store-side|footer-banner|product-inline|marquee|sticker
+  placement   String    @default("blog-inline")
+  title       String? // text ads / marquee caption / sticker label
+  body        String? // text ad body copy
+  imageUrl    String? // image|gif|sticker image
+  imageAlt    String?
+  images      String    @default("[]") // marquee: JSON array of image urls
+  linkUrl     String? // click-through url
+  linkLabel   String   @default("Learn more")
+  active      Boolean   @default(true)
+  priority    Int       @default(0) // higher renders first
+  startAt     DateTime? // schedule window start (null = immediately)
+  endAt       DateTime? // schedule window end (null = forever)
+  impressions Int       @default(0)
+  clicks      Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([placement, active])
+  @@index([active, priority(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+}
+
+// ----------------------------------------------------------------------------
+//  AUDIT LOG — every staff mutation snapshot (before/after) powering the
+//  Admin & Developer Undo/Redo system + activity feed. Mirrors audit_log in
+//  supabase/schema.sql.
+// ----------------------------------------------------------------------------
+model AuditLog {
+  id        String    @id @default(uuid())
+  userId    String?
+  userName  String?
+  // create|update|delete|toggle|undo|redo|import
+  action    String
+  // setting|ad|post|product|plan|inquiry|user|category|import
+  entity    String
+  entityId  String?
+  label     String // human-readable target, e.g. "Ads settings" / post title
+  before    String? // JSON snapshot before the change (null on create)
+  after     String? // JSON snapshot after the change (null on delete)
+  undoneAt  DateTime?
+  redoneAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([entity, entityId])
+  @@index([undoneAt])
+}
+
+// ----------------------------------------------------------------------------
 //  SITE SETTINGS (maintenance mode & runtime flags; value = JSON string)
 // ----------------------------------------------------------------------------
 model SiteSetting {

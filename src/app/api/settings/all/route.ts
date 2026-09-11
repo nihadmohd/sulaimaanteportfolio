@@ -7,9 +7,11 @@ import {
   asJsonRecord,
   defaultAds,
   defaultBrand,
+  defaultFeatures,
   defaultFooter,
   defaultMaintenance,
   defaultMedia,
+  defaultSeo,
 } from "@/app/api/settings/_lib";
 
 /**
@@ -30,6 +32,10 @@ function defaultForKey(key: string): Record<string, unknown> {
       return defaultMedia() as unknown as Record<string, unknown>;
     case "ads":
       return defaultAds() as unknown as Record<string, unknown>;
+    case "features":
+      return defaultFeatures() as unknown as Record<string, unknown>;
+    case "seo":
+      return defaultSeo() as unknown as Record<string, unknown>;
     default:
       return defaultMaintenance() as unknown as Record<string, unknown>;
   }

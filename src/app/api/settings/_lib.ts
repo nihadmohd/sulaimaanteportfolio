@@ -2,10 +2,12 @@ import { FOOTER_DEFAULT, SITE, SOCIALS } from "@/lib/constants";
 import type {
   AdsSettings,
   BrandSettings,
+  FeaturesSettings,
   FooterSettings,
   JsonRecord,
   MaintenanceSettings,
   MediaSettings,
+  SeoSettings,
   StickerItem,
 } from "@/types";
 
@@ -18,7 +20,7 @@ import type {
  * JSON.parse + shape-guarded merge over the constants defaults.
  */
 
-export const SETTING_KEYS = ["brand", "footer", "media", "ads", "maintenance"] as const;
+export const SETTING_KEYS = ["brand", "footer", "media", "ads", "features", "seo", "maintenance"] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 
 /** Safe JSON.parse of a settings row → plain object ({} on any failure). */
@@ -85,6 +87,36 @@ export function defaultMaintenance(): MaintenanceSettings & { estimatedEnd: stri
     enabled: false,
     message: "We are performing scheduled maintenance. Back shortly.",
     estimatedEnd: null,
+  };
+}
+
+export function defaultFeatures(): FeaturesSettings {
+  return {
+    newsletter: true,
+    shareButtons: true,
+    presenceBadge: true,
+    cookieConsent: true,
+    registration: true,
+    trendingBadge: true,
+    viewCounts: true,
+    readingTime: true,
+    affiliateSlots: true,
+  };
+}
+
+export function defaultSeo(): SeoSettings {
+  return {
+    titleSuffix: "| MN.KP",
+    defaultDescription:
+      "AI-powered web, app, photo and video solutions from Calicut, Kerala — by MOHAMMED NIHAD KP.",
+    keywords: [
+      "AI development Calicut",
+      "freelance developer Kerala",
+      "web development Kozhikode",
+      "MOHAMMED NIHAD KP",
+    ],
+    googleVerification: "",
+    bingVerification: "",
   };
 }
 
@@ -228,6 +260,32 @@ export function resolveMaintenance(
     enabled: bool(raw.enabled, d.enabled),
     message: str(raw.message, d.message),
     estimatedEnd: typeof raw.estimatedEnd === "string" && raw.estimatedEnd ? raw.estimatedEnd : null,
+  };
+}
+
+export function resolveFeatures(raw: Record<string, unknown>): FeaturesSettings {
+  const d = defaultFeatures();
+  return {
+    newsletter: bool(raw.newsletter, d.newsletter),
+    shareButtons: bool(raw.shareButtons, d.shareButtons),
+    presenceBadge: bool(raw.presenceBadge, d.presenceBadge),
+    cookieConsent: bool(raw.cookieConsent, d.cookieConsent),
+    registration: bool(raw.registration, d.registration),
+    trendingBadge: bool(raw.trendingBadge, d.trendingBadge),
+    viewCounts: bool(raw.viewCounts, d.viewCounts),
+    readingTime: bool(raw.readingTime, d.readingTime),
+    affiliateSlots: bool(raw.affiliateSlots, d.affiliateSlots),
+  };
+}
+
+export function resolveSeo(raw: Record<string, unknown>): SeoSettings {
+  const d = defaultSeo();
+  return {
+    titleSuffix: str(raw.titleSuffix, d.titleSuffix),
+    defaultDescription: str(raw.defaultDescription, d.defaultDescription),
+    keywords: strArray(raw.keywords, d.keywords).slice(0, 20),
+    googleVerification: str(raw.googleVerification, d.googleVerification),
+    bingVerification: str(raw.bingVerification, d.bingVerification),
   };
 }
 

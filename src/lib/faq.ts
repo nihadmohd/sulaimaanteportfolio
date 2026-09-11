@@ -59,7 +59,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     category: "orders",
     question: "How do I download my digital purchase?",
     answer:
-      "Digital products such as templates and presets are delivered instantly by email after checkout, with a download link inside. If the email has not arrived within a few minutes, check the spam folder, then contact hello@mnkp.dev and the link will be resent quickly.",
+      "Digital products such as templates and presets are delivered instantly by email after checkout, with a download link inside. If the email has not arrived within a few minutes, check the spam folder, then contact intobusyness@gmail.com and the link will be resent quickly.",
   },
 
   /* ------------------------------- billing ------------------------------ */
@@ -87,13 +87,13 @@ export const FAQ_ITEMS: FaqItem[] = [
     category: "privacy",
     question: "How is my data handled?",
     answer:
-      "MN.KP follows India's DPDP Act 2023, with GDPR and CCPA-level protections for international visitors. Only data needed to run the platform is collected, it is never sold, and you can request access, correction or deletion at any time by emailing hello@mnkp.dev.",
+      "MN.KP follows India's DPDP Act 2023, with GDPR and CCPA-level protections for international visitors. Only data needed to run the platform is collected, it is never sold, and you can request access, correction or deletion at any time by emailing intobusyness@gmail.com.",
   },
   {
     category: "privacy",
     question: "How do I delete my account and data?",
     answer:
-      "Send a request to hello@mnkp.dev or use Account → Settings. Verified deletion requests are completed within 30 days, after which your profile, inquiries and newsletter entries are removed — except records Indian tax law requires MN.KP to retain briefly.",
+      "Send a request to intobusyness@gmail.com or use Account → Settings. Verified deletion requests are completed within 30 days, after which your profile, inquiries and newsletter entries are removed — except records Indian tax law requires MN.KP to retain briefly.",
   },
   {
     category: "privacy",
@@ -107,7 +107,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     category: "support",
     question: "How do I reset my password?",
     answer:
-      "Open the sign-in page and choose \"Forgot password\", then enter your account email — a reset link arrives within a few minutes and stays valid for one hour. If it does not arrive, check the spam folder or contact hello@mnkp.dev.",
+      "Open the sign-in page and choose \"Forgot password\", then enter your account email — a reset link arrives within a few minutes and stays valid for one hour. If it does not arrive, check the spam folder or contact intobusyness@gmail.com.",
   },
   {
     category: "support",

@@ -3,6 +3,7 @@ import { ApiError, ok, readJson, withApi } from "@/lib/api-helpers";
 import { AUTHOR_ROLES, STAFF_ROLES, getSessionUser, requireUser } from "@/lib/auth";
 import { postUpdateSchema } from "@/lib/validation";
 import { toJson } from "@/types";
+import { writeAudit } from "@/app/api/audit/_lib";
 import {
   findPostByIdOrSlug,
   postInclude,
@@ -115,8 +116,23 @@ export const PATCH = withApi<Ctx>(async (req, ctx) => {
     include: postInclude,
   });
 
+  await writeAudit({
+    user,
+    action: "update",
+    entity: "post",
+    entityId: post.id,
+    label: `Post — ${updated.title}`,
+    before: postSnapshot(post),
+    after: postSnapshot(updated),
+  });
+
   return ok(serializePost(updated));
 });
+
+/** Raw-row snapshot for the audit undo/redo engine (JSON columns as stored). */
+function postSnapshot(post: Record<string, unknown> & { id: string }): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(post)) as Record<string, unknown>;
+}
 
 export const DELETE = withApi<Ctx>(async (req, ctx) => {
   const { idOrSlug } = await ctx.params;
@@ -129,6 +145,16 @@ export const DELETE = withApi<Ctx>(async (req, ctx) => {
     throw new ApiError(403, "FORBIDDEN", "You can only delete your own posts.");
   }
 
+  const before = await db.post.findUnique({ where: { id: post.id } });
   await db.post.delete({ where: { id: post.id } });
+  await writeAudit({
+    user,
+    action: "delete",
+    entity: "post",
+    entityId: post.id,
+    label: `Post — ${post.title}`,
+    before: before ? JSON.parse(JSON.stringify(before)) : null,
+    after: null,
+  });
   return ok({ id: post.id, deleted: true });
 });

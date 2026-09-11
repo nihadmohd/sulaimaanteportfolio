@@ -1089,7 +1089,7 @@ async function main() {
   const socials = socialsRecord();
 
   const admin = await db.user.upsert({
-    where: { email: "admin@mnkp.dev" },
+    where: { email: "intobusyness@gmail.com" },
     update: {
       fullName: "MOHAMMED NIHAD KP",
       displayName: "Nihad KP",
@@ -1107,7 +1107,7 @@ async function main() {
       isActive: true,
     },
     create: {
-      email: "admin@mnkp.dev",
+      email: "intobusyness@gmail.com",
       fullName: "MOHAMMED NIHAD KP",
       displayName: "Nihad KP",
       headline: "Freelancer · Businessman · AI-First Developer",

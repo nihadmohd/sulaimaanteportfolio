@@ -11,6 +11,12 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { CommandMenu } from "@/components/layout/command-menu";
 import { MaintenanceState, OfflineState } from "@/components/states/http-states";
 import { CookieConsent } from "@/components/shared/cookie-consent";
+import {
+  AdFooterBanner,
+  AdHeaderBanner,
+  AdMarqueeStrip,
+  AdSticker,
+} from "@/components/shared/ad-banner";
 import { SiteStickers } from "@/components/shared/site-stickers";
 import { maintenanceInfo, useSettings } from "@/hooks/use-settings";
 import { useOnline } from "@/hooks/use-online";
@@ -21,8 +27,12 @@ import { useUiStore } from "@/stores/ui-store";
  * AppShell — the root of the client application (rendered by src/app/page.tsx).
  *
  *   AppProviders › RouterProvider › [MaintenanceGate, OfflineBanner,
- *   flex-column(header / main#main › AppRouter / footer), MobileNav,
- *   CommandMenu, CookieConsent]
+ *   flex-column(header / ad-header-banner / ad-marquee / main#main ›
+ *   AppRouter / ad-footer-banner / footer), MobileNav, CommandMenu,
+ *   AdSticker, CookieConsent]
+ *
+ * The site-wide DB ad units (Task 9-e) null-render when ads are disabled
+ * or no live ad exists, so the shell never shifts.
  *
  * The footer sticks to the bottom of short viewports via the flex column +
  * mt-auto semantics; long content pushes it down naturally.
@@ -86,14 +96,18 @@ function ShellInner() {
       <OfflineBanner />
       <div className="flex min-h-screen flex-col">
         <SiteHeader />
+        <AdHeaderBanner />
+        <AdMarqueeStrip />
         <main id="main" className="flex-1">
           <AppRouter />
         </main>
+        <AdFooterBanner />
         <SiteFooter />
       </div>
       <MobileNav />
       <CommandMenu />
       <CommandKeyListener />
+      <AdSticker />
       <SiteStickers />
       <CookieConsent />
     </MaintenanceGate>

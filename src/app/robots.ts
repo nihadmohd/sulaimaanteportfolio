@@ -10,6 +10,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/", "/admin", "/account", "/onboarding", "/auth"],
       },
     ],
-    sitemap: "https://mnkp.vercel.app/sitemap.xml",
+    sitemap: "https://mohdnihadkp.vercel.app/sitemap.xml",
   };
 }

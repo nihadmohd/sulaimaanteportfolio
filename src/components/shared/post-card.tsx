@@ -8,7 +8,8 @@ import { ALink } from "@/components/router/link";
 import { cn } from "@/lib/utils";
 
 /**
- * PostCard — blog card for grids (default) and compact 2-col mobile grids.
+ * PostCard — blog card for grids (default), compact 2-col mini card and
+ * the mobile "row" list variant (thumbnail left + text right).
  * Data contract is intentionally loose so list endpoints can feed it directly.
  */
 
@@ -58,13 +59,74 @@ function formatDate(date: string | Date | null | undefined): string {
 
 export interface PostCardProps {
   post: PostCardData;
-  /** compact = mini card for 2-col mobile grids. */
-  size?: "default" | "compact";
+  /** compact = mini card for 2-col mobile grids; row = horizontal list row. */
+  size?: "default" | "compact" | "row";
   className?: string;
 }
 
 export function PostCard({ post, size = "default", className }: PostCardProps) {
   const href = `#/blog/${post.slug}`;
+
+  if (size === "row") {
+    return (
+      <ALink
+        href={href}
+        className={cn(
+          "group flex items-start gap-3 rounded-lg border bg-card p-2.5 shadow-xs transition-shadow hover:shadow-md focus-visible:shadow-md sm:p-3",
+          className
+        )}
+        aria-label={post.title}
+      >
+        {/* thumbnail left — fixed square, never wider than its box */}
+        <div className="relative size-20 shrink-0 overflow-hidden rounded-md bg-muted sm:size-24">
+          {post.coverImage ? (
+            <img
+              src={post.coverImage}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="size-full object-cover"
+            />
+          ) : (
+            <div
+              aria-hidden="true"
+              className="flex size-full items-center justify-center bg-gradient-to-br from-gold/30 via-primary/20 to-primary/10"
+            >
+              <Clock className="size-5 text-muted-foreground" strokeWidth={1.5} />
+            </div>
+          )}
+        </div>
+        {/* text right — clamped so long titles never overflow */}
+        <div className="min-w-0 flex-1">
+          <h3 className="line-clamp-2 text-sm font-semibold leading-snug tracking-tight group-hover:text-primary sm:text-[15px]">
+            {post.title}
+          </h3>
+          {post.excerpt ? (
+            <p className="mt-1 line-clamp-1 text-xs leading-relaxed text-muted-foreground sm:line-clamp-2 sm:text-sm">
+              {post.excerpt}
+            </p>
+          ) : null}
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            {post.category ? (
+              <span className="font-medium uppercase tracking-wide">{post.category}</span>
+            ) : null}
+            {post.readingMinutes ? (
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                <Clock className="size-3" aria-hidden="true" />
+                {post.readingMinutes}m
+              </span>
+            ) : null}
+            {post.views != null ? (
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                <Eye className="size-3" aria-hidden="true" />
+                {formatCompact(post.views)}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </ALink>
+    );
+  }
 
   if (size === "compact") {
     return (

@@ -209,10 +209,10 @@ function LegalIndexView() {
       <p className="mt-10 max-w-2xl text-sm leading-relaxed text-muted-foreground">
         Questions about any of these documents? Email{" "}
         <ALink
-          href="mailto:hello@mnkp.dev"
+          href="mailto:intobusyness@gmail.com"
           className="font-medium text-primary underline-offset-4 hover:underline"
         >
-          hello@mnkp.dev
+          intobusyness@gmail.com
         </ALink>{" "}
         or visit the{" "}
         <ALink
@@ -352,10 +352,10 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
             <span>
               Questions about this document? Email{" "}
               <ALink
-                href="mailto:hello@mnkp.dev"
+                href="mailto:intobusyness@gmail.com"
                 className="font-medium text-primary underline-offset-4 hover:underline"
               >
-                hello@mnkp.dev
+                intobusyness@gmail.com
               </ALink>{" "}
               or message WhatsApp{" "}
               <ALink

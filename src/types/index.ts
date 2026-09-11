@@ -413,12 +413,102 @@ export interface MaintenanceSettings {
   message: string;
 }
 
+/** site_settings key "features" — global on/off toggles (Task 9). */
+export interface FeaturesSettings {
+  newsletter: boolean;
+  shareButtons: boolean;
+  presenceBadge: boolean;
+  cookieConsent: boolean;
+  registration: boolean;
+  trendingBadge: boolean;
+  viewCounts: boolean;
+  readingTime: boolean;
+  affiliateSlots: boolean;
+}
+
+/** site_settings key "seo" — editable SEO defaults (Task 9). */
+export interface SeoSettings {
+  titleSuffix: string;
+  defaultDescription: string;
+  keywords: string[];
+  googleVerification: string;
+  bingVerification: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* ads — full ad management system (Task 9)                            */
+/* ------------------------------------------------------------------ */
+
+export type AdType = "image" | "gif" | "sticker" | "text" | "marquee";
+export type AdPlacement =
+  | "header-banner"
+  | "blog-inline"
+  | "blog-sidebar"
+  | "between-cards"
+  | "home-strip"
+  | "store-side"
+  | "footer-banner"
+  | "product-inline"
+  | "marquee"
+  | "sticker";
+
+export interface AdDTO {
+  id: string;
+  name: string;
+  type: AdType;
+  placement: AdPlacement;
+  title: string | null;
+  body: string | null;
+  imageUrl: string | null;
+  imageAlt: string | null;
+  images: string[];
+  linkUrl: string | null;
+  linkLabel: string;
+  active: boolean;
+  priority: number;
+  startAt: string | null;
+  endAt: string | null;
+  impressions: number;
+  clicks: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdStatsDTO {
+  totalAds: number;
+  activeAds: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+}
+
+/* ------------------------------------------------------------------ */
+/* audit log — undo/redo system (Task 9)                               */
+/* ------------------------------------------------------------------ */
+
+export type AuditAction = "create" | "update" | "delete" | "toggle" | "undo" | "redo" | "import";
+
+export interface AuditLogDTO {
+  id: string;
+  userName: string | null;
+  action: AuditAction;
+  entity: string;
+  entityId: string | null;
+  label: string;
+  undoneAt: string | null;
+  redoneAt: string | null;
+  createdAt: string;
+  restorable: boolean;
+}
+
 /** GET /api/settings (public, sanitized). */
 export interface PublicSettings {
   brand: BrandSettings;
   footer: FooterSettings;
   media: MediaSettings;
   ads: AdsSettings;
+  features: FeaturesSettings;
+  seo: SeoSettings;
   maintenance: MaintenanceSettings;
 }
 
@@ -428,6 +518,8 @@ export interface AdminSettings {
   footer: JsonRecord;
   media: JsonRecord;
   ads: JsonRecord;
+  features: JsonRecord;
+  seo: JsonRecord;
   maintenance: JsonRecord;
   [key: string]: JsonRecord | undefined;
 }

@@ -170,8 +170,8 @@ export default function SupportView() {
             <QuickHelpCard
               icon={Mail}
               title="Email"
-              body="hello@mnkp.dev — detailed questions answered within 24 hours."
-              href="mailto:hello@mnkp.dev"
+              body="intobusyness@gmail.com — detailed questions answered within 24 hours."
+              href="mailto:intobusyness@gmail.com"
               cta="Send email"
               hint="opens your email app"
             />
@@ -293,7 +293,7 @@ export default function SupportView() {
                 WhatsApp us
               </Button>
             </ALink>
-            <ALink href="mailto:hello@mnkp.dev">
+            <ALink href="mailto:intobusyness@gmail.com">
               <Button variant="ghost" className="gap-2">
                 <Mail className="size-4" aria-hidden="true" />
                 Email us

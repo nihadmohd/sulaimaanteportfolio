@@ -37,9 +37,11 @@ import type { Paginated, ProductDTO } from "@/types";
  * StoreView — route key "store" (#/store).
  *
  * Honest-curation affiliate storefront: debounced search, category chips,
- * price range + rating filters, four sort modes, compact 2-col mobile grid /
- * 4-col xl, sticky "store-side" ad rail on lg. JSON-LD: CollectionPage +
- * ItemList of the first page of products.
+ * price range + rating filters, four sort modes. Mobile renders a tight
+ * 2-col grid of compact cards (aspect-square, p-2, text-xs); sm+ keeps the
+ * 2/3/4-col full-card grid. A "between-cards" sponsored slot appears as a
+ * full-row item after the 6th product. Sticky "store-side" ad rail on lg.
+ * JSON-LD: CollectionPage + ItemList of the first page of products.
  */
 
 type CategoryChip = { id: string; name: string; slug: string; productCount: number };
@@ -79,16 +81,29 @@ function useDebounced<T>(value: T, delay = 300): T {
 function ProductGrid({ products }: { products: ProductCardData[] }) {
   return (
     <>
-      {/* mobile: compact 2-col glanceable grid */}
-      <div className="grid grid-cols-2 gap-3 sm:hidden">
-        {products.map((product) => (
-          <ProductCard key={product.slug} product={product} size="compact" />
+      {/* mobile: tight 2-col grid of compact cards */}
+      <div className="grid grid-cols-2 gap-2.5 sm:hidden">
+        {products.map((product, index) => (
+          <React.Fragment key={product.slug}>
+            <ProductCard product={product} size="compact" />
+            {index === 5 ? (
+              <AffiliateAdSlot placement="between-cards" className="col-span-2" />
+            ) : null}
+          </React.Fragment>
         ))}
       </div>
-      {/* sm and up: full cards */}
+      {/* sm and up: full cards, sponsored slot as a full-row item */}
       <div className="hidden grid-cols-2 gap-5 sm:grid lg:grid-cols-3 xl:grid-cols-4">
-        {products.map((product) => (
-          <ProductCard key={product.slug} product={product} />
+        {products.map((product, index) => (
+          <React.Fragment key={product.slug}>
+            <ProductCard product={product} />
+            {index === 5 ? (
+              <AffiliateAdSlot
+                placement="between-cards"
+                className="self-start sm:col-span-2 lg:col-span-3 xl:col-span-4"
+              />
+            ) : null}
+          </React.Fragment>
         ))}
       </div>
     </>
@@ -210,7 +225,7 @@ export default function StoreView() {
   }, [productsQuery.data]);
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 md:py-14 lg:px-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-10 md:py-14 lg:px-8">
       <SEOHead
         title="Affiliate Store — Curated Tech & Creator Gear | MN.KP"
         description="Honestly reviewed tech and creator gear — cameras, audio, accessories and digital tools — curated in Calicut for creators everywhere."
@@ -220,7 +235,7 @@ export default function StoreView() {
 
       <Breadcrumbs items={[{ label: "Home", href: "#/" }, { label: "Store" }]} />
 
-      <header className="mt-8">
+      <header className="mt-6 sm:mt-8">
         <SectionHeading
           microLabel="The MN.KP affiliate store"
           title="Gear I actually use"
@@ -239,7 +254,7 @@ export default function StoreView() {
         </p>
       </header>
 
-      <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="mt-6 grid grid-cols-1 gap-10 sm:mt-8 lg:grid-cols-[minmax(0,1fr)_300px]">
         {/* main column */}
         <div className="min-w-0">
           {/* controls */}
@@ -282,9 +297,9 @@ export default function StoreView() {
               </div>
             </div>
 
-            {/* category chips */}
+            {/* category chips — full-bleed horizontal scroll on mobile */}
             <div
-              className="scrollbar-slim flex items-center gap-2 overflow-x-auto pb-1"
+              className="scrollbar-slim -mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
               role="group"
               aria-label="Filter by category"
             >
@@ -293,7 +308,7 @@ export default function StoreView() {
                 onClick={() => setCategory(null)}
                 aria-pressed={!category}
                 className={cn(
-                  "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                  "shrink-0 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors sm:py-1.5",
                   !category
                     ? "border-gold/60 bg-gold/10 text-gold"
                     : "bg-card text-muted-foreground hover:border-gold/40 hover:text-foreground"
@@ -308,7 +323,7 @@ export default function StoreView() {
                   onClick={() => setCategory(cat.slug)}
                   aria-pressed={category === cat.slug}
                   className={cn(
-                    "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                    "shrink-0 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors sm:py-1.5",
                     category === cat.slug
                       ? "border-gold/60 bg-gold/10 text-gold"
                       : "bg-card text-muted-foreground hover:border-gold/40 hover:text-foreground"
@@ -320,7 +335,7 @@ export default function StoreView() {
             </div>
 
             {/* price + rating */}
-            <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-wrap items-end gap-2 sm:gap-3">
               <form onSubmit={applyPrice} className="flex items-end gap-2" aria-label="Price range">
                 <div>
                   <label

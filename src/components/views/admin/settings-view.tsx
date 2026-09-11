@@ -51,7 +51,7 @@ import { apiFetch, formatUptime, useAdminGuard } from "./_shared";
 
 /**
  * Settings (#/admin/settings — route key "admin-settings").
- * Tabs: Brand / Footer / Media & Decor / Ads / Maintenance / System.
+ * Tabs: Brand / Footer / Media & Decor / Ads / Features / SEO / Maintenance / System.
  * Loads /api/settings/all; per-tab Save → PATCH /api/settings/:key, then
  * invalidates the PUBLIC settings query (queryKey ["settings"] — shared
  * with the whole shell via use-settings) so header/footer/ads/maintenance
@@ -120,6 +120,26 @@ interface MaintenanceDraft {
   estimatedEnd: string;
 }
 
+interface FeaturesDraft {
+  newsletter: boolean;
+  shareButtons: boolean;
+  presenceBadge: boolean;
+  cookieConsent: boolean;
+  registration: boolean;
+  trendingBadge: boolean;
+  viewCounts: boolean;
+  readingTime: boolean;
+  affiliateSlots: boolean;
+}
+
+interface SeoDraft {
+  titleSuffix: string;
+  defaultDescription: string;
+  keywords: string[];
+  googleVerification: string;
+  bingVerification: string;
+}
+
 /* ------------------------------------------------------------------ */
 /* JSON readers                                                        */
 /* ------------------------------------------------------------------ */
@@ -165,7 +185,20 @@ const SOCIAL_KEYS = [
   "Google Business",
 ];
 
-type SettingKey = "brand" | "footer" | "media" | "ads" | "maintenance";
+/** One row per features toggle — label + one-line hint. */
+const FEATURE_ROWS: Array<{ key: keyof FeaturesDraft; label: string; hint: string }> = [
+  { key: "newsletter", label: "Newsletter", hint: "Newsletter capture forms" },
+  { key: "shareButtons", label: "Share buttons", hint: "Social share buttons on posts/products" },
+  { key: "presenceBadge", label: "Presence badge", hint: "Live visitor counter" },
+  { key: "cookieConsent", label: "Cookie consent", hint: "Cookie consent banner" },
+  { key: "registration", label: "Registration", hint: "New account sign-ups" },
+  { key: "trendingBadge", label: "Trending badges", hint: "Trending badges on posts" },
+  { key: "viewCounts", label: "View counts", hint: "Public view counters" },
+  { key: "readingTime", label: "Reading time", hint: "Reading time labels" },
+  { key: "affiliateSlots", label: "Affiliate slots", hint: "Affiliate product ad slots" },
+];
+
+type SettingKey = "brand" | "footer" | "media" | "ads" | "features" | "seo" | "maintenance";
 
 export default function SettingsView() {
   const { isLoading, allowed } = useAdminGuard();
@@ -208,11 +241,14 @@ export default function SettingsView() {
   const [footer, setFooter] = React.useState<FooterDraft | null>(null);
   const [media, setMedia] = React.useState<MediaDraft | null>(null);
   const [ads, setAds] = React.useState<AdsDraft | null>(null);
+  const [features, setFeatures] = React.useState<FeaturesDraft | null>(null);
+  const [seo, setSeo] = React.useState<SeoDraft | null>(null);
   const [maintenance, setMaintenance] = React.useState<MaintenanceDraft | null>(null);
   const [dirty, setDirty] = React.useState<Record<string, boolean>>({});
   const [maintenanceConfirm, setMaintenanceConfirm] = React.useState(false);
   const [newImage, setNewImage] = React.useState("");
   const [newGif, setNewGif] = React.useState("");
+  const [newKeyword, setNewKeyword] = React.useState("");
 
   React.useEffect(() => {
     const data = settingsQuery.data;
@@ -221,6 +257,8 @@ export default function SettingsView() {
     const f = data.footer ?? {};
     const m = data.media ?? {};
     const a = data.ads ?? {};
+    const ft = data.features ?? {};
+    const se = data.seo ?? {};
     const mt = data.maintenance ?? {};
 
     const hero = (m.heroMarquee ?? {}) as Record<string, unknown>;
@@ -276,6 +314,24 @@ export default function SettingsView() {
       gifs: asStrArr(gifBlock.gifs),
     });
     setAds({ enabled: asBool(a.enabled, true), placements: asStrArr(a.placements) });
+    setFeatures({
+      newsletter: asBool(ft.newsletter, true),
+      shareButtons: asBool(ft.shareButtons, true),
+      presenceBadge: asBool(ft.presenceBadge, true),
+      cookieConsent: asBool(ft.cookieConsent, true),
+      registration: asBool(ft.registration, true),
+      trendingBadge: asBool(ft.trendingBadge, true),
+      viewCounts: asBool(ft.viewCounts, true),
+      readingTime: asBool(ft.readingTime, true),
+      affiliateSlots: asBool(ft.affiliateSlots, true),
+    });
+    setSeo({
+      titleSuffix: asString(se.titleSuffix),
+      defaultDescription: asString(se.defaultDescription),
+      keywords: asStrArr(se.keywords),
+      googleVerification: asString(se.googleVerification),
+      bingVerification: asString(se.bingVerification),
+    });
     setMaintenance({
       enabled: asBool(mt.enabled),
       message: asString(mt.message),
@@ -344,6 +400,26 @@ export default function SettingsView() {
     placements: ads?.placements ?? [],
   });
 
+  const buildFeaturesValue = (): Record<string, unknown> => ({
+    newsletter: features?.newsletter ?? true,
+    shareButtons: features?.shareButtons ?? true,
+    presenceBadge: features?.presenceBadge ?? true,
+    cookieConsent: features?.cookieConsent ?? true,
+    registration: features?.registration ?? true,
+    trendingBadge: features?.trendingBadge ?? true,
+    viewCounts: features?.viewCounts ?? true,
+    readingTime: features?.readingTime ?? true,
+    affiliateSlots: features?.affiliateSlots ?? true,
+  });
+
+  const buildSeoValue = (): Record<string, unknown> => ({
+    titleSuffix: seo?.titleSuffix ?? "",
+    defaultDescription: seo?.defaultDescription ?? "",
+    keywords: seo?.keywords ?? [],
+    googleVerification: seo?.googleVerification ?? "",
+    bingVerification: seo?.bingVerification ?? "",
+  });
+
   const buildMaintenanceValue = (): Record<string, unknown> => ({
     enabled: maintenance?.enabled ?? false,
     message: maintenance?.message ?? "",
@@ -372,8 +448,16 @@ export default function SettingsView() {
       </Badge>
     ) : null;
 
+  const addKeyword = () => {
+    const kw = newKeyword.trim().slice(0, 40);
+    if (!kw || !seo || seo.keywords.includes(kw) || seo.keywords.length >= 16) return;
+    setSeo({ ...seo, keywords: [...seo.keywords, kw] });
+    setNewKeyword("");
+    touch("seo");
+  };
+
   return (
-    <AdminShell title="Settings" description="Total control — brand, footer, decor, ads and maintenance.">
+    <AdminShell title="Settings" description="Total control — brand, footer, decor, ads, features, SEO and maintenance.">
       <SEOHead title="Settings — Admin & Developer | MN.KP" noindex />
 
       <DataState query={settingsQuery} skeletonRows={6} empty={false}>
@@ -384,6 +468,8 @@ export default function SettingsView() {
               <TabsTrigger value="footer" className="h-9">Footer</TabsTrigger>
               <TabsTrigger value="media" className="h-9">Media &amp; Decor</TabsTrigger>
               <TabsTrigger value="ads" className="h-9">Ads</TabsTrigger>
+              <TabsTrigger value="features" className="h-9">Features</TabsTrigger>
+              <TabsTrigger value="seo" className="h-9">SEO</TabsTrigger>
               <TabsTrigger value="maintenance" className="h-9">Maintenance</TabsTrigger>
               <TabsTrigger value="system" className="h-9">System</TabsTrigger>
             </TabsList>
@@ -1047,6 +1133,158 @@ export default function SettingsView() {
                     <p className="text-xs text-muted-foreground">
                       At least one placement stays enabled — the resolver falls back to all four when the list is empty.
                     </p>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </TabsContent>
+
+            {/* ------------------------- FEATURES ------------------------- */}
+            <TabsContent value="features" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold">Features</h2>
+                <div className="flex items-center gap-2">
+                  {dirtyChip("features")}
+                  <SaveButton tab="features" build={buildFeaturesValue} />
+                </div>
+              </div>
+              {features ? (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Feature switches</CardTitle>
+                    <CardDescription>Switch any part of the site on or off.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="divide-y">
+                    {FEATURE_ROWS.map((row) => (
+                      <div
+                        key={row.key}
+                        className="flex min-h-11 items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">{row.label}</p>
+                          <p className="text-xs text-muted-foreground">{row.hint}</p>
+                        </div>
+                        <Switch
+                          checked={features[row.key]}
+                          onCheckedChange={(v) => {
+                            setFeatures({ ...features, [row.key]: v });
+                            touch("features");
+                          }}
+                          aria-label={`Toggle ${row.label}`}
+                        />
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
+            </TabsContent>
+
+            {/* ------------------------- SEO ------------------------- */}
+            <TabsContent value="seo" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold">SEO defaults</h2>
+                <div className="flex items-center gap-2">
+                  {dirtyChip("seo")}
+                  <SaveButton tab="seo" build={buildSeoValue} />
+                </div>
+              </div>
+              {seo ? (
+                <Card>
+                  <CardContent className="grid gap-5 pt-6 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="s-suffix">Title suffix</Label>
+                      <Input
+                        id="s-suffix"
+                        value={seo.titleSuffix}
+                        onChange={(e) => { setSeo({ ...seo, titleSuffix: e.target.value }); touch("seo"); }}
+                        placeholder=" | MN.KP"
+                      />
+                      <p className="text-xs text-muted-foreground">Appended to every page title</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="s-desc">Default description ({seo.defaultDescription.length}/180)</Label>
+                      <Textarea
+                        id="s-desc"
+                        value={seo.defaultDescription}
+                        rows={3}
+                        maxLength={180}
+                        onChange={(e) => { setSeo({ ...seo, defaultDescription: e.target.value }); touch("seo"); }}
+                        placeholder="Portfolio, blog and affiliate store of Mohammed Nihad KP..."
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="s-keyword">Keywords</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="s-keyword"
+                          value={newKeyword}
+                          onChange={(e) => setNewKeyword(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === ",") {
+                              e.preventDefault();
+                              addKeyword();
+                            }
+                          }}
+                          placeholder="Type a keyword, press Enter (max 16)"
+                          aria-label="Add keyword"
+                          className="h-10"
+                        />
+                        <Button type="button" variant="outline" className="h-10" onClick={addKeyword}>
+                          Add
+                        </Button>
+                      </div>
+                      {seo.keywords.length > 0 ? (
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {seo.keywords.map((kw) => (
+                            <Badge key={kw} variant="secondary" className="gap-1 pr-1.5">
+                              {kw}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSeo({ ...seo, keywords: seo.keywords.filter((k) => k !== kw) });
+                                  touch("seo");
+                                }}
+                                aria-label={`Remove keyword ${kw}`}
+                                className="flex size-5 items-center justify-center rounded-full hover:bg-muted"
+                              >
+                                <X className="size-3" aria-hidden="true" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          No keywords yet — they feed the default meta keywords tag.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="s-google">Google verification</Label>
+                      <Input
+                        id="s-google"
+                        value={seo.googleVerification}
+                        onChange={(e) => { setSeo({ ...seo, googleVerification: e.target.value }); touch("seo"); }}
+                        placeholder="google-site-verification token"
+                        className="font-mono text-xs"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Search console verification token — leave empty if unused
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="s-bing">Bing verification</Label>
+                      <Input
+                        id="s-bing"
+                        value={seo.bingVerification}
+                        onChange={(e) => { setSeo({ ...seo, bingVerification: e.target.value }); touch("seo"); }}
+                        placeholder="msvalidate.01 token"
+                        className="font-mono text-xs"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Search console verification token — leave empty if unused
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               ) : null}

@@ -213,7 +213,7 @@ function PostArticle({ post }: { post: PostDTO }) {
   );
 
   return (
-    <article className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 md:py-14 lg:px-8">
+    <article className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 md:py-14 lg:px-8">
       <SEOHead
         title={post.seoTitle ?? post.title}
         description={description}
@@ -232,7 +232,7 @@ function PostArticle({ post }: { post: PostDTO }) {
       />
 
       {/* header */}
-      <header className="mt-8 max-w-3xl">
+      <header className="mt-6 max-w-3xl sm:mt-8">
         {post.category ? (
           <ALink href={`#/blog?category=${post.category.slug}`}>
             <Badge variant="secondary" className="border-gold/40 bg-gold/10 text-gold">
@@ -279,7 +279,7 @@ function PostArticle({ post }: { post: PostDTO }) {
           loading="eager"
           fetchPriority="high"
           decoding="async"
-          className="mt-8 aspect-video w-full rounded-2xl border object-cover shadow-sm"
+          className="mt-6 aspect-video w-full rounded-2xl border object-cover shadow-sm sm:mt-8"
         />
       ) : null}
 

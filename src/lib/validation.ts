@@ -78,7 +78,29 @@ export const postCreateSchema = z.object({
   publishedAt: z.string().optional(),
 });
 
-export const postUpdateSchema = postCreateSchema.partial();
+/**
+ * Update schema — explicit optional-only shape (NOT .partial()).
+ * Zod 4 keeps firing .default() inside .partial(), which made minimal
+ * PATCH bodies (e.g. {status} or {active}) silently reset every defaulted
+ * field. Explicit optionals guarantee only provided keys are touched.
+ */
+export const postUpdateSchema = z.object({
+  title: z.string().min(4, "Title must be at least 4 characters").max(140).optional(),
+  slug: slug.optional(),
+  excerpt: z.string().max(300).optional(),
+  content: z.string().min(1, "Content is required").max(80_000).optional(),
+  coverImageUrl: optionalUrl,
+  status: z.enum(["draft", "published", "archived"]).optional(),
+  isFeatured: z.boolean().optional(),
+  tags: z.array(z.string().min(1).max(30)).max(10).optional(),
+  readingTimeMinutes: z.number().int().min(1).max(90).optional(),
+  categoryId: z.string().min(1).optional().nullable(),
+  seoTitle: z.string().max(70).optional(),
+  seoDescription: z.string().max(180).optional(),
+  ogImageUrl: optionalUrl,
+  canonicalUrl: optionalUrl,
+  publishedAt: z.string().optional(),
+});
 
 // ---------- products ----------
 export const productCreateSchema = z.object({
@@ -104,7 +126,29 @@ export const productCreateSchema = z.object({
   categoryId: z.string().min(1).optional().nullable(),
 });
 
-export const productUpdateSchema = productCreateSchema.partial();
+/** Update schema — explicit optional-only shape (see postUpdateSchema note). */
+export const productUpdateSchema = z.object({
+  name: z.string().min(3, "Product name is required").max(140).optional(),
+  slug: slug.optional(),
+  tagline: z.string().max(160).optional(),
+  description: z.string().max(30_000).optional(),
+  brand: z.string().max(60).optional(),
+  merchant: z.string().max(60).optional(),
+  imageUrl: optionalUrl,
+  gallery: z.array(z.string().url().max(600)).max(8).optional(),
+  price: z.number().min(0).max(10_000_000).optional().nullable(),
+  compareAtPrice: z.number().min(0).max(10_000_000).optional().nullable(),
+  currency: z.string().min(1).max(8).optional(),
+  affiliateUrl: z.string().min(3, "Affiliate URL is required").max(600).optional(),
+  pros: z.array(z.string().min(1).max(120)).max(10).optional(),
+  cons: z.array(z.string().min(1).max(120)).max(10).optional(),
+  keySpecs: z.record(z.string().max(40), z.string().max(120)).optional(),
+  rating: z.number().min(0).max(5).optional(),
+  reviewCount: z.number().int().min(0).max(10_000_000).optional(),
+  status: z.enum(["active", "draft", "archived"]).optional(),
+  isFeatured: z.boolean().optional(),
+  categoryId: z.string().min(1).optional().nullable(),
+});
 
 // ---------- categories ----------
 export const categoryCreateSchema = z.object({
@@ -115,7 +159,14 @@ export const categoryCreateSchema = z.object({
   sortOrder: z.number().int().min(0).max(999).default(0),
 });
 
-export const categoryUpdateSchema = categoryCreateSchema.partial();
+/** Update schema — explicit optional-only shape (see postUpdateSchema note). */
+export const categoryUpdateSchema = z.object({
+  name: z.string().min(2, "Name is required").max(60).optional(),
+  slug: slug.optional(),
+  description: z.string().max(300).optional(),
+  scope: z.enum(["blog", "store"]).optional(),
+  sortOrder: z.number().int().min(0).max(999).optional(),
+});
 
 // ---------- inquiries ----------
 export const inquiryCreateSchema = z.object({
@@ -183,4 +234,126 @@ export const planCreateSchema = z.object({
   sortOrder: z.number().int().min(0).max(99).default(0),
 });
 
-export const planUpdateSchema = planCreateSchema.partial();
+/** Update schema — explicit optional-only shape (see postUpdateSchema note). */
+export const planUpdateSchema = z.object({
+  code: z.string().min(2).max(30).optional(),
+  name: z.string().min(2).max(60).optional(),
+  description: z.string().max(300).optional(),
+  priceMonthly: z.number().min(0).max(1_000_000).optional(),
+  priceYearly: z.number().min(0).max(1_000_000).optional(),
+  currency: z.string().min(1).max(8).optional(),
+  features: z.array(z.string().min(1).max(80)).max(12).optional(),
+  isActive: z.boolean().optional(),
+  isDefault: z.boolean().optional(),
+  sortOrder: z.number().int().min(0).max(99).optional(),
+});
+
+// ---------- ads (admin, Task 9) ----------
+export const AD_TYPES = ["image", "gif", "sticker", "text", "marquee"] as const;
+export const AD_PLACEMENTS = [
+  "header-banner",
+  "blog-inline",
+  "blog-sidebar",
+  "between-cards",
+  "home-strip",
+  "store-side",
+  "footer-banner",
+  "product-inline",
+  "marquee",
+  "sticker",
+] as const;
+
+/** Ad link targets: absolute http(s) URLs or in-app hash routes (#/...). */
+const adLink = z
+  .string()
+  .max(600)
+  .refine((v) => v === "" || v.startsWith("#/") || /^https?:\/\//.test(v), {
+    message: "Use a full https:// URL or an in-app route like #/store",
+  })
+  .optional()
+  .or(z.literal(""));
+
+export const adCreateSchema = z.object({
+  name: z.string().min(2, "Give the ad a name").max(80),
+  type: z.enum(AD_TYPES),
+  placement: z.enum(AD_PLACEMENTS),
+  title: z.string().max(120).optional().or(z.literal("")),
+  body: z.string().max(600).optional().or(z.literal("")),
+  imageUrl: optionalUrl,
+  imageAlt: z.string().max(160).optional().or(z.literal("")),
+  images: z.array(z.string().url().max(600)).max(16).default([]),
+  linkUrl: adLink,
+  linkLabel: z.string().max(40).default("Learn more"),
+  active: z.boolean().default(true),
+  priority: z.number().int().min(0).max(100).default(0),
+  startAt: z.string().datetime().optional().nullable().or(z.literal("").transform(() => null)),
+  endAt: z.string().datetime().optional().nullable().or(z.literal("").transform(() => null)),
+});
+
+/** Update schema — explicit optional-only shape (see postUpdateSchema note). */
+export const adUpdateSchema = z.object({
+  name: z.string().min(2, "Give the ad a name").max(80).optional(),
+  type: z.enum(AD_TYPES).optional(),
+  placement: z.enum(AD_PLACEMENTS).optional(),
+  title: z.string().max(120).optional().or(z.literal("")),
+  body: z.string().max(600).optional().or(z.literal("")),
+  imageUrl: optionalUrl,
+  imageAlt: z.string().max(160).optional().or(z.literal("")),
+  images: z.array(z.string().url().max(600)).max(16).optional(),
+  linkUrl: adLink,
+  linkLabel: z.string().max(40).optional(),
+  active: z.boolean().optional(),
+  priority: z.number().int().min(0).max(100).optional(),
+  startAt: z.string().datetime().optional().nullable().or(z.literal("").transform(() => null)),
+  endAt: z.string().datetime().optional().nullable().or(z.literal("").transform(() => null)),
+});
+
+// ---------- audit undo/redo (admin, Task 9) ----------
+export const auditIdSchema = z.object({
+  id: z.string().min(10, "Invalid audit entry id"),
+});
+
+// ---------- bulk import (admin, Task 9) ----------
+export const importPostsSchema = z.object({
+  posts: z
+    .array(
+      z.object({
+        title: z.string().min(4).max(140),
+        slug: slug.optional(),
+        excerpt: z.string().max(300).optional(),
+        content: z.string().min(1).max(80_000),
+        coverImageUrl: optionalUrl,
+        tags: z.array(z.string().min(1).max(30)).max(10).default([]),
+        status: z.enum(["draft", "published", "archived"]).default("published"),
+        publishedAt: z.string().optional(),
+        seoTitle: z.string().max(70).optional(),
+        seoDescription: z.string().max(180).optional(),
+        canonicalUrl: optionalUrl,
+      })
+    )
+    .max(200),
+});
+
+export const importProductsSchema = z.object({
+  products: z
+    .array(
+      z.object({
+        name: z.string().min(3).max(140),
+        slug: slug.optional(),
+        tagline: z.string().max(160).optional(),
+        description: z.string().max(30_000).optional(),
+        brand: z.string().max(60).optional(),
+        merchant: z.string().max(60).optional(),
+        imageUrl: optionalUrl,
+        price: z.number().min(0).max(10_000_000).optional().nullable(),
+        compareAtPrice: z.number().min(0).max(10_000_000).optional().nullable(),
+        affiliateUrl: z.string().min(3).max(600),
+        rating: z.number().min(0).max(5).default(0),
+        status: z.enum(["active", "draft", "archived"]).default("active"),
+        isFeatured: z.boolean().default(false),
+        pros: z.array(z.string().min(1).max(120)).max(10).default([]),
+        cons: z.array(z.string().min(1).max(120)).max(10).default([]),
+      })
+    )
+    .max(200),
+});

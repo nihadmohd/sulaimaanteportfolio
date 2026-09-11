@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
  * Hash routes map 1:1 to file routes on deploy (views are liftable).
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = "https://mnkp.vercel.app";
+  const base = "https://mohdnihadkp.vercel.app";
   const now = new Date();
 
   const staticPages: MetadataRoute.Sitemap = [
