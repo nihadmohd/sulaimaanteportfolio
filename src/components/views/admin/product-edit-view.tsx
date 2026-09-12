@@ -57,12 +57,22 @@ import {
   useAdminGuard,
   useCategories,
 } from "./_shared";
+import {
+  AiAssistCard,
+  type AiAssistAction,
+  type AiAssistConfirm,
+} from "./ai-assist-card";
+import { DraftRecoveryBanner, useDraftAutosave } from "./editor-drafts";
 
 /**
  * Product editor (#/admin/products/:id — route key "admin-product-edit";
  * "new"=create). The full affiliate form: auto-slug, markdown description
  * w/ preview, image + gallery chips, price/compare/discount, pros/cons row
  * editors, keySpecs pairs, rating slider, live ProductCard preview.
+ *
+ * Task 12-b power-features: an AI assist card that drafts an honest review
+ * from the specs/pros/cons (backend route /api/ai/assist) and a local
+ * autosave + crash-recovery banner (mnkp_draft_product_{id|new}).
  */
 
 const STORE_IMAGES = [
@@ -107,6 +117,16 @@ type ProductFormValues = z.infer<typeof productFormSchema>;
 interface SpecRow {
   key: string;
   value: string;
+}
+
+/** Snapshot payload for the local crash-recovery autosave. */
+interface ProductDraftData {
+  values: ProductFormValues;
+  gallery: string[];
+  pros: string[];
+  cons: string[];
+  keySpecs: SpecRow[];
+  rating: number;
 }
 
 export default function ProductEditView() {
@@ -192,6 +212,66 @@ export default function ProductEditView() {
     compareNum > priceNum && priceNum > 0 ? Math.round((1 - priceNum / compareNum) * 100) : 0;
   const isDirty = form.formState.isDirty || extraDirty;
 
+  /* ---------------- local autosave + crash recovery ---------------- */
+
+  const draftKey = `mnkp_draft_product_${isNew ? "new" : id}`;
+
+  const draft = useDraftAutosave<ProductDraftData>({
+    key: draftKey,
+    ready: isNew || !!productQuery.data,
+    isDirty,
+    tick: JSON.stringify([watched, gallery, pros, cons, keySpecs, rating]),
+    capture: () => ({ values: form.getValues(), gallery, pros, cons, keySpecs, rating }),
+    differs: (snap) => {
+      const data = snap.data;
+      if (!data || typeof data !== "object" || typeof data.values !== "object" || !data.values) {
+        return false; // unrecognized snapshot shape
+      }
+      if (isNew) {
+        return !!(data.values.name?.trim() || data.values.description?.trim());
+      }
+      const p = productQuery.data;
+      if (!p) return false;
+      // only offer recovery when the local copy is newer than the server copy
+      const serverTime = new Date(p.updatedAt).getTime();
+      if (Number.isFinite(serverTime) && snap.savedAt <= serverTime) return false;
+      return (
+        data.values.name !== p.name ||
+        (data.values.description ?? "") !== (p.description ?? "") ||
+        data.values.status !== p.status ||
+        JSON.stringify(data.pros ?? []) !== JSON.stringify(p.pros) ||
+        JSON.stringify(data.cons ?? []) !== JSON.stringify(p.cons)
+      );
+    },
+    onRestore: (data) => {
+      const v = data.values;
+      form.reset({
+        name: v?.name ?? "",
+        slug: v?.slug ?? "",
+        tagline: v?.tagline ?? "",
+        description: v?.description ?? "",
+        brand: v?.brand ?? "",
+        merchant: v?.merchant ?? "",
+        imageUrl: v?.imageUrl ?? "",
+        affiliateUrl: v?.affiliateUrl ?? "",
+        price: v?.price ?? "",
+        compareAtPrice: v?.compareAtPrice ?? "",
+        reviewCount: v?.reviewCount ?? "",
+        status: v?.status ?? "active",
+        isFeatured: !!v?.isFeatured,
+        categoryId: v?.categoryId ?? "",
+      });
+      setGallery(Array.isArray(data.gallery) ? data.gallery : []);
+      setPros(Array.isArray(data.pros) ? data.pros : []);
+      setCons(Array.isArray(data.cons) ? data.cons : []);
+      setKeySpecs(Array.isArray(data.keySpecs) ? data.keySpecs : []);
+      setRating(typeof data.rating === "number" ? data.rating : 0);
+      setSlugTouched(true);
+      setExtraDirty(true);
+      toast({ title: "Local draft restored", description: "Review it and save when you are ready." });
+    },
+  });
+
   const saveMutation = useMutation({
     mutationFn: (values: ProductFormValues) => {
       const body: Record<string, unknown> = {
@@ -225,6 +305,7 @@ export default function ProductEditView() {
     onSuccess: (product) => {
       toast({ title: isNew ? "Product created" : "Product saved", description: product.name });
       setExtraDirty(false);
+      draft.clear();
       void queryClient.invalidateQueries({ queryKey: ["admin-products"] });
       void queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
       if (isNew) navigate(`/admin/products/${product.id}`);
@@ -238,6 +319,7 @@ export default function ProductEditView() {
     mutationFn: () => apiFetch(`/api/products/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       toast({ title: "Product deleted" });
+      draft.clear();
       void queryClient.invalidateQueries({ queryKey: ["admin-products"] });
       navigate("/admin/products");
     },
@@ -267,6 +349,40 @@ export default function ProductEditView() {
     setGallery([...gallery, url]);
     setGalleryInput("");
     setExtraDirty(true);
+  };
+
+  /* ---------------- AI assist wiring ---------------- */
+
+  const buildAiRequest = (action: AiAssistAction): Record<string, unknown> => {
+    if (action !== "description") throw new Error("This action is not available for products.");
+    const name = (form.getValues("name") ?? "").trim();
+    if (!name) throw new Error("Add the product name first.");
+    return {
+      action,
+      productName: name,
+      tagline: (form.getValues("tagline") ?? "").trim() || undefined,
+      specs: Object.fromEntries(
+        keySpecs.filter((row) => row.key.trim()).map((row) => [row.key.trim(), row.value])
+      ),
+      pros: pros.map((s) => s.trim()).filter(Boolean),
+      cons: cons.map((s) => s.trim()).filter(Boolean),
+    };
+  };
+
+  const applyAiResult = (action: AiAssistAction, text: string) => {
+    if (action !== "description") return;
+    form.setValue("description", text, { shouldDirty: true });
+    setDescTab("write");
+    toast({ title: "Description drafted", description: "Review the copy before saving." });
+  };
+
+  const aiConfirmFor = (action: AiAssistAction): AiAssistConfirm | null => {
+    if (action !== "description") return null;
+    if (!(form.getValues("description") ?? "").trim()) return null; // nothing to lose yet
+    return {
+      title: "Replace the current description?",
+      description: "The markdown description will be replaced by the AI-drafted review. The previous version stays recoverable from your local draft or the server copy until you save.",
+    };
   };
 
   const rowEditor = (
@@ -367,6 +483,14 @@ export default function ProductEditView() {
       }
     >
       <SEOHead title={`${isNew ? "New product" : "Edit product"} — Admin & Developer | MN.KP`} noindex />
+
+      {draft.snapshot ? (
+        <DraftRecoveryBanner
+          savedAt={draft.snapshot.savedAt}
+          onRestore={draft.restore}
+          onDiscard={draft.discard}
+        />
+      ) : null}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -827,6 +951,14 @@ export default function ProductEditView() {
 
           {/* ---------------- side column ---------------- */}
           <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+            <AiAssistCard
+              subline="Draft an honest review from the specs"
+              actions={[{ action: "description", label: "Draft review" }]}
+              buildRequest={buildAiRequest}
+              applyResult={applyAiResult}
+              confirmFor={aiConfirmFor}
+            />
+
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Listing</CardTitle>

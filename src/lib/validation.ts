@@ -229,6 +229,7 @@ export const AD_PLACEMENTS = [
   "blog-sidebar",
   "between-cards",
   "home-strip",
+  "hero-marquee",
   "store-side",
   "footer-banner",
   "product-inline",

@@ -1,0 +1,771 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { useForm, useWatch } from "react-hook-form";
+     5→import { zodResolver } from "@hookform/resolvers/zod";
+     6→import { z } from "zod";
+     7→import { useQuery, useQueryClient } from "@tanstack/react-query";
+     8→import { useMutation } from "@tanstack/react-query";
+     9→import {
+    10→  ArrowLeft,
+    11→  ChevronDown,
+    12→  Eye,
+    13→  FileText,
+    14→  Trash2,
+    15→  X,
+    16→} from "lucide-react";
+    17→import { Badge } from "@/components/ui/badge";
+    18→import { Button } from "@/components/ui/button";
+    19→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    20→import {
+    21→  Collapsible,
+    22→  CollapsibleContent,
+    23→  CollapsibleTrigger,
+    24→} from "@/components/ui/collapsible";
+    25→import {
+    26→  Form,
+    27→  FormControl,
+    28→  FormDescription,
+    29→  FormField,
+    30→  FormItem,
+    31→  FormLabel,
+    32→  FormMessage,
+    33→} from "@/components/ui/form";
+    34→import { Input } from "@/components/ui/input";
+    35→import {
+    36→  Select,
+    37→  SelectContent,
+    38→  SelectItem,
+    39→  SelectTrigger,
+    40→  SelectValue,
+    41→} from "@/components/ui/select";
+    42→import { Switch } from "@/components/ui/switch";
+    43→import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    44→import { Textarea } from "@/components/ui/textarea";
+    45→import { ALink } from "@/components/router/link";
+    46→import { ForbiddenState, LoadingState } from "@/components/states";
+    47→import { MarkdownBlock, MarkdownFallback } from "@/components/views/shared/markdown";
+    48→import { SEOHead } from "@/components/shared/seo-head";
+    49→import { toast } from "@/hooks/use-toast";
+    50→import { useHashParams } from "@/hooks/use-hash-params";
+    51→import { navigate } from "@/hooks/use-router";
+    52→import { SITE } from "@/lib/constants";
+    53→import type { PostDTO } from "@/types";
+    54→import { AdminShell } from "./_shell";
+    55→import {
+    56→  apiFetch,
+    57→  ConfirmAction,
+    58→  fmtDate,
+    59→  formatCompact,
+    60→  PostStatusBadge,
+    61→  slugify,
+    62→  useAdminGuard,
+    63→  useCategories,
+    64→} from "./_shared";
+    65→
+    66→/**
+    67→ * Post editor (#/admin/posts/:id — route key "admin-post-edit"; "new"=create).
+    68→ * The full "perfect blog form": 2-col layout (form + sticky preview),
+    69→ * auto-slug, counters, Write/Preview tabs, tag chips, quick-pick covers,
+    70→ * collapsible SEO card w/ SERP preview, per-field zod errors.
+    71→ */
+    72→
+    73→const BLOG_COVERS = [
+    74→  "/images/blog/blog-ai-workflow.png",
+    75→  "/images/blog/blog-ai-tools.png",
+    76→  "/images/blog/blog-career-journey.png",
+    77→  "/images/blog/blog-freelance-calicut.png",
+    78→  "/images/blog/blog-kp-foundation.png",
+    79→  "/images/blog/blog-photo-ai-editing.png",
+    80→];
+    81→
+    82→const postFormSchema = z.object({
+    83→  title: z.string().min(4, "Title must be at least 4 characters").max(140, "Keep the title under 140 characters"),
+    84→  slug: z.string().max(96).optional(),
+    85→  excerpt: z.string().max(300, "Excerpts max out at 300 characters").optional(),
+    86→  content: z.string().min(1, "Content is required"),
+    87→  coverImageUrl: z.string().optional(),
+    88→  status: z.enum(["draft", "published", "archived"]),
+    89→  isFeatured: z.boolean(),
+    90→  categoryId: z.string().optional(),
+    91→  publishedAt: z.string().optional(),
+    92→  seoTitle: z.string().max(70, "SEO titles max out at 70 characters").optional(),
+    93→  seoDescription: z.string().max(180, "SEO descriptions max out at 180 characters").optional(),
+    94→  ogImageUrl: z.string().optional(),
+    95→  canonicalUrl: z.string().optional(),
+    96→});
+    97→
+    98→type PostFormValues = z.infer<typeof postFormSchema>;
+    99→
+   100→function wordsPerMinute(content: string): number {
+   101→  const words = content.trim().split(/\s+/).filter(Boolean).length;
+   102→  return Math.max(1, Math.ceil(words / 200));
+   103→}
+   104→
+   105→export default function PostEditView() {
+   106→  const { id } = useHashParams<{ id: string }>();
+   107→  const isNew = !id || id === "new";
+   108→  const { isLoading, allowed } = useAdminGuard();
+   109→  const queryClient = useQueryClient();
+   110→  const categories = useCategories("blog");
+   111→
+   112→  const [tags, setTags] = React.useState<string[]>([]);
+   113→  const [slugTouched, setSlugTouched] = React.useState(false);
+   114→  const [tagInput, setTagInput] = React.useState("");
+   115→  const [contentTab, setContentTab] = React.useState<"write" | "preview">("write");
+   116→  const [seoOpen, setSeoOpen] = React.useState(false);
+   117→  const [extraDirty, setExtraDirty] = React.useState(false);
+   118→
+   119→  const form = useForm<PostFormValues>({
+   120→    resolver: zodResolver(postFormSchema),
+   121→    defaultValues: {
+   122→      title: "",
+   123→      slug: "",
+   124→      excerpt: "",
+   125→      content: "",
+   126→      coverImageUrl: "",
+   127→      status: "draft",
+   128→      isFeatured: false,
+   129→      categoryId: "",
+   130→      publishedAt: "",
+   131→      seoTitle: "",
+   132→      seoDescription: "",
+   133→      ogImageUrl: "",
+   134→      canonicalUrl: "",
+   135→    },
+   136→  });
+   137→
+   138→  const postQuery = useQuery({
+   139→    queryKey: ["admin-post", id],
+   140→    queryFn: () => apiFetch<PostDTO>(`/api/posts/${id}`),
+   141→    enabled: allowed && !isNew,
+   142→    retry: 1,
+   143→  });
+   144→
+   145→  React.useEffect(() => {
+   146→    if (!postQuery.data) return;
+   147→    const p = postQuery.data;
+   148→    form.reset({
+   149→      title: p.title,
+   150→      slug: p.slug,
+   151→      excerpt: p.excerpt ?? "",
+   152→      content: p.content,
+   153→      coverImageUrl: p.coverImageUrl ?? "",
+   154→      status: p.status,
+   155→      isFeatured: p.isFeatured,
+   156→      categoryId: p.category?.id ?? "",
+   157→      publishedAt: p.publishedAt ? p.publishedAt.slice(0, 10) : "",
+   158→      seoTitle: p.seoTitle ?? "",
+   159→      seoDescription: p.seoDescription ?? "",
+   160→      ogImageUrl: p.ogImageUrl ?? "",
+   161→      canonicalUrl: p.canonicalUrl ?? "",
+   162→    });
+   163→    setTags(p.tags);
+   164→    setSlugTouched(true);
+   165→    setExtraDirty(false);
+   166→  }, [postQuery.data, form]);
+   167→
+   168→  // useWatch (single call, whole values) instead of form.watch — satisfies
+   169→  // react-hooks/incompatible-library; defaults are complete so the cast is safe.
+   170→  const watched = useWatch({ control: form.control }) as PostFormValues;
+   171→
+   172→  const effectiveSlug = slugTouched && watched.slug ? slugify(watched.slug) : slugify(watched.title);
+   173→  const readingMinutes = wordsPerMinute(watched.content ?? "");
+   174→  const isDirty = form.formState.isDirty || extraDirty;
+   175→
+   176→  const saveMutation = useMutation({
+   177→    mutationFn: (values: PostFormValues) => {
+   178→      const body: Record<string, unknown> = {
+   179→        title: values.title,
+   180→        content: values.content,
+   181→        status: values.status,
+   182→        isFeatured: values.isFeatured,
+   183→        tags,
+   184→        categoryId: values.categoryId || null,
+   185→        coverImageUrl: values.coverImageUrl || "",
+   186→        excerpt: values.excerpt || undefined,
+   187→        publishedAt: values.publishedAt ? `${values.publishedAt}T12:00:00` : undefined,
+   188→        seoTitle: values.seoTitle || undefined,
+   189→        seoDescription: values.seoDescription || undefined,
+   190→        ogImageUrl: values.ogImageUrl || "",
+   191→        canonicalUrl: values.canonicalUrl || "",
+   192→      };
+   193→      if (slugTouched && values.slug) body.slug = slugify(values.slug);
+   194→      return isNew
+   195→        ? apiFetch<PostDTO>("/api/posts", { method: "POST", body: JSON.stringify(body) })
+   196→        : apiFetch<PostDTO>(`/api/posts/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+   197→    },
+   198→    onSuccess: (post) => {
+   199→      toast({
+   200→        title: isNew ? "Post created" : "Post saved",
+   201→        description: post.title,
+   202→      });
+   203→      setExtraDirty(false);
+   204→      void queryClient.invalidateQueries({ queryKey: ["admin-posts"] });
+   205→      void queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+   206→      if (isNew) navigate(`/admin/posts/${post.id}`);
+   207→      else form.reset(form.getValues());
+   208→    },
+   209→    onError: (e: Error) =>
+   210→      toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+   211→  });
+   212→
+   213→  const deleteMutation = useMutation({
+   214→    mutationFn: () => apiFetch(`/api/posts/${id}`, { method: "DELETE" }),
+   215→    onSuccess: () => {
+   216→      toast({ title: "Post deleted" });
+   217→      void queryClient.invalidateQueries({ queryKey: ["admin-posts"] });
+   218→      navigate("/admin/posts");
+   219→    },
+   220→    onError: (e: Error) =>
+   221→      toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+   222→  });
+   223→
+   224→  const addTag = () => {
+   225→    const tag = tagInput.trim().toLowerCase().replace(/\s+/g, "-").slice(0, 30);
+   226→    if (!tag || tags.includes(tag) || tags.length >= 10) return;
+   227→    setTags([...tags, tag]);
+   228→    setTagInput("");
+   229→    setExtraDirty(true);
+   230→  };
+   231→
+   232→  if (isLoading) return <LoadingState variant="spinner" label="Loading editor" />;
+   233→  if (!allowed) return <ForbiddenState />;
+   234→  if (!isNew && postQuery.isPending) return <LoadingState variant="skeleton" rows={6} />;
+   235→  if (!isNew && postQuery.isError) {
+   236→    return (
+   237→      <AdminShell title="Edit post">
+   238→        <p className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+   239→          This post could not be loaded. {postQuery.error instanceof Error ? postQuery.error.message : ""}
+   240→        </p>
+   241→      </AdminShell>
+   242→    );
+   243→  }
+   244→
+   245→  const onSubmit = (values: PostFormValues) => saveMutation.mutate(values);
+   246→
+   247→  const serpTitle = (watched.seoTitle || watched.title || "Untitled post").slice(0, 60);
+   248→  const serpDesc = (watched.seoDescription || watched.excerpt || "Add an excerpt or SEO description...").slice(0, 155);
+   249→
+   250→  return (
+   251→    <AdminShell
+   252→      title={isNew ? "New post" : "Edit post"}
+   253→      description={isNew ? "Draft a fresh article for the MN.KP blog." : `Last updated ${fmtDate(postQuery.data?.updatedAt)}`}
+   254→      actions={
+   255→        <>
+   256→          {isDirty ? (
+   257→            <Badge variant="outline" className="h-9 border-amber-500/40 bg-amber-500/10 px-3 text-amber-600 dark:text-amber-400">
+   258→              Unsaved changes
+   259→            </Badge>
+   260→          ) : null}
+   261→          <ALink href="#/admin/posts">
+   262→            <Button variant="outline" size="sm" className="h-9 gap-2">
+   263→              <ArrowLeft className="size-4" aria-hidden="true" />
+   264→              All posts
+   265→            </Button>
+   266→          </ALink>
+   267→          <Button
+   268→            size="sm"
+   269→            className="h-9"
+   270→            onClick={form.handleSubmit(onSubmit)}
+   271→            disabled={saveMutation.isPending}
+   272→          >
+   273→            {saveMutation.isPending ? "Saving..." : isNew ? "Create post" : "Save changes"}
+   274→          </Button>
+   275→          {!isNew ? (
+   276→            <ConfirmAction
+   277→              trigger={
+   278→                <Button
+   279→                  variant="outline"
+   280→                  size="icon"
+   281→                  className="size-9 text-muted-foreground hover:text-destructive"
+   282→                  aria-label="Delete post"
+   283→                >
+   284→                  <Trash2 className="size-4" aria-hidden="true" />
+   285→                </Button>
+   286→              }
+   287→              title="Delete this post?"
+   288→              description="The post and its view history will be permanently removed."
+   289→              onConfirm={() => deleteMutation.mutateAsync()}
+   290→            />
+   291→          ) : null}
+   292→        </>
+   293→      }
+   294→    >
+   295→      <SEOHead title={`${isNew ? "New post" : "Edit post"} — Admin & Developer | MN.KP`} noindex />
+   296→
+   297→      <Form {...form}>
+   298→        <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 lg:grid-cols-[1fr_380px]">
+   299→          {/* ---------------- main form column ---------------- */}
+   300→          <div className="space-y-6">
+   301→            <Card>
+   302→              <CardContent className="space-y-5 pt-6">
+   303→                <FormField
+   304→                  control={form.control}
+   305→                  name="title"
+   306→                  render={({ field }) => (
+   307→                    <FormItem>
+   308→                      <FormLabel>Title</FormLabel>
+   309→                      <FormControl>
+   310→                        <Input placeholder="An honest headline that earns the click" {...field} className="h-10 text-base" />
+   311→                      </FormControl>
+   312→                      <FormDescription>
+   313→                        {field.value?.length ?? 0}/140 characters · becomes the H1 and SERP fallback
+   314→                      </FormDescription>
+   315→                      <FormMessage />
+   316→                    </FormItem>
+   317→                  )}
+   318→                />
+   319→
+   320→                <FormField
+   321→                  control={form.control}
+   322→                  name="slug"
+   323→                  render={({ field }) => (
+   324→                    <FormItem>
+   325→                      <FormLabel>Slug</FormLabel>
+   326→                      <FormControl>
+   327→                        <div className="flex items-center gap-2">
+   328→                          <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">/blog/</span>
+   329→                          <Input
+   330→                            {...field}
+   331→                            value={slugTouched ? field.value : effectiveSlug}
+   332→                            onChange={(e) => {
+   333→                              setSlugTouched(true);
+   334→                              field.onChange(e);
+   335→                            }}
+   336→                            placeholder="auto-generated-from-title"
+   337→                            className="h-10 font-mono text-sm"
+   338→                          />
+   339→                        </div>
+   340→                      </FormControl>
+   341→                      <FormDescription>
+   342→                        {slugTouched ? "Custom slug — dashes and lowercase" : "Auto-generated from the title (editable)"}
+   343→                      </FormDescription>
+   344→                      <FormMessage />
+   345→                    </FormItem>
+   346→                  )}
+   347→                />
+   348→
+   349→                <FormField
+   350→                  control={form.control}
+   351→                  name="excerpt"
+   352→                  render={({ field }) => (
+   353→                    <FormItem>
+   354→                      <FormLabel>Excerpt</FormLabel>
+   355→                      <FormControl>
+   356→                        <Textarea
+   357→                          {...field}
+   358→                          value={field.value ?? ""}
+   359→                          rows={2}
+   360→                          placeholder="One or two sentences for cards and search results"
+   361→                        />
+   362→                      </FormControl>
+   363→                      <FormDescription>{(field.value ?? "").length}/300 characters</FormDescription>
+   364→                      <FormMessage />
+   365→                    </FormItem>
+   366→                  )}
+   367→                />
+   368→
+   369→                <div>
+   370→                  <FormLabel>Content (markdown)</FormLabel>
+   371→                  <Tabs
+   372→                    value={contentTab}
+   373→                    onValueChange={(v) => setContentTab(v as "write" | "preview")}
+   374→                    className="mt-2"
+   375→                  >
+   376→                    <div className="flex items-center justify-between">
+   377→                      <TabsList className="h-9">
+   378→                        <TabsTrigger value="write" className="h-7">Write</TabsTrigger>
+   379→                        <TabsTrigger value="preview" className="h-7">
+   380→                          <Eye className="mr-1 size-3.5" aria-hidden="true" />
+   381→                          Preview
+   382→                        </TabsTrigger>
+   383→                      </TabsList>
+   384→                      <p className="text-xs text-muted-foreground">
+   385→                        ~{readingMinutes} min read · {(watched.content ?? "").length.toLocaleString("en-IN")} chars
+   386→                      </p>
+   387→                    </div>
+   388→                  </Tabs>
+   389→                  {contentTab === "write" ? (
+   390→                    <FormField
+   391→                      control={form.control}
+   392→                      name="content"
+   393→                      render={({ field }) => (
+   394→                        <FormItem className="mt-3">
+   395→                          <FormControl>
+   396→                            <Textarea
+   397→                              {...field}
+   398→                              rows={18}
+   399→                              placeholder={"## A question-style heading works great for AI answers\n\nWrite the article in markdown..."}
+   400→                              className="min-h-[420px] font-mono text-[13px] leading-relaxed"
+   401→                            />
+   402→                          </FormControl>
+   403→                          <FormMessage />
+   404→                        </FormItem>
+   405→                      )}
+   406→                    />
+   407→                  ) : (
+   408→                    <div className="mt-3 min-h-[420px] rounded-lg border p-4">
+   409→                      {(watched.content ?? "").trim() ? (
+   410→                        <React.Suspense fallback={<MarkdownFallback />}>
+   411→                          <MarkdownBlock content={watched.content} />
+   412→                        </React.Suspense>
+   413→                      ) : (
+   414→                        <p className="text-sm text-muted-foreground">Nothing to preview yet.</p>
+   415→                      )}
+   416→                    </div>
+   417→                  )}
+   418→                </div>
+   419→
+   420→                <FormField
+   421→                  control={form.control}
+   422→                  name="coverImageUrl"
+   423→                  render={({ field }) => (
+   424→                    <FormItem>
+   425→                      <FormLabel>Cover image URL</FormLabel>
+   426→                      <FormControl>
+   427→                        <Input {...field} value={field.value ?? ""} placeholder="/images/blog/... or https://..." className="h-10" />
+   428→                      </FormControl>
+   429→                      <FormDescription>Quick pick:</FormDescription>
+   430→                      <div className="flex flex-wrap gap-2 pt-1">
+   431→                        {BLOG_COVERS.map((src) => (
+   432→                          <button
+   433→                            key={src}
+   434→                            type="button"
+   435→                            onClick={() => {
+   436→                              field.onChange(src);
+   437→                              setExtraDirty(true);
+   438→                            }}
+   439→                            aria-label={`Use cover ${src}`}
+   440→                            className={`size-14 overflow-hidden rounded-md border-2 transition-transform hover:scale-105 ${
+   441→                              field.value === src ? "border-gold" : "border-transparent"
+   442→                            }`}
+   443→                          >
+   444→                            <img src={src} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+   445→                          </button>
+   446→                        ))}
+   447→                      </div>
+   448→                      <FormMessage />
+   449→                    </FormItem>
+   450→                  )}
+   451→                />
+   452→
+   453→                <div>
+   454→                  <FormLabel>Tags</FormLabel>
+   455→                  <div className="mt-2 flex gap-2">
+   456→                    <Input
+   457→                      value={tagInput}
+   458→                      onChange={(e) => setTagInput(e.target.value)}
+   459→                      onKeyDown={(e) => {
+   460→                        if (e.key === "Enter" || e.key === ",") {
+   461→                          e.preventDefault();
+   462→                          addTag();
+   463→                        }
+   464→                      }}
+   465→                      placeholder="Type a tag, press Enter (max 10)"
+   466→                      aria-label="Add tag"
+   467→                      className="h-10"
+   468→                    />
+   469→                    <Button type="button" variant="outline" className="h-10" onClick={addTag}>
+   470→                      Add
+   471→                    </Button>
+   472→                  </div>
+   473→                  {tags.length > 0 ? (
+   474→                    <div className="mt-3 flex flex-wrap gap-2">
+   475→                      {tags.map((tag) => (
+   476→                        <Badge key={tag} variant="secondary" className="gap-1 pr-1.5">
+   477→                          {tag}
+   478→                          <button
+   479→                            type="button"
+   480→                            onClick={() => {
+   481→                              setTags(tags.filter((t) => t !== tag));
+   482→                              setExtraDirty(true);
+   483→                            }}
+   484→                            aria-label={`Remove tag ${tag}`}
+   485→                            className="flex size-5 items-center justify-center rounded-full hover:bg-muted"
+   486→                          >
+   487→                            <X className="size-3" aria-hidden="true" />
+   488→                          </button>
+   489→                        </Badge>
+   490→                      ))}
+   491→                    </div>
+   492→                  ) : (
+   493→                    <p className="mt-2 text-xs text-muted-foreground">No tags yet — tags power related posts and filters.</p>
+   494→                  )}
+   495→                </div>
+   496→              </CardContent>
+   497→            </Card>
+   498→
+   499→            {/* ---------------- SEO card ---------------- */}
+   500→            <Collapsible open={seoOpen} onOpenChange={setSeoOpen}>
+   501→              <Card className="border-gold/40">
+   502→                <CardHeader className="pb-3">
+   503→                  <CollapsibleTrigger asChild>
+   504→                    <button
+   505→                      type="button"
+   506→                      className="flex w-full items-center justify-between text-left"
+   507→                      aria-expanded={seoOpen}
+   508→                    >
+   509→                      <div>
+   510→                        <CardTitle className="text-base text-gold">SEO &amp; sharing</CardTitle>
+   511→                        <p className="mt-0.5 text-xs text-muted-foreground">
+   512→                          Search title, description, OG image and canonical URL
+   513→                        </p>
+   514→                      </div>
+   515→                      <ChevronDown
+   516→                        className={`size-5 text-gold transition-transform ${seoOpen ? "rotate-180" : ""}`}
+   517→                        aria-hidden="true"
+   518→                      />
+   519→                    </button>
+   520→                  </CollapsibleTrigger>
+   521→                </CardHeader>
+   522→                <CollapsibleContent>
+   523→                  <CardContent className="space-y-5 pt-2">
+   524→                    <FormField
+   525→                      control={form.control}
+   526→                      name="seoTitle"
+   527→                      render={({ field }) => (
+   528→                        <FormItem>
+   529→                          <FormLabel>SEO title</FormLabel>
+   530→                          <FormControl>
+   531→                            <Input {...field} value={field.value ?? ""} placeholder="Falls back to the post title" className="h-10" />
+   532→                          </FormControl>
+   533→                          <FormDescription>{(field.value ?? "").length}/60 recommended</FormDescription>
+   534→                          <FormMessage />
+   535→                        </FormItem>
+   536→                      )}
+   537→                    />
+   538→                    <FormField
+   539→                      control={form.control}
+   540→                      name="seoDescription"
+   541→                      render={({ field }) => (
+   542→                        <FormItem>
+   543→                          <FormLabel>SEO description</FormLabel>
+   544→                          <FormControl>
+   545→                            <Textarea
+   546→                              {...field}
+   547→                              value={field.value ?? ""}
+   548→                              rows={3}
+   549→                              placeholder="Falls back to the excerpt"
+   550→                            />
+   551→                          </FormControl>
+   552→                          <FormDescription>{(field.value ?? "").length}/155 recommended</FormDescription>
+   553→                          <FormMessage />
+   554→                        </FormItem>
+   555→                      )}
+   556→                    />
+   557→                    <FormField
+   558→                      control={form.control}
+   559→                      name="ogImageUrl"
+   560→                      render={({ field }) => (
+   561→                        <FormItem>
+   562→                          <FormLabel>OG / social image URL</FormLabel>
+   563→                          <FormControl>
+   564→                            <Input {...field} value={field.value ?? ""} placeholder="Falls back to the cover image" className="h-10" />
+   565→                          </FormControl>
+   566→                          <FormMessage />
+   567→                        </FormItem>
+   568→                      )}
+   569→                    />
+   570→                    {watched.ogImageUrl || watched.coverImageUrl ? (
+   571→                      <div className="overflow-hidden rounded-lg border">
+   572→                        <img
+   573→                          src={watched.ogImageUrl || watched.coverImageUrl || ""}
+   574→                          alt="OG image preview"
+   575→                          loading="lazy"
+   576→                          decoding="async"
+   577→                          className="aspect-[1.91/1] w-full object-cover"
+   578→                        />
+   579→                      </div>
+   580→                    ) : null}
+   581→                    <FormField
+   582→                      control={form.control}
+   583→                      name="canonicalUrl"
+   584→                      render={({ field }) => (
+   585→                        <FormItem>
+   586→                          <FormLabel>Canonical URL</FormLabel>
+   587→                          <FormControl>
+   588→                            <Input {...field} value={field.value ?? ""} placeholder="https://... (leave empty unless syndicated)" className="h-10" />
+   589→                          </FormControl>
+   590→                          <FormMessage />
+   591→                        </FormItem>
+   592→                      )}
+   593→                    />
+   594→
+   595→                    {/* SERP preview */}
+   596→                    <div>
+   597→                      <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+   598→                        Search result preview
+   599→                      </p>
+   600→                      <div className="rounded-lg border bg-muted/40 p-4">
+   601→                        <p className="truncate text-xs text-primary/70">
+   602→                          {SITE.url.replace(/^https?:\/\//, "")}/blog/{effectiveSlug || "slug"}
+   603→                        </p>
+   604→                        <p className="mt-0.5 truncate text-base font-medium text-primary">{serpTitle}</p>
+   605→                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{serpDesc}</p>
+   606→                      </div>
+   607→                    </div>
+   608→                  </CardContent>
+   609→                </CollapsibleContent>
+   610→              </Card>
+   611→            </Collapsible>
+   612→          </div>
+   613→
+   614→          {/* ---------------- sticky side column ---------------- */}
+   615→          <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+   616→            <Card>
+   617→              <CardHeader className="pb-3">
+   618→                <CardTitle className="text-base">Publishing</CardTitle>
+   619→              </CardHeader>
+   620→              <CardContent className="space-y-5">
+   621→                <FormField
+   622→                  control={form.control}
+   623→                  name="status"
+   624→                  render={({ field }) => (
+   625→                    <FormItem>
+   626→                      <FormLabel>Status</FormLabel>
+   627→                      <Select value={field.value} onValueChange={field.onChange}>
+   628→                        <FormControl>
+   629→                          <SelectTrigger className="h-10">
+   630→                            <SelectValue placeholder="Status" />
+   631→                          </SelectTrigger>
+   632→                        </FormControl>
+   633→                        <SelectContent>
+   634→                          <SelectItem value="draft">Draft</SelectItem>
+   635→                          <SelectItem value="published">Published</SelectItem>
+   636→                          <SelectItem value="archived">Archived</SelectItem>
+   637→                        </SelectContent>
+   638→                      </Select>
+   639→                      <FormMessage />
+   640→                    </FormItem>
+   641→                  )}
+   642→                />
+   643→
+   644→                <FormField
+   645→                  control={form.control}
+   646→                  name="categoryId"
+   647→                  render={({ field }) => (
+   648→                    <FormItem>
+   649→                      <FormLabel>Category</FormLabel>
+   650→                      <Select value={field.value ?? ""} onValueChange={field.onChange}>
+   651→                        <FormControl>
+   652→                          <SelectTrigger className="h-10">
+   653→                            <SelectValue placeholder="Uncategorized" />
+   654→                          </SelectTrigger>
+   655→                        </FormControl>
+   656→                        <SelectContent>
+   657→                          {(categories.data ?? []).map((c) => (
+   658→                            <SelectItem key={c.id} value={c.id}>
+   659→                              {c.name}
+   660→                            </SelectItem>
+   661→                          ))}
+   662→                        </SelectContent>
+   663→                      </Select>
+   664→                      <FormDescription>
+   665→                        {(categories.data ?? []).find((c) => c.id === field.value)?.slug ?? "no category"}
+   666→                      </FormDescription>
+   667→                      <FormMessage />
+   668→                    </FormItem>
+   669→                  )}
+   670→                />
+   671→
+   672→                <FormField
+   673→                  control={form.control}
+   674→                  name="publishedAt"
+   675→                  render={({ field }) => (
+   676→                    <FormItem>
+   677→                      <FormLabel>Publish date</FormLabel>
+   678→                      <FormControl>
+   679→                        <Input type="date" {...field} value={field.value ?? ""} className="h-10" />
+   680→                      </FormControl>
+   681→                      <FormDescription>Stamps publishedAt when the post goes live</FormDescription>
+   682→                      <FormMessage />
+   683→                    </FormItem>
+   684→                  )}
+   685→                />
+   686→
+   687→                <FormField
+   688→                  control={form.control}
+   689→                  name="isFeatured"
+   690→                  render={({ field }) => (
+   691→                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+   692→                      <div className="space-y-0.5">
+   693→                        <FormLabel className="text-sm">Featured</FormLabel>
+   694→                        <p className="text-xs text-muted-foreground">Pins the post to home + ad slots</p>
+   695→                      </div>
+   696→                      <FormControl>
+   697→                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+   698→                      </FormControl>
+   699→                    </FormItem>
+   700→                  )}
+   701→                />
+   702→
+   703→                <div className="rounded-lg border p-3">
+   704→                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+   705→                    Reading time
+   706→                  </p>
+   707→                  <p className="mt-1 text-sm">
+   708→                    {readingMinutes} min <span className="text-muted-foreground">(auto — words / 200)</span>
+   709→                  </p>
+   710→                </div>
+   711→
+   712→                {postQuery.data ? (
+   713→                  <div className="space-y-1 rounded-lg border p-3 text-xs text-muted-foreground">
+   714→                    <p>Views: <span className="font-medium text-foreground">{formatCompact(postQuery.data.viewsCount)}</span></p>
+   715→                    <p>Created: {fmtDate(postQuery.data.createdAt)}</p>
+   716→                    <p>Author: {postQuery.data.author?.fullName ?? "—"}</p>
+   717→                  </div>
+   718→                ) : null}
+   719→
+   720→                <Button type="submit" className="h-10 w-full" disabled={saveMutation.isPending}>
+   721→                  {saveMutation.isPending ? "Saving..." : isNew ? "Create post" : "Save changes"}
+   722→                </Button>
+   723→              </CardContent>
+   724→            </Card>
+   725→
+   726→            {/* Live preview card */}
+   727→            <Card className="overflow-hidden">
+   728→              <p className="px-4 pt-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold">
+   729→                Live preview
+   730→              </p>
+   731→              <div className="p-4">
+   732→                {watched.coverImageUrl ? (
+   733→                  <img
+   734→                    src={watched.coverImageUrl}
+   735→                    alt="Cover preview"
+   736→                    loading="lazy"
+   737→                    decoding="async"
+   738→                    className="mb-3 aspect-video w-full rounded-lg border object-cover"
+   739→                  />
+   740→                ) : (
+   741→                  <div className="mb-3 flex aspect-video w-full items-center justify-center rounded-lg border bg-gradient-to-br from-gold/30 via-gold/10 to-primary/25">
+   742→                    <FileText className="size-8 text-foreground/50" aria-hidden="true" />
+   743→                  </div>
+   744→                )}
+   745→                <div className="flex flex-wrap items-center gap-2">
+   746→                  <PostStatusBadge status={watched.status} />
+   747→                  {watched.isFeatured ? <Badge variant="outline" className="border-gold/40 text-gold">Featured</Badge> : null}
+   748→                  <span className="text-xs text-muted-foreground">{readingMinutes} min read</span>
+   749→                </div>
+   750→                <h2 className="mt-2 text-lg font-semibold leading-snug tracking-tight">
+   751→                  {watched.title || "Untitled post"}
+   752→                </h2>
+   753→                {watched.excerpt ? (
+   754→                  <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{watched.excerpt}</p>
+   755→                ) : null}
+   756→                {tags.length > 0 ? (
+   757→                  <div className="mt-2 flex flex-wrap gap-1.5">
+   758→                    {tags.map((t) => (
+   759→                      <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+   760→                    ))}
+   761→                  </div>
+   762→                ) : null}
+   763→              </div>
+   764→            </Card>
+   765→          </div>
+   766→        </form>
+   767→      </Form>
+   768→    </AdminShell>
+   769→  );
+   770→}
+   771→

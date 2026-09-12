@@ -27,7 +27,12 @@ export interface SiteSettings {
   };
   footer?: Partial<SettingsFooter>;
   media?: Record<string, unknown> & {
-    heroMarquee?: { images?: string[]; enabled?: boolean };
+    heroMarquee?: {
+      images?: string[];
+      enabled?: boolean;
+      messages?: Array<{ text?: string; href?: string | null }>;
+      speed?: "slow" | "normal" | "fast";
+    };
     stickers?: { enabled?: boolean };
   };
   ads?: { enabled?: boolean };

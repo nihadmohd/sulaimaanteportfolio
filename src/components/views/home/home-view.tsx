@@ -7,18 +7,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ALink } from "@/components/router/link";
 import { DataState } from "@/components/states";
-import { AffiliateAdSlot } from "@/components/shared/affiliate-ad-slot";
+import {
+  AffiliateAdSlot,
+  adHref,
+  adRel,
+  adTarget,
+  runAdAnchorClick,
+  useAdsForPlacement,
+} from "@/components/shared/affiliate-ad-slot";
 import { LiveVisitorBadge } from "@/components/shared/live-visitor-badge";
 import { PostCard, type PostCardData } from "@/components/shared/post-card";
 import { ProductCard, formatINR, type ProductCardData } from "@/components/shared/product-card";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { SEOHead } from "@/components/shared/seo-head";
+import { navigate } from "@/hooks/use-router";
 import { useSettings } from "@/hooks/use-settings";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api-client";
 import { SITE } from "@/lib/constants";
 import { ABOUT_PARAGRAPHS, BRANDS, PROJECTS, SERVICES, STATS } from "@/lib/content";
-import type { Paginated, PostDTO, ProductDTO } from "@/types";
+import { cn } from "@/lib/utils";
+import type { AdDTO, MarqueeSpeed, Paginated, PostDTO, ProductDTO } from "@/types";
 
 /**
  * HomeView — route key "home" (#/).
@@ -32,10 +41,22 @@ import type { Paginated, PostDTO, ProductDTO } from "@/types";
 const MARQUEE_CSS = `
 @keyframes mnkp-marquee { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
 .mnkp-marquee { overflow: hidden; }
-.mnkp-marquee__track { display: flex; width: max-content; animation: mnkp-marquee 48s linear infinite; }
+.mnkp-marquee__track { display: flex; width: max-content; animation: mnkp-marquee 42s linear infinite; }
+.mnkp-marquee__track--reverse { animation-direction: reverse; }
 .mnkp-marquee:hover .mnkp-marquee__track, .mnkp-marquee:focus-within .mnkp-marquee__track { animation-play-state: paused; }
+.mnkp-marquee--fade {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+}
 @media (prefers-reduced-motion: reduce) { .mnkp-marquee__track { animation: none; } }
 `;
+
+/** Hero marquee lane durations per speed preset (Task 12-d). */
+const MARQUEE_DURATION: Record<MarqueeSpeed, string> = {
+  slow: "60s",
+  normal: "42s",
+  fast: "28s",
+};
 
 function toPostCard(p: PostDTO): PostCardData {
   return {
@@ -181,28 +202,219 @@ function HeroSection() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* hero marquee — premium dual-lane marketing band (Task 12-d)          */
+/* ------------------------------------------------------------------ */
+
+/** Client-side guard for the resolver-produced marketing chips. */
+interface HeroMessage {
+  text: string;
+  href: string | null;
+}
+
+function parseHeroMessages(raw: unknown): HeroMessage[] {
+  if (!Array.isArray(raw)) return [];
+  const out: HeroMessage[] = [];
+  for (const item of raw) {
+    if (typeof item !== "object" || item === null) continue;
+    const m = item as { text?: unknown; href?: unknown };
+    if (typeof m.text !== "string" || !m.text.trim()) continue;
+    const href =
+      typeof m.href === "string" && (m.href.startsWith("#/") || m.href.startsWith("https://"))
+        ? m.href
+        : null;
+    out.push({ text: m.text.trim(), href });
+  }
+  return out;
+}
+
+/** In-app ad destinations route through the hash router; others open new. */
+function openTrackedAdUrl(url: string): void {
+  if (url.startsWith("#/")) {
+    navigate(url.slice(1));
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+/**
+ * Click + impression tracking for one hero ad chip. Mirrors useAdInteraction
+ * (affiliate-ad-slot.tsx) but impressions can be suppressed for loop
+ * duplicates, so each ad counts exactly ONE impression per page mount while
+ * every visible copy stays clickable.
+ */
+function useHeroAdInteraction(ad: AdDTO, trackImpression: boolean) {
+  const seen = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!trackImpression || seen.current) return;
+    seen.current = true;
+    apiFetch(`/api/ads/${ad.id}/impression`, { method: "POST" }).catch(() => {
+      /* fire-and-forget */
+    });
+  }, [ad, trackImpression]);
+
+  const handleClick = React.useCallback(() => {
+    apiFetch<{ id: string; url: string | null }>(`/api/ads/${ad.id}/click`, { method: "POST" })
+      .then((data) => {
+        if (data.url) openTrackedAdUrl(data.url);
+      })
+      .catch(() => {
+        /* tracking failed — still honor the destination */
+        if (ad.linkUrl) openTrackedAdUrl(ad.linkUrl);
+      });
+  }, [ad]);
+
+  return { handleClick };
+}
+
+/** Marketing chip — copper dot + short line, linked when the owner set one. */
+function HeroMessageChip({ message }: { message: HeroMessage }) {
+  const content = (
+    <>
+      <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-gold" />
+      <span>{message.text}</span>
+    </>
+  );
+  const base =
+    "press-sm mx-1.5 inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border bg-card px-4 py-1.5 text-xs font-medium sm:mx-2";
+  if (message.href) {
+    return (
+      <ALink
+        href={message.href}
+        className={cn(
+          base,
+          "transition-colors hover:border-gold/50 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        )}
+      >
+        {content}
+      </ALink>
+    );
+  }
+  return <span className={base}>{content}</span>;
+}
+
+/** Tracked sponsored chip — gold-dashed pill, distinct from message chips. */
+function HeroAdChip({ ad, trackImpression }: { ad: AdDTO; trackImpression: boolean }) {
+  const { handleClick } = useHeroAdInteraction(ad, trackImpression);
+
+  return (
+    <a
+      href={adHref(ad)}
+      rel={adRel(ad)}
+      target={adTarget(ad)}
+      onClick={(event) => runAdAnchorClick(event, handleClick)}
+      className="press-sm group mx-1.5 inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-dashed border-gold/50 bg-gold/[0.05] px-4 py-1.5 text-xs transition-colors hover:border-gold/70 hover:bg-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mx-2"
+    >
+      <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-gold">
+        Sponsored
+      </span>
+      <span className="font-semibold tracking-tight">{ad.title ?? ad.name}</span>
+      <span className="inline-flex items-center gap-1 font-medium text-gold underline-offset-4 group-hover:underline">
+        {ad.linkLabel}
+        <ArrowRight
+          className="size-3 transition-transform group-hover:translate-x-0.5"
+          aria-hidden="true"
+        />
+      </span>
+    </a>
+  );
+}
+
+/**
+ * HeroMarquee — dual-lane marketing band below the hero.
+ *
+ * Lane A scrolls the curated image track (grayscale, color on hover); lane B
+ * scrolls the opposite way mixing tracked "hero-marquee" ads with the owner's
+ * marketing chips. Both pause on hover/focus, respect reduced motion and fade
+ * at the viewport edges. Renders nothing when disabled or fully empty.
+ */
 function HeroMarquee() {
   const settings = useSettings();
   const marquee = settings.data?.media?.heroMarquee;
-  const images = (marquee?.images ?? []).filter((src): src is string => typeof src === "string");
-  if (!marquee?.enabled || images.length === 0) return null;
+  const { ads } = useAdsForPlacement("hero-marquee");
+
+  const images = (marquee?.images ?? []).filter(
+    (src): src is string => typeof src === "string" && src.length > 0
+  );
+  const messages = parseHeroMessages(marquee?.messages);
+  const speed: MarqueeSpeed =
+    marquee?.speed === "slow" || marquee?.speed === "fast" ? marquee.speed : "normal";
+  const heroAds = ads.filter((ad) => ad.type !== "sticker");
+
+  if (!marquee?.enabled) return null;
+  if (images.length === 0 && messages.length === 0 && heroAds.length === 0) return null;
+
+  const duration = MARQUEE_DURATION[speed];
+
+  // Lane B content: tracked ad chips first, then marketing chips. The loop
+  // duplicate keeps identical widths (seamless -50% translate) but suppresses
+  // its impression so each ad is counted once per page mount.
+  const laneItems: Array<
+    | { kind: "ad"; ad: AdDTO; track: boolean }
+    | { kind: "message"; message: HeroMessage }
+  > = [
+    ...heroAds.map((ad) => ({ kind: "ad" as const, ad, track: true })),
+    ...messages.map((message) => ({ kind: "message" as const, message })),
+  ];
+  const laneLoop = [
+    ...laneItems,
+    ...laneItems.map((item) => (item.kind === "ad" ? { ...item, track: false } : item)),
+  ];
 
   return (
-    <section aria-hidden="true" className="border-b bg-muted/40 py-3 sm:py-4 md:py-5">
+    <section
+      aria-label="MN.KP highlights and sponsored picks"
+      className="border-y border-t-gold/30 bg-gradient-to-b from-muted/40 to-muted/10"
+    >
       <style>{MARQUEE_CSS}</style>
-      <div className="mnkp-marquee">
-        <div className="mnkp-marquee__track">
-          {[...images, ...images].map((src, index) => (
-            <img
-              key={`${src}-${index}`}
-              src={src}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="mx-3 h-14 w-auto max-w-none rounded-md border object-cover grayscale transition-all duration-300 hover:scale-[1.04] hover:grayscale-0 sm:h-24 md:h-32"
-            />
-          ))}
-        </div>
+      <div className="py-3.5 sm:py-4">
+        <p className="mb-2.5 px-4 text-center text-[10px] font-medium uppercase tracking-[0.25em] text-muted-foreground sm:mb-3">
+          Trusted stack · live deals · what&rsquo;s shipping
+        </p>
+
+        {images.length > 0 ? (
+          <div className="mnkp-marquee mnkp-marquee--fade">
+            <div className="mnkp-marquee__track" style={{ animationDuration: duration }}>
+              {[...images, ...images].map((src, index) => (
+                <img
+                  key={`hero-img-${index}-${src}`}
+                  src={src}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="press mx-2 h-16 w-auto max-w-none shrink-0 rounded-lg border object-cover grayscale transition-all duration-300 hover:grayscale-0 hover:border-gold/40 sm:mx-2.5 sm:h-20 md:h-24"
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {laneLoop.length > 0 ? (
+          <div className={cn(images.length > 0 && "mt-2.5 sm:mt-3")}>
+            <div className="mnkp-marquee mnkp-marquee--fade">
+              <div
+                className="mnkp-marquee__track mnkp-marquee__track--reverse"
+                style={{ animationDuration: duration }}
+              >
+                {laneLoop.map((item, index) =>
+                  item.kind === "ad" ? (
+                    <HeroAdChip
+                      key={`hero-ad-${index}-${item.ad.id}`}
+                      ad={item.ad}
+                      trackImpression={item.track}
+                    />
+                  ) : (
+                    <HeroMessageChip
+                      key={`hero-msg-${index}-${item.message.text}`}
+                      message={item.message}
+                    />
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </section>
   );

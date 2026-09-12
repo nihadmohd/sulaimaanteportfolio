@@ -8,6 +8,7 @@ import { AppRouter } from "@/components/router/app-router";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { PullToRefresh } from "@/components/layout/pull-to-refresh";
 import { CommandMenu } from "@/components/layout/command-menu";
 import { MaintenanceState, OfflineState } from "@/components/states/http-states";
 import { CookieConsent } from "@/components/shared/cookie-consent";
@@ -105,6 +106,7 @@ function ShellInner() {
         <SiteFooter />
       </div>
       <MobileNav />
+      <PullToRefresh />
       <CommandMenu />
       <CommandKeyListener />
       <AdSticker />

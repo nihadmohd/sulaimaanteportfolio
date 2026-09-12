@@ -220,7 +220,7 @@ export function SiteHeader() {
             <Button
               variant="ghost"
               size="icon"
-              className="size-10 md:hidden"
+              className="press-sm size-10 md:hidden"
               aria-label="Open navigation menu"
               aria-expanded={mobileNavOpen || adminNavOpen}
               onClick={onMenuClick}

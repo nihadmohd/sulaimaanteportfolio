@@ -65,6 +65,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  /* cover — lets the app paint under the notch/home indicator like a
+     native iOS/Android app (safe areas via env(safe-area-inset-*)) */
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#FAFAF7" },
     { media: "(prefers-color-scheme: dark)", color: "#0C0F0E" },

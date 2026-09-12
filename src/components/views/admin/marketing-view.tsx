@@ -77,6 +77,7 @@ const PLACEMENT_LABEL: Record<AdPlacement, string> = {
   "blog-sidebar": "Blog sidebar",
   "between-cards": "Between cards",
   "home-strip": "Home strip",
+  "hero-marquee": "Hero marquee",
   "store-side": "Store side",
   "footer-banner": "Footer banner",
   "product-inline": "Product inline",
@@ -209,7 +210,7 @@ function UtmBuilder() {
   };
 
   return (
-    <Card className="py-4 md:py-6">
+    <Card className="min-w-0 py-4 md:py-6">
       <CardHeader className="px-4 pb-3 md:px-6">
         <CardTitle className="flex items-center gap-2 text-base">
           <Link2 className="size-4 text-gold" aria-hidden="true" />
@@ -352,7 +353,7 @@ function SeoHealthCard({ seo, loading }: { seo?: SeoSettings; loading: boolean }
   const passing = checks.filter((c) => c.passing).length;
 
   return (
-    <Card className="py-4 md:py-6">
+    <Card className="min-w-0 py-4 md:py-6">
       <CardHeader className="px-4 pb-3 md:px-6">
         <CardTitle className="flex items-center gap-2 text-base">
           <Search className="size-4 text-gold" aria-hidden="true" />
@@ -519,7 +520,7 @@ export default function MarketingView() {
 
             {/* 3 + 4 · affiliate funnel / top content */}
             <div className="grid gap-4 lg:grid-cols-2">
-              <Card className="py-4 md:py-6">
+              <Card className="min-w-0 py-4 md:py-6">
                 <CardHeader className="px-4 pb-3 md:px-6">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <TrendingUp className="size-4 text-gold" aria-hidden="true" />
@@ -617,7 +618,7 @@ export default function MarketingView() {
                 </CardContent>
               </Card>
 
-              <Card className="py-4 md:py-6">
+              <Card className="min-w-0 py-4 md:py-6">
                 <CardHeader className="px-4 pb-3 md:px-6">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <FileText className="size-4 text-gold" aria-hidden="true" />
@@ -668,7 +669,7 @@ export default function MarketingView() {
             </div>
 
             {/* 5 · ad performance */}
-            <Card className="py-4 md:py-6">
+            <Card className="min-w-0 py-4 md:py-6">
               <CardHeader className="px-4 pb-3 md:px-6">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Megaphone className="size-4 text-gold" aria-hidden="true" />

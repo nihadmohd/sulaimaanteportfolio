@@ -16,6 +16,17 @@ import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { PostCard, formatCompact, type PostCardData } from "@/components/shared/post-card";
 import { AffiliateAdSlot } from "@/components/shared/affiliate-ad-slot";
 import { SocialShare } from "@/components/shared/social-share";
+import {
+  ListenCard,
+  MinLeftSlot,
+  MobileActionCluster,
+  NextUpCard,
+  QuoteSharePopover,
+  ReadingProgressBar,
+  ResumeReading,
+  useArticleScrollTracker,
+  type ScrollTracker,
+} from "@/components/shared/reading-experience";
 import { SEOHead } from "@/components/shared/seo-head";
 import { DataState, StatePage } from "@/components/states";
 import {
@@ -25,6 +36,7 @@ import {
 } from "@/components/views/shared/markdown";
 import { useHashParams } from "@/hooks/use-hash-params";
 import { navigate } from "@/hooks/use-router";
+import { markdownToPlain, useTts } from "@/hooks/use-tts";
 import { apiFetch, ApiClientError } from "@/lib/api-client";
 import { SITE, VIEW_DEDUPE_PREFIX } from "@/lib/constants";
 import type { Paginated, PostDTO } from "@/types";
@@ -36,6 +48,11 @@ import type { Paginated, PostDTO } from "@/types";
  * renderers, inline affiliate slot after the 3rd paragraph, sticky TOC +
  * sidebar ad rail on desktop, view dedupe via sessionStorage, related
  * reading, BlogPosting JSON-LD and DB-driven SEO overrides.
+ *
+ * Engagement layer (12-a): copper reading progress bar + live minutes-left,
+ * "Listen to this article" SpeechSynthesis narration, resume-reading banner,
+ * select-to-share quote toolbar, session-aware "Up next" card, mobile
+ * floating action cluster, and desktop keyboard shortcuts (t / s / Esc).
  */
 
 /* ------------------------------------------------------------------ */
@@ -106,7 +123,15 @@ function scrollToHeading(id: string): void {
 /* TOC                                                                 */
 /* ------------------------------------------------------------------ */
 
-function TableOfContents({ headings }: { headings: Heading[] }) {
+function TableOfContents({
+  headings,
+  tracker,
+  readingMinutes,
+}: {
+  headings: Heading[];
+  tracker: ScrollTracker;
+  readingMinutes: number;
+}) {
   if (headings.length === 0) return null;
 
   return (
@@ -132,6 +157,7 @@ function TableOfContents({ headings }: { headings: Heading[] }) {
           </li>
         ))}
       </ul>
+      <MinLeftSlot tracker={tracker} readingMinutes={readingMinutes} />
     </nav>
   );
 }
@@ -160,6 +186,55 @@ function PostArticle({ post }: { post: PostDTO }) {
     [content]
   );
 
+  /* ---- engagement layer (12-a) --------------------------------- */
+  const articleRef = React.useRef<HTMLElement | null>(null);
+  const contentRef = React.useRef<HTMLDivElement | null>(null);
+  const tracker = useArticleScrollTracker(articleRef);
+
+  // Narration text: title spoken first, then the markdown-stripped body.
+  const narrationText = React.useMemo(
+    () => `${post.title}. ${markdownToPlain(content)}`,
+    [post.title, content]
+  );
+  const tts = useTts(React.useMemo(() => ({ text: narrationText }), [narrationText]));
+
+  // Desktop keyboard shortcuts: t = play/pause narration, s = focus share,
+  // Esc = stop narration. Ignored while typing in form fields.
+  React.useEffect(() => {
+    const { toggle, stop } = tts;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      if (key === "escape") {
+        stop();
+        return;
+      }
+      if (event.repeat) return;
+      if (key === "t") {
+        toggle();
+      } else if (key === "s") {
+        const shareArea = document.getElementById("post-share-area");
+        const button = shareArea?.querySelector("button");
+        if (shareArea && button) {
+          shareArea.scrollIntoView({ block: "center", behavior: "smooth" });
+          button.focus({ preventScroll: true });
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [tts]);
+
   const relatedQuery = useQuery({
     queryKey: ["posts", "related", post.category?.slug ?? "none", post.slug],
     queryFn: () =>
@@ -172,9 +247,16 @@ function PostArticle({ post }: { post: PostDTO }) {
     refetchOnWindowFocus: false,
   });
 
-  const related = (relatedQuery.data?.items ?? [])
-    .filter((item) => item.slug !== post.slug)
-    .slice(0, 3);
+  // Stable identities so the NextUpCard effect (session visited tracking)
+  // doesn't re-run on every render.
+  const related = React.useMemo(
+    () => (relatedQuery.data?.items ?? []).filter((item) => item.slug !== post.slug).slice(0, 3),
+    [relatedQuery.data, post.slug]
+  );
+  const relatedCards = React.useMemo(
+    () => related.map((item) => toPostCard(item)),
+    [related]
+  );
 
   const canonicalPath = `/blog/${post.slug}`;
   const ogImage = post.ogImageUrl ?? post.coverImageUrl ?? SITE.ogImage;
@@ -213,7 +295,12 @@ function PostArticle({ post }: { post: PostDTO }) {
   );
 
   return (
-    <article className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 md:py-14 lg:px-8">
+    <>
+      <ReadingProgressBar tracker={tracker} readingMinutes={post.readingTimeMinutes} />
+      <article
+        ref={articleRef}
+        className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-10 md:py-14 lg:px-8"
+      >
       <SEOHead
         title={post.seoTitle ?? post.title}
         description={description}
@@ -230,6 +317,8 @@ function PostArticle({ post }: { post: PostDTO }) {
           { label: post.title },
         ]}
       />
+
+      <ResumeReading slug={post.slug} articleRef={articleRef} tracker={tracker} />
 
       {/* header */}
       <header className="mt-6 max-w-3xl sm:mt-8">
@@ -296,6 +385,9 @@ function PostArticle({ post }: { post: PostDTO }) {
         </aside>
       ) : null}
 
+      {/* listen to this article — browser SpeechSynthesis narration */}
+      <ListenCard tts={tts} readingMinutes={post.readingTimeMinutes} />
+
       {/* mobile TOC */}
       {headings.length > 0 ? (
         <Collapsible className="mt-8 max-w-3xl lg:hidden">
@@ -307,7 +399,11 @@ function PostArticle({ post }: { post: PostDTO }) {
           </div>
           <CollapsibleContent>
             <div className="mt-2 rounded-xl border bg-card p-4">
-              <TableOfContents headings={headings} />
+              <TableOfContents
+                headings={headings}
+                tracker={tracker}
+                readingMinutes={post.readingTimeMinutes}
+              />
             </div>
           </CollapsibleContent>
         </Collapsible>
@@ -315,13 +411,17 @@ function PostArticle({ post }: { post: PostDTO }) {
 
       {/* content + sticky rail */}
       <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="min-w-0 max-w-3xl">{renderSegments()}</div>
+        <div ref={contentRef} className="min-w-0 max-w-3xl">{renderSegments()}</div>
 
         <aside className="hidden lg:block">
           <div className="sticky top-24 space-y-8">
-            <TableOfContents headings={headings} />
+            <TableOfContents
+              headings={headings}
+              tracker={tracker}
+              readingMinutes={post.readingTimeMinutes}
+            />
             <AffiliateAdSlot placement="blog-sidebar" />
-            <div className="rounded-xl border bg-card p-4">
+            <div id="post-share-area" className="rounded-xl border bg-card p-4">
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
                 Share this post
               </p>
@@ -413,6 +513,9 @@ function PostArticle({ post }: { post: PostDTO }) {
         </section>
       ) : null}
 
+      {/* up next — session-aware auto-pick retention hook */}
+      <NextUpCard currentSlug={post.slug} posts={relatedCards} />
+
       {/* CTA band */}
       <section className="mt-14 rounded-2xl border border-gold/40 bg-gold/[0.05] p-6 text-center md:p-10">
         <h2 className="text-balance text-2xl font-semibold tracking-tight md:text-3xl">
@@ -433,7 +536,19 @@ function PostArticle({ post }: { post: PostDTO }) {
           </ALink>
         </div>
       </section>
-    </article>
+
+      {/* select-to-share quote toolbar (scoped to the article body) */}
+      <QuoteSharePopover
+        contentRef={contentRef}
+        tracker={tracker}
+        title={post.title}
+        slug={post.slug}
+      />
+
+      {/* mobile floating action cluster — back to top + share */}
+      <MobileActionCluster tracker={tracker} shareTitle={post.title} sharePath={canonicalPath} />
+      </article>
+    </>
   );
 }
 

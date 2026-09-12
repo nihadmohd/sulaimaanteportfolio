@@ -37,6 +37,18 @@ interface BoundaryState {
   error: Error | null;
 }
 
+/**
+ * Detail/"pushed" routes get the horizontal slide-in transition (native app
+ * push navigation); everything else rises softly. Admin deep links count as
+ * pushed too (editing screens feel like drilling into a stack).
+ */
+function isDetailRoute(path: string): boolean {
+  const segments = path.split("/").filter(Boolean);
+  if (segments.length < 2) return false;
+  if (segments[0] === "admin") return segments.length >= 2;
+  return ["blog", "store", "ventures", "legal"].includes(segments[0]) && segments.length >= 2;
+}
+
 class ViewErrorBoundary extends React.Component<{ children: React.ReactNode }, BoundaryState> {
   state: BoundaryState = { error: null };
 
@@ -171,7 +183,30 @@ export function AppRouter() {
           fallback={<LoadingState variant="skeleton" rows={5} label="Loading view" />}
         >
           <RouteParamsProvider params={match.params}>
-            <div className="cv-auto">
+            {/*
+              NO wrapper element here. The previous `cv-auto` wrapper
+              (content-visibility: auto → contain: paint) formed a CONTAINING
+              BLOCK for position:fixed descendants, which silently broke every
+              fixed-position reading/purchase UI inside views (reading
+              progress bar, mobile action cluster, sticky buy bar — they all
+              had to portal to document.body as a workaround). Rendering the
+              view directly keeps fixed = viewport. Long-list scroll perf is
+              handled per-section inside views where it is safe (legal index
+              items still use cv-auto on non-fixed <li>s).
+
+              The keyed transition div gives every route change the native-app
+              "screen slides in" feel: detail pages push in from the right
+              (.view-enter-push), everything else rises softly (.view-enter).
+              A plain div with no transform/filter/contain is NOT a containing
+              block — the animation transform only exists for ~300ms at mount
+              when no fixed UI is visible yet, so fixed children stay safe.
+            */}
+            <div
+              key={path}
+              className={
+                isDetailRoute(path) ? "view-enter-push" : "view-enter"
+              }
+            >
               <View />
             </div>
           </RouteParamsProvider>

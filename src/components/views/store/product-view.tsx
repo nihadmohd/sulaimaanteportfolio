@@ -7,7 +7,6 @@ import {
   FileQuestion,
   Info,
   MousePointerClick,
-  Package,
   ShieldCheck,
   ThumbsDown,
   ThumbsUp,
@@ -24,6 +23,11 @@ import { SectionHeading } from "@/components/shared/section-heading";
 import { SEOHead } from "@/components/shared/seo-head";
 import { DataState, StatePage } from "@/components/states";
 import { MarkdownBlock, MarkdownFallback } from "@/components/views/shared/markdown";
+import { CompareStrip } from "@/components/views/store/compare-strip";
+import { ProductGalleryPro } from "@/components/views/store/product-gallery-pro";
+import { ProductVerdict } from "@/components/views/store/product-verdict";
+import { StickyBuyBar } from "@/components/views/store/sticky-buy-bar";
+import { WishlistButton } from "@/components/views/store/wishlist-button";
 import { useHashParams } from "@/hooks/use-hash-params";
 import { navigate } from "@/hooks/use-router";
 import { useToast } from "@/hooks/use-toast";
@@ -34,10 +38,13 @@ import type { Paginated, ProductDTO } from "@/types";
 /**
  * ProductView — route key "store-product" (#/store/:slug).
  *
- * Gallery with thumbnails, honest-review content, key specs, pros/cons,
- * tracked affiliate CTA (click logged BEFORE the merchant tab opens),
- * a compact "product-inline" sponsored slot under the price/CTA card,
- * disclosure, share, related gear and Product JSON-LD with INR offers.
+ * PRO gallery (swipe + zoom lightbox), honest-review content, key specs,
+ * pros/cons + interactive "Quick verdict" widget, tracked affiliate CTA
+ * (click logged BEFORE the merchant tab opens — shared by the main
+ * button and the sticky mobile buy bar), save-for-later wishlist, a
+ * compare-before-you-commit rail, a compact "product-inline" sponsored
+ * slot under the price/CTA card, disclosure, share, related gear and
+ * Product JSON-LD with INR offers.
  */
 
 const SESSION_KEY = "mnkp_sid";
@@ -71,81 +78,13 @@ function toProductCard(p: ProductDTO): ProductCardData {
 }
 
 /* ------------------------------------------------------------------ */
-/* gallery                                                             */
-/* ------------------------------------------------------------------ */
-
-function ProductGallery({ product }: { product: ProductDTO }) {
-  const images = React.useMemo(
-    () => [product.imageUrl, ...product.gallery].filter((src): src is string => Boolean(src)),
-    [product.imageUrl, product.gallery]
-  );
-  const [active, setActive] = React.useState(0);
-
-  // reset when navigating between products
-  React.useEffect(() => {
-    setActive(0);
-  }, [product.slug]);
-
-  return (
-    <div>
-      <div className="aspect-square w-full overflow-hidden rounded-2xl border bg-muted">
-        {images.length > 0 ? (
-          <img
-            src={images[active]}
-            alt={`${product.name} — view ${active + 1}`}
-            loading="eager"
-            fetchPriority="high"
-            decoding="async"
-            className="size-full object-cover"
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="flex size-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-gold/30 via-gold/10 to-primary/25"
-          >
-            <Package className="size-16 text-foreground/50" strokeWidth={1.25} />
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-foreground/60">
-              MN.KP Digital
-            </p>
-          </div>
-        )}
-      </div>
-
-      {images.length > 1 ? (
-        <ul className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Product images">
-          {images.map((src, index) => (
-            <li key={`${src}-${index}`}>
-              <button
-                type="button"
-                onClick={() => setActive(index)}
-                aria-label={`Show image ${index + 1}`}
-                aria-current={index === active}
-                className={`size-16 shrink-0 overflow-hidden rounded-lg border transition-shadow ${
-                  index === active ? "border-gold ring-1 ring-gold/50" : "opacity-80 hover:opacity-100"
-                }`}
-              >
-                <img
-                  src={src}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="size-full object-cover"
-                />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* product                                                             */
 /* ------------------------------------------------------------------ */
 
 function ProductDetail({ product }: { product: ProductDTO }) {
   const { toast } = useToast();
+  /** Anchors the sticky mobile buy bar's IntersectionObserver. */
+  const priceCardRef = React.useRef<HTMLDivElement | null>(null);
 
   const discount =
     product.price != null &&
@@ -278,7 +217,7 @@ function ProductDetail({ product }: { product: ProductDTO }) {
       <div className="mt-6 grid grid-cols-1 gap-8 sm:mt-8 sm:gap-10 lg:grid-cols-2 lg:gap-12">
         {/* gallery */}
         <div>
-          <ProductGallery product={product} />
+          <ProductGalleryPro product={product} />
         </div>
 
         {/* detail column */}
@@ -331,7 +270,7 @@ function ProductDetail({ product }: { product: ProductDTO }) {
           </div>
 
           {/* price block */}
-          <div className="mt-6 rounded-2xl border bg-card p-5 shadow-xs">
+          <div ref={priceCardRef} className="mt-6 rounded-2xl border bg-card p-5 shadow-xs">
             <div className="flex flex-wrap items-baseline gap-3">
               {product.price != null ? (
                 <span className="text-3xl font-semibold tabular-nums tracking-tight text-primary">
@@ -385,10 +324,13 @@ function ProductDetail({ product }: { product: ProductDTO }) {
 
             <div className="mt-4 flex items-center justify-between gap-3 border-t pt-4">
               <p className="text-xs text-muted-foreground">Share this pick</p>
-              <SocialShare
-                title={`${product.name} — honest review on MN.KP`}
-                path={canonicalPath}
-              />
+              <div className="flex items-center gap-1.5">
+                <WishlistButton slug={product.slug} />
+                <SocialShare
+                  title={`${product.name} — honest review on MN.KP`}
+                  path={canonicalPath}
+                />
+              </div>
             </div>
           </div>
 
@@ -457,6 +399,9 @@ function ProductDetail({ product }: { product: ProductDTO }) {
             </section>
           ) : null}
 
+          {/* interactive verdict widget */}
+          <ProductVerdict product={product} />
+
           {/* buying-guide cross-link (SEO) */}
           <p className="mt-8 text-sm text-muted-foreground">
             Deciding between options? The{" "}
@@ -467,6 +412,9 @@ function ProductDetail({ product }: { product: ProductDTO }) {
           </p>
         </div>
       </div>
+
+      {/* compare rail — reuses the related query data (no extra fetch) */}
+      <CompareStrip current={product} related={relatedQuery.data ?? []} />
 
       {/* honest review (markdown, lazy) */}
       {product.description ? (
@@ -510,6 +458,8 @@ function ProductDetail({ product }: { product: ProductDTO }) {
         </div>
       </section>
 
+      {/* sticky mobile buy bar — appears once the price card is scrolled past */}
+      <StickyBuyBar product={product} onCta={handleCta} priceCardRef={priceCardRef} />
     </div>
   );
 }

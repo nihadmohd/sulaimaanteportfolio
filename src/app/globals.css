@@ -224,4 +224,106 @@
   .scrollbar-slim::-webkit-scrollbar-thumb:hover {
     background: var(--gold);
   }
+
+  /* ================================================================
+     NATIVE APP EXPERIENCE — mobile web that feels like Android/iOS
+     tap highlight removal · no rubber-band overscroll · momentum
+     scroll · press feedback · app-bar text selection lock · view
+     route transitions. Desktop is unaffected (touch-scoped where
+     possible, inert utilities elsewhere).
+     ================================================================ */
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Native apps don't rubber-band the document or chain scroll —
+     pull-to-refresh is provided by the app shell itself (12-e). */
+  body {
+    overscroll-behavior-y: none;
+    overscroll-behavior-x: none;
+  }
+
+  /* Momentum scrolling for internal scrollers (legacy iOS Safari) */
+  .scrollbar-slim,
+  .overflow-y-auto,
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* App-bar chrome behaves like native — no accidental text selection */
+  header,
+  nav,
+  button,
+  [role="tab"],
+  [role="menuitem"],
+  [role="tablist"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Press feedback — the native "icon compresses under your finger" feel.
+     Apply `.press` to tappable cards/tiles and `.press-sm` to buttons. */
+  .press,
+  .press-sm {
+    transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1), opacity 140ms ease;
+    will-change: transform;
+  }
+  .press:active {
+    transform: scale(0.965);
+  }
+  .press-sm:active {
+    transform: scale(0.97);
+  }
+
+  /* Route/view transition — mobile app "screen slides in" motion.
+     Applied by the app shell when the hash route changes. */
+  @keyframes mnkp-view-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 10px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+  .view-enter {
+    animation: mnkp-view-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Horizontal sheet-like entrance for pushed sub-views (post/product) */
+  @keyframes mnkp-view-push {
+    from {
+      opacity: 0;
+      transform: translate3d(18px, 0, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+  .view-enter-push {
+    animation: mnkp-view-push 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .view-enter,
+    .view-enter-push {
+      animation: none;
+    }
+    .press,
+    .press-sm {
+      transition: none;
+      will-change: auto;
+    }
+  }
+
+  /* Hide the desktop scrollbar on horizontal app-style scroll rails */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }

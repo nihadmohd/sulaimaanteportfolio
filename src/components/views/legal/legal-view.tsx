@@ -165,7 +165,7 @@ function LegalIndexView() {
 
         <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {LEGAL_DOCS.map((doc) => (
-            <li key={doc.slug} className="cv-auto">
+            <li key={doc.slug}>
               <ALink
                 href={`#/legal/${doc.slug}`}
                 className="group block h-full rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -420,7 +420,7 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
             <div aria-hidden="true" className="gold-rule mt-3 w-16" />
             <ul className="mt-5 grid gap-4 sm:grid-cols-3">
               {related.map((rel) => (
-                <li key={rel.slug} className="cv-auto">
+                <li key={rel.slug}>
                   <ALink
                     href={`#/legal/${rel.slug}`}
                     className="group flex h-full flex-col rounded-lg border p-4 outline-none transition-colors hover:border-gold/50 focus-visible:ring-2 focus-visible:ring-ring"

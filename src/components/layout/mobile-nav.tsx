@@ -84,17 +84,20 @@ export function MobileNav() {
                   href={tab.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "relative flex min-h-[56px] flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium transition-colors",
+                    "press-sm relative flex min-h-[56px] flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium transition-colors",
                     active ? "text-primary" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {active ? (
-                    <span
-                      aria-hidden="true"
-                      className="absolute top-0 h-0.5 w-8 rounded-full bg-gold"
-                    />
-                  ) : null}
-                  <Icon name={tab.icon} className={cn("size-5", active && "text-gold")} />
+                  {/* Material-you style active pill around the icon */}
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "flex items-center justify-center rounded-full px-3.5 py-1 transition-colors",
+                      active ? "bg-gold/15" : "bg-transparent"
+                    )}
+                  >
+                    <Icon name={tab.icon} className={cn("size-5", active && "text-gold")} />
+                  </span>
                   {tab.label}
                 </ALink>
               </li>
@@ -106,9 +109,11 @@ export function MobileNav() {
               aria-label="More navigation"
               aria-controls="mobile-nav-sheet"
               onClick={() => setMobileNavOpen(true)}
-              className="relative flex min-h-[56px] w-full flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="press-sm relative flex min-h-[56px] w-full flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              <MoreHorizontal className="size-5" aria-hidden="true" />
+              <span aria-hidden="true" className="flex items-center justify-center rounded-full px-3.5 py-1">
+                <MoreHorizontal className="size-5" aria-hidden="true" />
+              </span>
               More
             </button>
           </li>

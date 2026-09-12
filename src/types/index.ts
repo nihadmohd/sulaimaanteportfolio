@@ -312,9 +312,24 @@ export interface StickerItem {
   corner: string;
 }
 
+/** One marketing chip in the hero marquee message lane (Task 12-d). */
+export interface MarqueeMessage {
+  text: string;
+  /** In-app hash route ("#/…") or an external https URL; null = no link. */
+  href?: string | null;
+}
+
+/** Hero marquee scroll speed presets (Task 12-d). */
+export type MarqueeSpeed = "slow" | "normal" | "fast";
+
 /** site_settings key "media". */
 export interface MediaSettings {
-  heroMarquee: { enabled: boolean; images: string[] };
+  heroMarquee: {
+    enabled: boolean;
+    images: string[];
+    messages: MarqueeMessage[];
+    speed: MarqueeSpeed;
+  };
   stickers: { enabled: boolean; items: StickerItem[] };
   blogGifs: { enabled: boolean; gifs: string[] };
 }
@@ -393,6 +408,7 @@ export type AdPlacement =
   | "blog-sidebar"
   | "between-cards"
   | "home-strip"
+  | "hero-marquee"
   | "store-side"
   | "footer-banner"
   | "product-inline"

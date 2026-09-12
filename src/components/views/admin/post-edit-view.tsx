@@ -11,6 +11,8 @@ import {
   ChevronDown,
   Eye,
   FileText,
+  Maximize,
+  Minimize,
   Trash2,
   X,
 } from "lucide-react";
@@ -62,12 +64,24 @@ import {
   useAdminGuard,
   useCategories,
 } from "./_shared";
+import {
+  AiAssistCard,
+  type AiAssistAction,
+  type AiAssistConfirm,
+} from "./ai-assist-card";
+import { MarkdownToolbar } from "./markdown-toolbar";
+import { DraftRecoveryBanner, useDraftAutosave } from "./editor-drafts";
 
 /**
  * Post editor (#/admin/posts/:id — route key "admin-post-edit"; "new"=create).
  * The full "perfect blog form": 2-col layout (form + sticky preview),
  * auto-slug, counters, Write/Preview tabs, tag chips, quick-pick covers,
  * collapsible SEO card w/ SERP preview, per-field zod errors.
+ *
+ * Task 12-b power-features: a real AI assist card (backend LLM route
+ * /api/ai/assist), a markdown toolbar with selection-aware inserts,
+ * local autosave + crash-recovery banner, Ctrl/Cmd+S save, beforeunload
+ * guard, a distraction-free zen mode, and an 800-word goal chip.
  */
 
 const BLOG_COVERS = [
@@ -97,10 +111,21 @@ const postFormSchema = z.object({
 
 type PostFormValues = z.infer<typeof postFormSchema>;
 
-function wordsPerMinute(content: string): number {
-  const words = content.trim().split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.ceil(words / 200));
+/** Snapshot payload for the local crash-recovery autosave. */
+interface PostDraftData {
+  values: PostFormValues;
+  tags: string[];
 }
+
+function countWords(content: string): number {
+  return content.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function wordsPerMinute(content: string): number {
+  return Math.max(1, Math.ceil(countWords(content) / 200));
+}
+
+const WORD_GOAL = 800;
 
 export default function PostEditView() {
   const { id } = useHashParams<{ id: string }>();
@@ -115,6 +140,12 @@ export default function PostEditView() {
   const [contentTab, setContentTab] = React.useState<"write" | "preview">("write");
   const [seoOpen, setSeoOpen] = React.useState(false);
   const [extraDirty, setExtraDirty] = React.useState(false);
+  const [zen, setZen] = React.useState(false);
+  const [modKey, setModKey] = React.useState("Ctrl");
+
+  const contentRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const zenRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const submitRef = React.useRef<() => void>(() => undefined);
 
   const form = useForm<PostFormValues>({
     resolver: zodResolver(postFormSchema),
@@ -170,8 +201,66 @@ export default function PostEditView() {
   const watched = useWatch({ control: form.control }) as PostFormValues;
 
   const effectiveSlug = slugTouched && watched.slug ? slugify(watched.slug) : slugify(watched.title);
+  const wordCount = countWords(watched.content ?? "");
   const readingMinutes = wordsPerMinute(watched.content ?? "");
   const isDirty = form.formState.isDirty || extraDirty;
+
+  /* ---------------- local autosave + crash recovery ---------------- */
+
+  const draftKey = `mnkp_draft_post_${isNew ? "new" : id}`;
+
+  const draft = useDraftAutosave<PostDraftData>({
+    key: draftKey,
+    ready: isNew || !!postQuery.data,
+    isDirty,
+    tick: JSON.stringify([watched, tags]),
+    capture: () => ({ values: form.getValues(), tags }),
+    differs: (snap) => {
+      const data = snap.data;
+      if (!data || typeof data !== "object" || typeof data.values !== "object" || !data.values) {
+        return false; // unrecognized snapshot shape
+      }
+      if (isNew) {
+        return !!(data.values.title?.trim() || data.values.content?.trim() || (data.tags?.length ?? 0) > 0);
+      }
+      const p = postQuery.data;
+      if (!p) return false;
+      // only offer recovery when the local copy is newer than the server copy
+      const serverTime = new Date(p.updatedAt).getTime();
+      if (Number.isFinite(serverTime) && snap.savedAt <= serverTime) return false;
+      return (
+        data.values.title !== p.title ||
+        data.values.content !== p.content ||
+        (data.values.excerpt ?? "") !== (p.excerpt ?? "") ||
+        data.values.status !== p.status ||
+        JSON.stringify(data.tags ?? []) !== JSON.stringify(p.tags)
+      );
+    },
+    onRestore: (data) => {
+      const v = data.values;
+      form.reset({
+        title: v?.title ?? "",
+        slug: v?.slug ?? "",
+        excerpt: v?.excerpt ?? "",
+        content: v?.content ?? "",
+        coverImageUrl: v?.coverImageUrl ?? "",
+        status: v?.status ?? "draft",
+        isFeatured: !!v?.isFeatured,
+        categoryId: v?.categoryId ?? "",
+        publishedAt: v?.publishedAt ?? "",
+        seoTitle: v?.seoTitle ?? "",
+        seoDescription: v?.seoDescription ?? "",
+        ogImageUrl: v?.ogImageUrl ?? "",
+        canonicalUrl: v?.canonicalUrl ?? "",
+      });
+      setTags(Array.isArray(data.tags) ? data.tags : []);
+      setSlugTouched(true);
+      setExtraDirty(true);
+      toast({ title: "Local draft restored", description: "Review it and save when you are ready." });
+    },
+  });
+
+  /* ---------------- server mutations ---------------- */
 
   const saveMutation = useMutation({
     mutationFn: (values: PostFormValues) => {
@@ -201,6 +290,7 @@ export default function PostEditView() {
         description: post.title,
       });
       setExtraDirty(false);
+      draft.clear();
       void queryClient.invalidateQueries({ queryKey: ["admin-posts"] });
       void queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
       if (isNew) navigate(`/admin/posts/${post.id}`);
@@ -214,12 +304,60 @@ export default function PostEditView() {
     mutationFn: () => apiFetch(`/api/posts/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       toast({ title: "Post deleted" });
+      draft.clear();
       void queryClient.invalidateQueries({ queryKey: ["admin-posts"] });
       navigate("/admin/posts");
     },
     onError: (e: Error) =>
       toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
   });
+
+  const onSubmit = (values: PostFormValues) => saveMutation.mutate(values);
+
+  /* ---------------- keyboard + unload guards ---------------- */
+
+  // keep the submit callable fresh without re-binding window listeners
+  React.useEffect(() => {
+    submitRef.current = form.handleSubmit(onSubmit);
+  });
+
+  // Ctrl/Cmd+S anywhere in the editor saves the post
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        submitRef.current();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // Esc exits zen mode
+  React.useEffect(() => {
+    if (!zen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setZen(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [zen]);
+
+  // desktop-style unsaved-changes guard (mobile browsers ignore this)
+  React.useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  // platform-aware modifier hint (Cmd on Apple platforms, Ctrl elsewhere)
+  React.useEffect(() => {
+    if (/Mac|iPhone|iPad|iPod/.test(navigator.userAgent)) setModKey("\u2318");
+  }, []);
 
   const addTag = () => {
     const tag = tagInput.trim().toLowerCase().replace(/\s+/g, "-").slice(0, 30);
@@ -242,10 +380,128 @@ export default function PostEditView() {
     );
   }
 
-  const onSubmit = (values: PostFormValues) => saveMutation.mutate(values);
-
   const serpTitle = (watched.seoTitle || watched.title || "Untitled post").slice(0, 60);
   const serpDesc = (watched.seoDescription || watched.excerpt || "Add an excerpt or SEO description...").slice(0, 155);
+
+  /* ---------------- AI assist wiring ---------------- */
+
+  const buildAiRequest = (action: AiAssistAction): Record<string, unknown> => {
+    const title = (form.getValues("title") ?? "").trim();
+    const content = (form.getValues("content") ?? "").trim();
+    switch (action) {
+      case "title":
+        if (!title && !content) throw new Error("Add a title or some content first.");
+        return { action, title: title || undefined, content: content || undefined };
+      case "excerpt":
+      case "tags":
+      case "proofread":
+        if (!title || !content) throw new Error("Add a title and some content first.");
+        return { action, title, content };
+      case "outline": {
+        const firstLine = content
+          .split("\n")
+          .map((line) => line.replace(/^#+\s*/, "").trim())
+          .find(Boolean);
+        const topic = title || firstLine;
+        if (!topic) throw new Error("Add a title or a first line so the AI knows the topic.");
+        return { action, topic: topic.slice(0, 300), title: title || undefined, content: content || undefined };
+      }
+      case "continue": {
+        if (!content) throw new Error("Write a few lines first — the AI continues from your draft.");
+        const fallbackTopic = content
+          .split("\n")
+          .map((line) => line.trim())
+          .find(Boolean);
+        return { action, title: title || undefined, topic: title || fallbackTopic, content };
+      }
+      case "description":
+        throw new Error("This action is not available for posts.");
+    }
+  };
+
+  const insertIntoContent = (insert: string, mode: "cursor" | "append") => {
+    const current = form.getValues("content") ?? "";
+    if (!current.trim()) {
+      form.setValue("content", insert, { shouldDirty: true });
+      return;
+    }
+    if (mode === "append") {
+      form.setValue("content", `${current.replace(/\s+$/, "")}\n\n${insert}`, { shouldDirty: true });
+      return;
+    }
+    const el = (zen ? zenRef : contentRef).current;
+    const pos = el?.selectionStart ?? current.length;
+    const before = current.slice(0, pos);
+    const needsBreak = before.trim() !== "" && !before.endsWith("\n");
+    form.setValue("content", before + (needsBreak ? "\n\n" : "") + insert + current.slice(pos), {
+      shouldDirty: true,
+    });
+  };
+
+  const applyAiResult = (action: AiAssistAction, text: string) => {
+    switch (action) {
+      case "title":
+        form.setValue("title", text.slice(0, 140), { shouldDirty: true });
+        toast({
+          title: "Title updated",
+          description: text.length > 90 ? `${text.slice(0, 90)}...` : text,
+        });
+        break;
+      case "excerpt":
+        form.setValue("excerpt", text.replace(/\s+/g, " ").trim().slice(0, 300), { shouldDirty: true });
+        toast({ title: "Excerpt replaced" });
+        break;
+      case "tags": {
+        const incoming = text
+          .split(/[,\n]/)
+          .map((t) =>
+            t
+              .trim()
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "")
+          )
+          .filter(Boolean)
+          .slice(0, 8);
+        const merged = [...new Set([...tags, ...incoming])].slice(0, 10);
+        setTags(merged);
+        setExtraDirty(true);
+        toast({
+          title: "Tags merged",
+          description: `${merged.length} tag${merged.length === 1 ? "" : "s"} on this post.`,
+        });
+        break;
+      }
+      case "outline":
+        insertIntoContent(text, "cursor");
+        toast({ title: "Outline inserted", description: "Splice it into the draft as needed." });
+        break;
+      case "continue":
+        insertIntoContent(text, "append");
+        toast({ title: "Draft extended", description: "The continuation was appended to the content." });
+        break;
+      case "proofread":
+        form.setValue("content", text, { shouldDirty: true });
+        toast({ title: "Content proofread", description: "Review the corrections before saving." });
+        break;
+      case "description":
+        break;
+    }
+  };
+
+  const aiConfirmFor = (action: AiAssistAction): AiAssistConfirm | null => {
+    if (action !== "proofread") return null;
+    return {
+      title: "Replace the content with the proofread version?",
+      description:
+        "The editor content will be replaced by the AI-corrected markdown. The previous version stays recoverable from your local draft or the server copy until you save.",
+    };
+  };
+
+  const setContentValue = (value: string) => form.setValue("content", value, { shouldDirty: true });
+
+  const contentPlaceholder =
+    "## A question-style heading works great for AI answers\n\nWrite the article in markdown...";
 
   return (
     <AdminShell
@@ -294,10 +550,18 @@ export default function PostEditView() {
     >
       <SEOHead title={`${isNew ? "New post" : "Edit post"} — Admin & Developer | MN.KP`} noindex />
 
+      {draft.snapshot ? (
+        <DraftRecoveryBanner
+          savedAt={draft.snapshot.savedAt}
+          onRestore={draft.restore}
+          onDiscard={draft.discard}
+        />
+      ) : null}
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 lg:grid-cols-[1fr_380px]">
           {/* ---------------- main form column ---------------- */}
-          <div className="space-y-6">
+          <div className="min-w-0 space-y-6">
             <Card>
               <CardContent className="space-y-5 pt-6">
                 <FormField
@@ -373,37 +637,73 @@ export default function PostEditView() {
                     onValueChange={(v) => setContentTab(v as "write" | "preview")}
                     className="mt-2"
                   >
-                    <div className="flex items-center justify-between">
-                      <TabsList className="h-9">
-                        <TabsTrigger value="write" className="h-7">Write</TabsTrigger>
-                        <TabsTrigger value="preview" className="h-7">
-                          <Eye className="mr-1 size-3.5" aria-hidden="true" />
-                          Preview
-                        </TabsTrigger>
-                      </TabsList>
-                      <p className="text-xs text-muted-foreground">
-                        ~{readingMinutes} min read · {(watched.content ?? "").length.toLocaleString("en-IN")} chars
-                      </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <TabsList className="h-9">
+                          <TabsTrigger value="write" className="h-7">Write</TabsTrigger>
+                          <TabsTrigger value="preview" className="h-7">
+                            <Eye className="mr-1 size-3.5" aria-hidden="true" />
+                            Preview
+                          </TabsTrigger>
+                        </TabsList>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="press-sm size-9"
+                          aria-label={zen ? "Exit zen mode" : "Enter zen mode"}
+                          title={zen ? "Exit zen mode (Esc)" : "Zen mode — distraction-free writing"}
+                          onClick={() => setZen((v) => !v)}
+                        >
+                          {zen ? (
+                            <Minimize className="size-4" aria-hidden="true" />
+                          ) : (
+                            <Maximize className="size-4" aria-hidden="true" />
+                          )}
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {wordCount >= WORD_GOAL ? (
+                          <Badge variant="outline" className="border-gold/40 bg-gold/10 text-gold">
+                            solid length
+                          </Badge>
+                        ) : null}
+                        <p className="text-xs text-muted-foreground">
+                          ~{readingMinutes} min read · {wordCount.toLocaleString("en-IN")} words ·{" "}
+                          {(watched.content ?? "").length.toLocaleString("en-IN")} chars
+                        </p>
+                        <span className="hidden text-[10px] text-muted-foreground/80 sm:inline">
+                          {modKey}+S saves
+                        </span>
+                      </div>
                     </div>
                   </Tabs>
                   {contentTab === "write" ? (
-                    <FormField
-                      control={form.control}
-                      name="content"
-                      render={({ field }) => (
-                        <FormItem className="mt-3">
-                          <FormControl>
-                            <Textarea
-                              {...field}
-                              rows={18}
-                              placeholder={"## A question-style heading works great for AI answers\n\nWrite the article in markdown..."}
-                              className="min-h-[420px] font-mono text-[13px] leading-relaxed"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <>
+                      <MarkdownToolbar
+                        textareaRef={contentRef}
+                        onChange={setContentValue}
+                        className="mt-3"
+                      />
+                      <FormField
+                        control={form.control}
+                        name="content"
+                        render={({ field }) => (
+                          <FormItem className="mt-3">
+                            <FormControl>
+                              <Textarea
+                                {...field}
+                                ref={contentRef}
+                                rows={18}
+                                placeholder={contentPlaceholder}
+                                className="min-h-[420px] font-mono text-[13px] leading-relaxed"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
                   ) : (
                     <div className="mt-3 min-h-[420px] rounded-lg border p-4">
                       {(watched.content ?? "").trim() ? (
@@ -612,7 +912,22 @@ export default function PostEditView() {
           </div>
 
           {/* ---------------- sticky side column ---------------- */}
-          <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+          <div className="min-w-0 space-y-4 lg:sticky lg:top-20 lg:self-start">
+            <AiAssistCard
+              subline="One-click drafting on the built-in LLM"
+              actions={[
+                { action: "title", label: "Title ideas" },
+                { action: "excerpt", label: "Excerpt" },
+                { action: "tags", label: "Tags" },
+                { action: "outline", label: "Outline" },
+                { action: "continue", label: "Continue draft" },
+                { action: "proofread", label: "Proofread" },
+              ]}
+              buildRequest={buildAiRequest}
+              applyResult={applyAiResult}
+              confirmFor={aiConfirmFor}
+            />
+
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Publishing</CardTitle>
@@ -764,6 +1079,56 @@ export default function PostEditView() {
             </Card>
           </div>
         </form>
+
+        {/* ---------------- zen mode overlay ---------------- */}
+        {zen ? (
+          <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-background p-4 sm:p-6" role="dialog" aria-label="Zen writing mode">
+            <div className="mx-auto flex h-full w-full max-w-3xl flex-col">
+              <div className="flex items-start justify-between gap-3 pb-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gold">Zen mode</p>
+                  <p className="truncate text-sm font-medium">{watched.title || "Untitled post"}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="hidden text-xs tabular-nums text-muted-foreground sm:inline">
+                    {wordCount.toLocaleString("en-IN")} words · {(watched.content ?? "").length.toLocaleString("en-IN")} chars
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="press-sm h-8 gap-2"
+                    onClick={() => setZen(false)}
+                  >
+                    <Minimize className="size-3.5" aria-hidden="true" />
+                    Exit
+                  </Button>
+                </div>
+              </div>
+              <MarkdownToolbar textareaRef={zenRef} onChange={setContentValue} />
+              <FormField
+                control={form.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem className="mt-3 flex min-h-0 flex-1 flex-col">
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        ref={zenRef}
+                        value={field.value ?? ""}
+                        autoFocus
+                        placeholder={contentPlaceholder}
+                        className="h-full min-h-0 w-full flex-1 resize-none font-mono text-[13px] leading-relaxed [field-sizing:fixed]"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <p className="pt-2 text-center text-[10px] text-muted-foreground">Esc exits zen mode</p>
+            </div>
+          </div>
+        ) : null}
       </Form>
     </AdminShell>
   );

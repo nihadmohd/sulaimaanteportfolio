@@ -9,6 +9,8 @@ import type {
   JsonRecord,
   LocalizationSettings,
   MaintenanceSettings,
+  MarqueeMessage,
+  MarqueeSpeed,
   MediaSettings,
   SeoSettings,
   StickerItem,
@@ -86,7 +88,28 @@ export function defaultFooter(): FooterSettings {
 
 export function defaultMedia(): MediaSettings {
   return {
-    heroMarquee: { enabled: false, images: [] },
+    heroMarquee: {
+      enabled: true,
+      images: [
+        "/images/brand/og-cover.png",
+        "/images/blog/blog-ai-workflow.png",
+        "/images/store/prod-creator-camera.png",
+        "/images/blog/blog-ai-tools.png",
+        "/images/store/prod-headphones.png",
+        "/images/blog/blog-kp-foundation.png",
+        "/images/store/prod-keyboard.png",
+        "/images/brand/portrait.png",
+      ],
+      messages: [
+        { text: "AI-powered sites from \u20B94,999", href: "#/services" },
+        { text: "Honest gear reviews \u2014 curated in Calicut", href: "#/store" },
+        { text: "Join a venture \u2014 build the next startup with me", href: "#/ventures" },
+        { text: "Free quote within 24 hours", href: "#/contact" },
+        { text: "The 195-country mission", href: "#/about" },
+        { text: "New on the blog \u2014 AI workflows that ship", href: "#/blog" },
+      ],
+      speed: "normal",
+    },
     stickers: { enabled: false, items: [] },
     blogGifs: { enabled: false, gifs: [] },
   };
@@ -225,7 +248,35 @@ function record(v: unknown, fallback: Record<string, string>): Record<string, st
   return out;
 }
 
-const AD_PLACEMENTS = ["blog-inline", "blog-sidebar", "home-strip", "store-side"];
+const AD_PLACEMENTS = ["blog-inline", "blog-sidebar", "home-strip", "hero-marquee", "store-side"];
+
+const MARQUEE_SPEEDS: readonly MarqueeSpeed[] = ["slow", "normal", "fast"];
+
+/**
+ * Hero marquee marketing chips (Task 12-d): text trimmed to 60 chars, href
+ * only in-app hash routes or https URLs (anything else degrades to null).
+ * A MISSING array falls back to the default chips; a present (even empty)
+ * array is honored as deliberate owner intent. Capped at 12 chips.
+ */
+function resolveMarqueeMessages(v: unknown, fallback: MarqueeMessage[]): MarqueeMessage[] {
+  if (!Array.isArray(v)) return fallback;
+  const out: MarqueeMessage[] = [];
+  for (const item of v) {
+    if (typeof item !== "object" || item === null) continue;
+    const m = item as { text?: unknown; href?: unknown };
+    if (typeof m.text !== "string") continue;
+    const text = m.text.trim().slice(0, 60);
+    if (!text) continue;
+    let href: string | null = null;
+    if (typeof m.href === "string") {
+      const t = m.href.trim();
+      if (t.startsWith("#/") || t.startsWith("https://")) href = t;
+    }
+    out.push({ text, href });
+    if (out.length >= 12) break;
+  }
+  return out;
+}
 
 /* ------------------------------------------------------------------ */
 /* resolvers: stored row merged over defaults                           */
@@ -307,6 +358,8 @@ export function resolveMedia(raw: Record<string, unknown>): MediaSettings {
     heroMarquee: {
       enabled: bool(hero.enabled, d.heroMarquee.enabled),
       images: strArray(hero.images, d.heroMarquee.images).slice(0, 16),
+      messages: resolveMarqueeMessages(hero.messages, d.heroMarquee.messages),
+      speed: pick(hero.speed, MARQUEE_SPEEDS, d.heroMarquee.speed),
     },
     stickers: {
       enabled: bool(stickers.enabled, d.stickers.enabled),

@@ -9,6 +9,7 @@ import {
   ArrowUp,
   BarChart3,
   Check,
+  GalleryHorizontal,
   Globe,
   Plus,
   Save,
@@ -83,6 +84,24 @@ interface StickerDraft {
   value: string;
   corner: string;
 }
+interface MessageDraft {
+  text: string;
+  href: string;
+}
+
+/**
+ * Default hero marquee chips — mirrors defaultMedia() in
+ * api/settings/_lib.ts (client-side fallback for legacy rows that predate
+ * the messages field, so the editor always shows the effective band).
+ */
+const DEFAULT_HERO_MESSAGES: MessageDraft[] = [
+  { text: "AI-powered sites from \u20B94,999", href: "#/services" },
+  { text: "Honest gear reviews \u2014 curated in Calicut", href: "#/store" },
+  { text: "Join a venture \u2014 build the next startup with me", href: "#/ventures" },
+  { text: "Free quote within 24 hours", href: "#/contact" },
+  { text: "The 195-country mission", href: "#/about" },
+  { text: "New on the blog \u2014 AI workflows that ship", href: "#/blog" },
+];
 
 interface BrandDraft {
   siteName: string;
@@ -107,6 +126,8 @@ interface FooterDraft {
 interface MediaDraft {
   heroEnabled: boolean;
   heroImages: string[];
+  heroMessages: MessageDraft[];
+  heroSpeed: string;
   stickersEnabled: boolean;
   stickerItems: StickerDraft[];
   gifsEnabled: boolean;
@@ -392,8 +413,17 @@ export default function SettingsView() {
         : [],
     });
     setMedia({
-      heroEnabled: asBool(hero.enabled),
+      heroEnabled: asBool(hero.enabled, true),
       heroImages: asStrArr(hero.images),
+      heroMessages: Array.isArray(hero.messages)
+        ? (hero.messages as unknown[]).map((mm) => {
+            const msg = (mm ?? {}) as { text?: unknown; href?: unknown };
+            return { text: asString(msg.text), href: asString(msg.href) };
+          })
+        : DEFAULT_HERO_MESSAGES.map((m) => ({ ...m })),
+      heroSpeed: ["slow", "normal", "fast"].includes(asString(hero.speed))
+        ? asString(hero.speed)
+        : "normal",
       stickersEnabled: asBool(stickers.enabled),
       stickerItems: Array.isArray(stickers.items)
         ? (stickers.items as unknown[]).map((s) => {
@@ -508,7 +538,17 @@ export default function SettingsView() {
   });
 
   const buildMediaValue = (): Record<string, unknown> => ({
-    heroMarquee: { enabled: media?.heroEnabled ?? false, images: media?.heroImages ?? [] },
+    heroMarquee: {
+      enabled: media?.heroEnabled ?? false,
+      images: media?.heroImages ?? [],
+      messages: (media?.heroMessages ?? [])
+        .map((m) => ({ text: m.text.trim().slice(0, 60), href: m.href.trim() || null }))
+        .filter((m) => m.text.length > 0)
+        .slice(0, 12),
+      speed: ["slow", "normal", "fast"].includes(media?.heroSpeed ?? "")
+        ? media?.heroSpeed
+        : "normal",
+    },
     stickers: { enabled: media?.stickersEnabled ?? false, items: media?.stickerItems ?? [] },
     blogGifs: { enabled: media?.gifsEnabled ?? false, gifs: media?.gifs ?? [] },
   });
@@ -957,105 +997,216 @@ export default function SettingsView() {
               </div>
               {media ? (
                 <div className="grid gap-4 lg:grid-cols-2">
-                  {/* hero marquee */}
-                  <Card>
+                  {/* hero marquee — dual-lane marketing band (Task 12-d) */}
+                  <Card className="lg:col-span-2">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-base">Hero marquee</CardTitle>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <GalleryHorizontal className="size-4 text-gold" aria-hidden="true" />
+                          Hero marquee
+                        </CardTitle>
                         <Switch
                           checked={media.heroEnabled}
                           onCheckedChange={(v) => { setMedia({ ...media, heroEnabled: v }); touch("media"); }}
                           aria-label="Toggle hero marquee"
                         />
                       </div>
-                      <CardDescription>Image strip on the home hero</CardDescription>
+                      <CardDescription>
+                        Dual-lane marketing band under the home hero — an image track plus
+                        scrolling marketing chips and sponsored picks (serve ads via the
+                        &ldquo;Hero marquee&rdquo; placement in the Ad Manager)
+                      </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      {media.heroImages.map((img, i) => (
-                        <div key={`hero-${i}`} className="flex items-center gap-2">
-                          <img src={img} alt="" loading="lazy" decoding="async" className="size-10 shrink-0 rounded-md border object-cover" />
-                          <Input
-                            value={img}
-                            onChange={(e) => {
-                              const next = [...media.heroImages];
-                              next[i] = e.target.value;
-                              setMedia({ ...media, heroImages: next });
-                              touch("media");
-                            }}
-                            aria-label={`Marquee image ${i + 1}`}
-                            className="flex-1 font-mono text-xs"
-                          />
-                          <div className="flex shrink-0 gap-1">
+                    <CardContent className="space-y-5">
+                      <div className="grid gap-5 lg:grid-cols-2">
+                        {/* lane A — images */}
+                        <div className="space-y-3">
+                          <Label>Image track — lane A</Label>
+                          {media.heroImages.map((img, i) => (
+                            <div key={`hero-${i}`} className="flex items-center gap-2">
+                              <img src={img} alt="" loading="lazy" decoding="async" className="size-10 shrink-0 rounded-md border object-cover" />
+                              <Input
+                                value={img}
+                                onChange={(e) => {
+                                  const next = [...media.heroImages];
+                                  next[i] = e.target.value;
+                                  setMedia({ ...media, heroImages: next });
+                                  touch("media");
+                                }}
+                                aria-label={`Marquee image ${i + 1}`}
+                                className="flex-1 font-mono text-xs"
+                              />
+                              <div className="flex shrink-0 gap-1">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className="size-9"
+                                  disabled={i === 0}
+                                  onClick={() => {
+                                    const next = [...media.heroImages];
+                                    [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                                    setMedia({ ...media, heroImages: next });
+                                    touch("media");
+                                  }}
+                                  aria-label={`Move image ${i + 1} up`}
+                                >
+                                  <ArrowUp className="size-4" aria-hidden="true" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className="size-9"
+                                  disabled={i === media.heroImages.length - 1}
+                                  onClick={() => {
+                                    const next = [...media.heroImages];
+                                    [next[i + 1], next[i]] = [next[i], next[i + 1]];
+                                    setMedia({ ...media, heroImages: next });
+                                    touch("media");
+                                  }}
+                                  aria-label={`Move image ${i + 1} down`}
+                                >
+                                  <ArrowDown className="size-4" aria-hidden="true" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-9 text-muted-foreground hover:text-destructive"
+                                  onClick={() => {
+                                    setMedia({ ...media, heroImages: media.heroImages.filter((_, idx) => idx !== i) });
+                                    touch("media");
+                                  }}
+                                  aria-label={`Remove image ${i + 1}`}
+                                >
+                                  <X className="size-4" aria-hidden="true" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          <div className="flex gap-2">
+                            <Input
+                              value={newImage}
+                              onChange={(e) => setNewImage(e.target.value)}
+                              placeholder="/images/blog/... (add image URL)"
+                              aria-label="New marquee image URL"
+                              className="h-10"
+                            />
                             <Button
                               type="button"
                               variant="outline"
-                              size="icon"
-                              className="size-9"
-                              disabled={i === 0}
+                              className="h-10"
                               onClick={() => {
-                                const next = [...media.heroImages];
-                                [next[i - 1], next[i]] = [next[i], next[i - 1]];
-                                setMedia({ ...media, heroImages: next });
+                                const url = newImage.trim();
+                                if (!url || media.heroImages.includes(url)) return;
+                                setMedia({ ...media, heroImages: [...media.heroImages, url] });
+                                setNewImage("");
                                 touch("media");
                               }}
-                              aria-label={`Move image ${i + 1} up`}
                             >
-                              <ArrowUp className="size-4" aria-hidden="true" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="size-9"
-                              disabled={i === media.heroImages.length - 1}
-                              onClick={() => {
-                                const next = [...media.heroImages];
-                                [next[i + 1], next[i]] = [next[i], next[i + 1]];
-                                setMedia({ ...media, heroImages: next });
-                                touch("media");
-                              }}
-                              aria-label={`Move image ${i + 1} down`}
-                            >
-                              <ArrowDown className="size-4" aria-hidden="true" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="size-9 text-muted-foreground hover:text-destructive"
-                              onClick={() => {
-                                setMedia({ ...media, heroImages: media.heroImages.filter((_, idx) => idx !== i) });
-                                touch("media");
-                              }}
-                              aria-label={`Remove image ${i + 1}`}
-                            >
-                              <X className="size-4" aria-hidden="true" />
+                              Add
                             </Button>
                           </div>
                         </div>
-                      ))}
-                      <div className="flex gap-2">
-                        <Input
-                          value={newImage}
-                          onChange={(e) => setNewImage(e.target.value)}
-                          placeholder="/images/blog/... (add image URL)"
-                          aria-label="New marquee image URL"
-                          className="h-10"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-10"
-                          onClick={() => {
-                            const url = newImage.trim();
-                            if (!url || media.heroImages.includes(url)) return;
-                            setMedia({ ...media, heroImages: [...media.heroImages, url] });
-                            setNewImage("");
-                            touch("media");
-                          }}
-                        >
-                          Add
-                        </Button>
+
+                        {/* lane B — marketing chips + speed */}
+                        <div className="space-y-3">
+                          <Label>Marketing chips — lane B</Label>
+                          {media.heroMessages.map((m, i) => (
+                            <div key={`hero-msg-${i}`} className="flex flex-col gap-2 sm:flex-row">
+                              <Input
+                                value={m.text}
+                                maxLength={60}
+                                onChange={(e) => {
+                                  const next = [...media.heroMessages];
+                                  next[i] = { ...m, text: e.target.value };
+                                  setMedia({ ...media, heroMessages: next });
+                                  touch("media");
+                                }}
+                                placeholder="Chip text (max 60 chars)"
+                                aria-label={`Marquee message ${i + 1} text`}
+                                className="flex-1"
+                              />
+                              <Input
+                                value={m.href}
+                                onChange={(e) => {
+                                  const next = [...media.heroMessages];
+                                  next[i] = { ...m, href: e.target.value };
+                                  setMedia({ ...media, heroMessages: next });
+                                  touch("media");
+                                }}
+                                placeholder="#/services or https://... (optional)"
+                                aria-label={`Marquee message ${i + 1} link`}
+                                className="font-mono text-xs sm:max-w-[220px]"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
+                                onClick={() => {
+                                  setMedia({ ...media, heroMessages: media.heroMessages.filter((_, idx) => idx !== i) });
+                                  touch("media");
+                                }}
+                                aria-label={`Remove message ${i + 1}`}
+                              >
+                                <X className="size-4" aria-hidden="true" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-9 gap-2"
+                            disabled={media.heroMessages.length >= 12}
+                            onClick={() => {
+                              setMedia({ ...media, heroMessages: [...media.heroMessages, { text: "", href: "" }] });
+                              touch("media");
+                            }}
+                          >
+                            <Plus className="size-4" aria-hidden="true" />
+                            Add message chip
+                          </Button>
+                          <div className="space-y-2">
+                            <Label htmlFor="hero-speed">Scroll speed</Label>
+                            <Select
+                              value={media.heroSpeed}
+                              onValueChange={(v) => {
+                                setMedia({ ...media, heroSpeed: v });
+                                touch("media");
+                              }}
+                            >
+                              <SelectTrigger id="hero-speed" className="h-10 w-full sm:w-[220px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="slow">Slow — 60s loop</SelectItem>
+                                <SelectItem value="normal">Normal — 42s loop</SelectItem>
+                                <SelectItem value="fast">Fast — 28s loop</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">Default: normal</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* live chip preview */}
+                      <div className="rounded-lg border bg-muted/30 p-3">
+                        <p className="text-xs font-medium text-muted-foreground">Live chip preview</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border bg-card px-4 py-1.5 text-xs font-medium">
+                            <span className="size-1.5 rounded-full bg-gold" aria-hidden="true" />
+                            {media.heroMessages.find((m) => m.text.trim())?.text.trim() ||
+                              "Your marketing chip appears here"}
+                          </span>
+                          {media.heroMessages.find((m) => m.text.trim() && m.href.trim()) ? (
+                            <span className="font-mono text-[11px] text-muted-foreground">
+                              {media.heroMessages.find((m) => m.text.trim() && m.href.trim())?.href.trim()}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

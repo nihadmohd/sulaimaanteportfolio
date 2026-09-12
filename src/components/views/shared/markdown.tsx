@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import type { Components } from "react-markdown";
+import { Check, Copy } from "lucide-react";
 import { ALink } from "@/components/router/link";
 import { LoadingState } from "@/components/states/loading";
+import { useToast } from "@/hooks/use-toast";
 
 /**
  * Shared lazy markdown renderer for 4-a views (post-view + product-view).
@@ -121,11 +123,7 @@ const MARKDOWN_COMPONENTS: Components = {
       </code>
     );
   },
-  pre: ({ children }) => (
-    <pre className="my-5 overflow-x-auto rounded-xl border bg-muted p-4 font-mono text-sm leading-relaxed">
-      {children}
-    </pre>
-  ),
+  pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
   table: ({ children }) => (
     <div className="my-5 overflow-x-auto rounded-xl border">
       <table className="w-full border-collapse text-sm">{children}</table>
@@ -144,6 +142,65 @@ const MARKDOWN_COMPONENTS: Components = {
 
 export interface MarkdownBlockProps {
   content: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* code block copy button (12-a — additive)                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * pre renderer with a top-right copy button. The wrapper carries the old
+ * pre margins; the copy button is always visible (subtle) on touch screens
+ * and fades in on hover / keyboard focus on md+. Additive — the exported
+ * markdown API is unchanged.
+ */
+function CodeBlock({ children }: { children?: React.ReactNode }) {
+  const { toast } = useToast();
+  const [copied, setCopied] = React.useState(false);
+  const preRef = React.useRef<HTMLPreElement | null>(null);
+  const timerRef = React.useRef(0);
+
+  React.useEffect(() => () => window.clearTimeout(timerRef.current), []);
+
+  const copyCode = async () => {
+    const text = preRef.current?.querySelector("code")?.textContent ?? preRef.current?.textContent ?? "";
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.clearTimeout(timerRef.current);
+      timerRef.current = window.setTimeout(() => setCopied(false), 2000);
+      toast({ title: "Code copied", description: "The code block is on your clipboard." });
+    } catch {
+      toast({
+        title: "Could not copy",
+        description: "Select the code and copy it manually.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="group relative my-5">
+      <pre
+        ref={preRef}
+        className="overflow-x-auto rounded-xl border bg-muted p-4 font-mono text-sm leading-relaxed"
+      >
+        {children}
+      </pre>
+      <button
+        type="button"
+        onClick={copyCode}
+        aria-label="Copy code to clipboard"
+        className="press-sm absolute right-2 top-2 z-10 flex size-8 items-center justify-center rounded-lg border border-gold/30 bg-card/90 text-muted-foreground shadow-xs backdrop-blur-sm transition-all hover:border-gold/60 hover:text-gold focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+      >
+        {copied ? (
+          <Check className="size-3.5 text-primary" aria-hidden="true" />
+        ) : (
+          <Copy className="size-3.5" aria-hidden="true" />
+        )}
+      </button>
+    </div>
+  );
 }
 
 /** Lazy renderer — the markdown stack loads only when first rendered. */

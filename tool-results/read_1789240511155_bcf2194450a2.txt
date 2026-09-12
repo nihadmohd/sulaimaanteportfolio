@@ -1,0 +1,936 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { useForm, useWatch } from "react-hook-form";
+     5→import { zodResolver } from "@hookform/resolvers/zod";
+     6→import { z } from "zod";
+     7→import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+     8→import {
+     9→  ArrowLeft,
+    10→  ExternalLink,
+    11→  Eye,
+    12→  Plus,
+    13→  Trash2,
+    14→  X,
+    15→} from "lucide-react";
+    16→import { Badge } from "@/components/ui/badge";
+    17→import { Button } from "@/components/ui/button";
+    18→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    19→import {
+    20→  Form,
+    21→  FormControl,
+    22→  FormDescription,
+    23→  FormField,
+    24→  FormItem,
+    25→  FormLabel,
+    26→  FormMessage,
+    27→} from "@/components/ui/form";
+    28→import { Input } from "@/components/ui/input";
+    29→import {
+    30→  Select,
+    31→  SelectContent,
+    32→  SelectItem,
+    33→  SelectTrigger,
+    34→  SelectValue,
+    35→} from "@/components/ui/select";
+    36→import { Slider } from "@/components/ui/slider";
+    37→import { Switch } from "@/components/ui/switch";
+    38→import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    39→import { Textarea } from "@/components/ui/textarea";
+    40→import { ALink } from "@/components/router/link";
+    41→import { ForbiddenState, LoadingState } from "@/components/states";
+    42→import { MarkdownBlock, MarkdownFallback } from "@/components/views/shared/markdown";
+    43→import { ProductCard, Stars } from "@/components/shared/product-card";
+    44→import { SEOHead } from "@/components/shared/seo-head";
+    45→import { toast } from "@/hooks/use-toast";
+    46→import { useHashParams } from "@/hooks/use-hash-params";
+    47→import { navigate } from "@/hooks/use-router";
+    48→import type { ProductDTO } from "@/types";
+    49→import { AdminShell } from "./_shell";
+    50→import {
+    51→  apiFetch,
+    52→  ConfirmAction,
+    53→  fmtDate,
+    54→  formatCompact,
+    55→  formatINR,
+    56→  slugify,
+    57→  useAdminGuard,
+    58→  useCategories,
+    59→} from "./_shared";
+    60→
+    61→/**
+    62→ * Product editor (#/admin/products/:id — route key "admin-product-edit";
+    63→ * "new"=create). The full affiliate form: auto-slug, markdown description
+    64→ * w/ preview, image + gallery chips, price/compare/discount, pros/cons row
+    65→ * editors, keySpecs pairs, rating slider, live ProductCard preview.
+    66→ */
+    67→
+    68→const STORE_IMAGES = [
+    69→  "/images/store/prod-headphones.png",
+    70→  "/images/store/prod-creator-camera.png",
+    71→  "/images/store/prod-mouse.png",
+    72→  "/images/store/prod-keyboard.png",
+    73→  "/images/store/prod-powerbank.png",
+    74→  "/images/store/prod-ssd.png",
+    75→];
+    76→
+    77→const MERCHANT_SUGGESTIONS = ["Amazon", "Flipkart", "MN.KP Digital", "Croma", "Myntra", "Noise"];
+    78→
+    79→const productFormSchema = z.object({
+    80→  name: z.string().min(3, "Product name is required").max(140),
+    81→  slug: z.string().max(96).optional(),
+    82→  tagline: z.string().max(160).optional(),
+    83→  description: z.string().optional(),
+    84→  brand: z.string().max(60).optional(),
+    85→  merchant: z.string().max(60).optional(),
+    86→  imageUrl: z.string().optional(),
+    87→  affiliateUrl: z.string().min(3, "Affiliate URL is required").max(600),
+    88→  price: z
+    89→    .string()
+    90→    .optional()
+    91→    .refine((v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 0), "Enter a valid price"),
+    92→  compareAtPrice: z
+    93→    .string()
+    94→    .optional()
+    95→    .refine((v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 0), "Enter a valid price"),
+    96→  reviewCount: z
+    97→    .string()
+    98→    .optional()
+    99→    .refine((v) => !v || (Number.isInteger(Number(v)) && Number(v) >= 0), "Whole number"),
+   100→  status: z.enum(["active", "draft", "archived"]),
+   101→  isFeatured: z.boolean(),
+   102→  categoryId: z.string().optional(),
+   103→});
+   104→
+   105→type ProductFormValues = z.infer<typeof productFormSchema>;
+   106→
+   107→interface SpecRow {
+   108→  key: string;
+   109→  value: string;
+   110→}
+   111→
+   112→export default function ProductEditView() {
+   113→  const { id } = useHashParams<{ id: string }>();
+   114→  const isNew = !id || id === "new";
+   115→  const { isLoading, allowed } = useAdminGuard();
+   116→  const queryClient = useQueryClient();
+   117→  const categories = useCategories("store");
+   118→
+   119→  const [gallery, setGallery] = React.useState<string[]>([]);
+   120→  const [pros, setPros] = React.useState<string[]>([]);
+   121→  const [cons, setCons] = React.useState<string[]>([]);
+   122→  const [keySpecs, setKeySpecs] = React.useState<SpecRow[]>([]);
+   123→  const [rating, setRating] = React.useState(0);
+   124→  const [slugTouched, setSlugTouched] = React.useState(false);
+   125→  const [galleryInput, setGalleryInput] = React.useState("");
+   126→  const [descTab, setDescTab] = React.useState<"write" | "preview">("write");
+   127→  const [extraDirty, setExtraDirty] = React.useState(false);
+   128→
+   129→  const form = useForm<ProductFormValues>({
+   130→    resolver: zodResolver(productFormSchema),
+   131→    defaultValues: {
+   132→      name: "",
+   133→      slug: "",
+   134→      tagline: "",
+   135→      description: "",
+   136→      brand: "",
+   137→      merchant: "",
+   138→      imageUrl: "",
+   139→      affiliateUrl: "",
+   140→      price: "",
+   141→      compareAtPrice: "",
+   142→      reviewCount: "",
+   143→      status: "active",
+   144→      isFeatured: false,
+   145→      categoryId: "",
+   146→    },
+   147→  });
+   148→
+   149→  const productQuery = useQuery({
+   150→    queryKey: ["admin-product", id],
+   151→    queryFn: () => apiFetch<ProductDTO>(`/api/products/${id}`),
+   152→    enabled: allowed && !isNew,
+   153→    retry: 1,
+   154→  });
+   155→
+   156→  React.useEffect(() => {
+   157→    if (!productQuery.data) return;
+   158→    const p = productQuery.data;
+   159→    form.reset({
+   160→      name: p.name,
+   161→      slug: p.slug,
+   162→      tagline: p.tagline ?? "",
+   163→      description: p.description ?? "",
+   164→      brand: p.brand ?? "",
+   165→      merchant: p.merchant ?? "",
+   166→      imageUrl: p.imageUrl ?? "",
+   167→      affiliateUrl: p.affiliateUrl,
+   168→      price: p.price != null ? String(p.price) : "",
+   169→      compareAtPrice: p.compareAtPrice != null ? String(p.compareAtPrice) : "",
+   170→      reviewCount: String(p.reviewCount ?? 0),
+   171→      status: p.status,
+   172→      isFeatured: p.isFeatured,
+   173→      categoryId: p.category?.id ?? "",
+   174→    });
+   175→    setGallery(p.gallery);
+   176→    setPros(p.pros);
+   177→    setCons(p.cons);
+   178→    setKeySpecs(Object.entries(p.keySpecs).map(([key, value]) => ({ key, value })));
+   179→    setRating(p.rating);
+   180→    setSlugTouched(true);
+   181→    setExtraDirty(false);
+   182→  }, [productQuery.data, form]);
+   183→
+   184→  // useWatch (single call, whole values) instead of form.watch — satisfies
+   185→  // react-hooks/incompatible-library; defaults are complete so the cast is safe.
+   186→  const watched = useWatch({ control: form.control }) as ProductFormValues;
+   187→
+   188→  const effectiveSlug = slugTouched && watched.slug ? slugify(watched.slug) : slugify(watched.name);
+   189→  const priceNum = watched.price ? Number(watched.price) : 0;
+   190→  const compareNum = watched.compareAtPrice ? Number(watched.compareAtPrice) : 0;
+   191→  const discount =
+   192→    compareNum > priceNum && priceNum > 0 ? Math.round((1 - priceNum / compareNum) * 100) : 0;
+   193→  const isDirty = form.formState.isDirty || extraDirty;
+   194→
+   195→  const saveMutation = useMutation({
+   196→    mutationFn: (values: ProductFormValues) => {
+   197→      const body: Record<string, unknown> = {
+   198→        name: values.name,
+   199→        affiliateUrl: values.affiliateUrl,
+   200→        status: values.status,
+   201→        isFeatured: values.isFeatured,
+   202→        currency: "INR",
+   203→        imageUrl: values.imageUrl || "",
+   204→        gallery: gallery.filter(Boolean),
+   205→        pros: pros.map((s) => s.trim()).filter(Boolean),
+   206→        cons: cons.map((s) => s.trim()).filter(Boolean),
+   207→        keySpecs: Object.fromEntries(
+   208→          keySpecs.filter((row) => row.key.trim()).map((row) => [row.key.trim(), row.value])
+   209→        ),
+   210→        rating,
+   211→        reviewCount: Number(values.reviewCount || 0),
+   212→        price: values.price ? Number(values.price) : null,
+   213→        compareAtPrice: values.compareAtPrice ? Number(values.compareAtPrice) : null,
+   214→        categoryId: values.categoryId || null,
+   215→        tagline: values.tagline || undefined,
+   216→        description: values.description || undefined,
+   217→        brand: values.brand || undefined,
+   218→        merchant: values.merchant || undefined,
+   219→      };
+   220→      if (slugTouched && values.slug) body.slug = slugify(values.slug);
+   221→      return isNew
+   222→        ? apiFetch<ProductDTO>("/api/products", { method: "POST", body: JSON.stringify(body) })
+   223→        : apiFetch<ProductDTO>(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+   224→    },
+   225→    onSuccess: (product) => {
+   226→      toast({ title: isNew ? "Product created" : "Product saved", description: product.name });
+   227→      setExtraDirty(false);
+   228→      void queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+   229→      void queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+   230→      if (isNew) navigate(`/admin/products/${product.id}`);
+   231→      else form.reset(form.getValues());
+   232→    },
+   233→    onError: (e: Error) =>
+   234→      toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+   235→  });
+   236→
+   237→  const deleteMutation = useMutation({
+   238→    mutationFn: () => apiFetch(`/api/products/${id}`, { method: "DELETE" }),
+   239→    onSuccess: () => {
+   240→      toast({ title: "Product deleted" });
+   241→      void queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+   242→      navigate("/admin/products");
+   243→    },
+   244→    onError: (e: Error) =>
+   245→      toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+   246→  });
+   247→
+   248→  if (isLoading) return <LoadingState variant="spinner" label="Loading editor" />;
+   249→  if (!allowed) return <ForbiddenState />;
+   250→  if (!isNew && productQuery.isPending) return <LoadingState variant="skeleton" rows={6} />;
+   251→  if (!isNew && productQuery.isError) {
+   252→    return (
+   253→      <AdminShell title="Edit product">
+   254→        <p className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+   255→          This product could not be loaded.{" "}
+   256→          {productQuery.error instanceof Error ? productQuery.error.message : ""}
+   257→        </p>
+   258→      </AdminShell>
+   259→    );
+   260→  }
+   261→
+   262→  const onSubmit = (values: ProductFormValues) => saveMutation.mutate(values);
+   263→
+   264→  const addGallery = () => {
+   265→    const url = galleryInput.trim();
+   266→    if (!url || gallery.includes(url) || gallery.length >= 8) return;
+   267→    setGallery([...gallery, url]);
+   268→    setGalleryInput("");
+   269→    setExtraDirty(true);
+   270→  };
+   271→
+   272→  const rowEditor = (
+   273→    rows: string[],
+   274→    setRows: (rows: string[]) => void,
+   275→    label: string,
+   276→    placeholder: string
+   277→  ) => (
+   278→    <div className="space-y-2">
+   279→      {rows.map((row, i) => (
+   280→        <div key={`${label}-${i}`} className="flex gap-2">
+   281→          <Input
+   282→            value={row}
+   283→            onChange={(e) => {
+   284→              const next = [...rows];
+   285→              next[i] = e.target.value;
+   286→              setRows(next);
+   287→              setExtraDirty(true);
+   288→            }}
+   289→            placeholder={placeholder}
+   290→            aria-label={`${label} ${i + 1}`}
+   291→            className="h-10"
+   292→          />
+   293→          <Button
+   294→            type="button"
+   295→            variant="ghost"
+   296→            size="icon"
+   297→            className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
+   298→            onClick={() => {
+   299→              setRows(rows.filter((_, idx) => idx !== i));
+   300→              setExtraDirty(true);
+   301→            }}
+   302→            aria-label={`Remove ${label} ${i + 1}`}
+   303→          >
+   304→            <X className="size-4" aria-hidden="true" />
+   305→          </Button>
+   306→        </div>
+   307→      ))}
+   308→      <Button
+   309→        type="button"
+   310→        variant="outline"
+   311→        size="sm"
+   312→        className="h-9 gap-2"
+   313→        onClick={() => {
+   314→          setRows([...rows, ""]);
+   315→          setExtraDirty(true);
+   316→        }}
+   317→      >
+   318→        <Plus className="size-4" aria-hidden="true" />
+   319→        Add {label.toLowerCase()}
+   320→      </Button>
+   321→    </div>
+   322→  );
+   323→
+   324→  return (
+   325→    <AdminShell
+   326→      title={isNew ? "New product" : "Edit product"}
+   327→      description={isNew ? "Add a curated item to the affiliate store." : `Last updated ${fmtDate(productQuery.data?.updatedAt)}`}
+   328→      actions={
+   329→        <>
+   330→          {isDirty ? (
+   331→            <Badge variant="outline" className="h-9 border-amber-500/40 bg-amber-500/10 px-3 text-amber-600 dark:text-amber-400">
+   332→              Unsaved changes
+   333→            </Badge>
+   334→          ) : null}
+   335→          <ALink href="#/admin/products">
+   336→            <Button variant="outline" size="sm" className="h-9 gap-2">
+   337→              <ArrowLeft className="size-4" aria-hidden="true" />
+   338→              All products
+   339→            </Button>
+   340→          </ALink>
+   341→          <Button
+   342→            size="sm"
+   343→            className="h-9"
+   344→            onClick={form.handleSubmit(onSubmit)}
+   345→            disabled={saveMutation.isPending}
+   346→          >
+   347→            {saveMutation.isPending ? "Saving..." : isNew ? "Create product" : "Save changes"}
+   348→          </Button>
+   349→          {!isNew ? (
+   350→            <ConfirmAction
+   351→              trigger={
+   352→                <Button
+   353→                  variant="outline"
+   354→                  size="icon"
+   355→                  className="size-9 text-muted-foreground hover:text-destructive"
+   356→                  aria-label="Delete product"
+   357→                >
+   358→                  <Trash2 className="size-4" aria-hidden="true" />
+   359→                </Button>
+   360→              }
+   361→              title="Delete this product?"
+   362→              description="The catalog entry and its click history will be permanently removed."
+   363→              onConfirm={() => deleteMutation.mutateAsync()}
+   364→            />
+   365→          ) : null}
+   366→        </>
+   367→      }
+   368→    >
+   369→      <SEOHead title={`${isNew ? "New product" : "Edit product"} — Admin & Developer | MN.KP`} noindex />
+   370→
+   371→      <Form {...form}>
+   372→        <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 lg:grid-cols-[1fr_360px]">
+   373→          {/* ---------------- main column ---------------- */}
+   374→          <div className="space-y-6">
+   375→            <Card>
+   376→              <CardContent className="space-y-5 pt-6">
+   377→                <FormField
+   378→                  control={form.control}
+   379→                  name="name"
+   380→                  render={({ field }) => (
+   381→                    <FormItem>
+   382→                      <FormLabel>Name</FormLabel>
+   383→                      <FormControl>
+   384→                        <Input placeholder="Sony WH-1000XM5 Wireless Headphones" {...field} className="h-10 text-base" />
+   385→                      </FormControl>
+   386→                      <FormMessage />
+   387→                    </FormItem>
+   388→                  )}
+   389→                />
+   390→
+   391→                <FormField
+   392→                  control={form.control}
+   393→                  name="slug"
+   394→                  render={({ field }) => (
+   395→                    <FormItem>
+   396→                      <FormLabel>Slug</FormLabel>
+   397→                      <FormControl>
+   398→                        <div className="flex items-center gap-2">
+   399→                          <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">/store/</span>
+   400→                          <Input
+   401→                            {...field}
+   402→                            value={slugTouched ? field.value : effectiveSlug}
+   403→                            onChange={(e) => {
+   404→                              setSlugTouched(true);
+   405→                              field.onChange(e);
+   406→                            }}
+   407→                            placeholder="auto-generated-from-name"
+   408→                            className="h-10 font-mono text-sm"
+   409→                          />
+   410→                        </div>
+   411→                      </FormControl>
+   412→                      <FormDescription>
+   413→                        {slugTouched ? "Custom slug — dashes and lowercase" : "Auto-generated from the name (editable)"}
+   414→                      </FormDescription>
+   415→                      <FormMessage />
+   416→                    </FormItem>
+   417→                  )}
+   418→                />
+   419→
+   420→                <FormField
+   421→                  control={form.control}
+   422→                  name="tagline"
+   423→                  render={({ field }) => (
+   424→                    <FormItem>
+   425→                      <FormLabel>Tagline</FormLabel>
+   426→                      <FormControl>
+   427→                        <Input {...field} value={field.value ?? ""} placeholder="The one-line pitch shown on cards" className="h-10" />
+   428→                      </FormControl>
+   429→                      <FormDescription>{(field.value ?? "").length}/160 characters</FormDescription>
+   430→                      <FormMessage />
+   431→                    </FormItem>
+   432→                  )}
+   433→                />
+   434→
+   435→                <div className="grid gap-5 sm:grid-cols-2">
+   436→                  <FormField
+   437→                    control={form.control}
+   438→                    name="brand"
+   439→                    render={({ field }) => (
+   440→                      <FormItem>
+   441→                        <FormLabel>Brand</FormLabel>
+   442→                        <FormControl>
+   443→                          <Input {...field} value={field.value ?? ""} placeholder="Sony" className="h-10" />
+   444→                        </FormControl>
+   445→                        <FormMessage />
+   446→                      </FormItem>
+   447→                    )}
+   448→                  />
+   449→                  <FormField
+   450→                    control={form.control}
+   451→                    name="merchant"
+   452→                    render={({ field }) => (
+   453→                      <FormItem>
+   454→                        <FormLabel>Merchant</FormLabel>
+   455→                        <FormControl>
+   456→                          <>
+   457→                            <Input {...field} value={field.value ?? ""} placeholder="Amazon" list="merchant-suggestions" className="h-10" />
+   458→                            <datalist id="merchant-suggestions">
+   459→                              {MERCHANT_SUGGESTIONS.map((m) => (
+   460→                                <option key={m} value={m} />
+   461→                              ))}
+   462→                            </datalist>
+   463→                          </>
+   464→                        </FormControl>
+   465→                        <FormDescription>Suggestions: Amazon, Flipkart, MN.KP Digital...</FormDescription>
+   466→                        <FormMessage />
+   467→                      </FormItem>
+   468→                    )}
+   469→                  />
+   470→                </div>
+   471→
+   472→                <div>
+   473→                  <FormLabel>Description (markdown)</FormLabel>
+   474→                  <Tabs value={descTab} onValueChange={(v) => setDescTab(v as "write" | "preview")} className="mt-2">
+   475→                    <div className="flex items-center justify-between">
+   476→                      <TabsList className="h-9">
+   477→                        <TabsTrigger value="write" className="h-7">Write</TabsTrigger>
+   478→                        <TabsTrigger value="preview" className="h-7">
+   479→                          <Eye className="mr-1 size-3.5" aria-hidden="true" />
+   480→                          Preview
+   481→                        </TabsTrigger>
+   482→                      </TabsList>
+   483→                      <p className="text-xs text-muted-foreground">
+   484→                        {(watched.description ?? "").length.toLocaleString("en-IN")} chars
+   485→                      </p>
+   486→                    </div>
+   487→                  </Tabs>
+   488→                  {descTab === "write" ? (
+   489→                    <FormField
+   490→                      control={form.control}
+   491→                      name="description"
+   492→                      render={({ field }) => (
+   493→                        <FormItem className="mt-3">
+   494→                          <FormControl>
+   495→                            <Textarea
+   496→                              {...field}
+   497→                              value={field.value ?? ""}
+   498→                              rows={12}
+   499→                              placeholder={"An honest review — who it is for, who should skip it..."}
+   500→                              className="min-h-[280px] font-mono text-[13px] leading-relaxed"
+   501→                            />
+   502→                          </FormControl>
+   503→                          <FormMessage />
+   504→                        </FormItem>
+   505→                      )}
+   506→                    />
+   507→                  ) : (
+   508→                    <div className="mt-3 min-h-[280px] rounded-lg border p-4">
+   509→                      {(watched.description ?? "").trim() ? (
+   510→                        <React.Suspense fallback={<MarkdownFallback />}>
+   511→                          <MarkdownBlock content={watched.description ?? ""} />
+   512→                        </React.Suspense>
+   513→                      ) : (
+   514→                        <p className="text-sm text-muted-foreground">Nothing to preview yet.</p>
+   515→                      )}
+   516→                    </div>
+   517→                  )}
+   518→                </div>
+   519→
+   520→                <FormField
+   521→                  control={form.control}
+   522→                  name="affiliateUrl"
+   523→                  render={({ field }) => (
+   524→                    <FormItem>
+   525→                      <FormLabel>Affiliate URL</FormLabel>
+   526→                      <FormControl>
+   527→                        <div className="flex gap-2">
+   528→                          <Input
+   529→                            {...field}
+   530→                            placeholder="https://www.amazon.in/dp/...?tag=mnkp-21"
+   531→                            className="h-10 font-mono text-[13px]"
+   532→                          />
+   533→                          {/^https?:\/\//.test(field.value ?? "") ? (
+   534→                            <a
+   535→                              href={field.value ?? ""}
+   536→                              target="_blank"
+   537→                              rel="noopener noreferrer"
+   538→                              aria-label="Open affiliate URL in a new tab"
+   539→                              title="Open affiliate URL"
+   540→                              className="flex size-10 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+   541→                            >
+   542→                              <ExternalLink className="size-4" aria-hidden="true" />
+   543→                            </a>
+   544→                          ) : null}
+   545→                        </div>
+   546→                      </FormControl>
+   547→                      <FormDescription>Where the Buy button sends visitors</FormDescription>
+   548→                      <FormMessage />
+   549→                    </FormItem>
+   550→                  )}
+   551→                />
+   552→              </CardContent>
+   553→            </Card>
+   554→
+   555→            {/* Pricing */}
+   556→            <Card>
+   557→              <CardHeader className="pb-3">
+   558→                <CardTitle className="text-base">Pricing</CardTitle>
+   559→              </CardHeader>
+   560→              <CardContent className="space-y-5">
+   561→                <div className="grid gap-5 sm:grid-cols-2">
+   562→                  <FormField
+   563→                    control={form.control}
+   564→                    name="price"
+   565→                    render={({ field }) => (
+   566→                      <FormItem>
+   567→                        <FormLabel>Price (INR)</FormLabel>
+   568→                        <FormControl>
+   569→                          <Input {...field} value={field.value ?? ""} inputMode="numeric" placeholder="29990" className="h-10" />
+   570→                        </FormControl>
+   571→                        <FormMessage />
+   572→                      </FormItem>
+   573→                    )}
+   574→                  />
+   575→                  <FormField
+   576→                    control={form.control}
+   577→                    name="compareAtPrice"
+   578→                    render={({ field }) => (
+   579→                      <FormItem>
+   580→                        <FormLabel>Compare-at price (MRP)</FormLabel>
+   581→                        <FormControl>
+   582→                          <Input {...field} value={field.value ?? ""} inputMode="numeric" placeholder="34990" className="h-10" />
+   583→                        </FormControl>
+   584→                        <FormMessage />
+   585→                      </FormItem>
+   586→                    )}
+   587→                  />
+   588→                </div>
+   589→                <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+   590→                  <span className="text-muted-foreground">Card shows: </span>
+   591→                  <span className="font-semibold">{formatINR(priceNum || null)}</span>
+   592→                  {discount > 0 ? (
+   593→                    <>
+   594→                      <span className="ml-2 text-muted-foreground line-through">{formatINR(compareNum)}</span>
+   595→                      <Badge className="ml-2 bg-gold text-gold-foreground">-{discount}%</Badge>
+   596→                    </>
+   597→                  ) : (
+   598→                    <span className="ml-2 text-xs text-muted-foreground">no discount</span>
+   599→                  )}
+   600→                </div>
+   601→              </CardContent>
+   602→            </Card>
+   603→
+   604→            {/* Media */}
+   605→            <Card>
+   606→              <CardHeader className="pb-3">
+   607→                <CardTitle className="text-base">Media</CardTitle>
+   608→              </CardHeader>
+   609→              <CardContent className="space-y-5">
+   610→                <FormField
+   611→                  control={form.control}
+   612→                  name="imageUrl"
+   613→                  render={({ field }) => (
+   614→                    <FormItem>
+   615→                      <FormLabel>Main image URL</FormLabel>
+   616→                      <FormControl>
+   617→                        <Input {...field} value={field.value ?? ""} placeholder="/images/store/... or https://..." className="h-10" />
+   618→                      </FormControl>
+   619→                      <FormDescription>Quick pick:</FormDescription>
+   620→                      <div className="flex flex-wrap gap-2 pt-1">
+   621→                        {STORE_IMAGES.map((src) => (
+   622→                          <button
+   623→                            key={src}
+   624→                            type="button"
+   625→                            onClick={() => {
+   626→                              field.onChange(src);
+   627→                              setExtraDirty(true);
+   628→                            }}
+   629→                            aria-label={`Use image ${src}`}
+   630→                            className={`size-14 overflow-hidden rounded-md border-2 transition-transform hover:scale-105 ${
+   631→                              field.value === src ? "border-gold" : "border-transparent"
+   632→                            }`}
+   633→                          >
+   634→                            <img src={src} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+   635→                          </button>
+   636→                        ))}
+   637→                      </div>
+   638→                      <FormMessage />
+   639→                    </FormItem>
+   640→                  )}
+   641→                />
+   642→
+   643→                {watched.imageUrl ? (
+   644→                  <img
+   645→                    src={watched.imageUrl}
+   646→                    alt="Main image preview"
+   647→                    loading="lazy"
+   648→                    decoding="async"
+   649→                    className="aspect-square w-40 rounded-lg border object-cover"
+   650→                  />
+   651→                ) : (
+   652→                  <p className="text-xs text-muted-foreground">
+   653→                    No image yet — cards fall back to the branded gold/emerald gradient.
+   654→                  </p>
+   655→                )}
+   656→
+   657→                <div>
+   658→                  <FormLabel>Gallery</FormLabel>
+   659→                  <div className="mt-2 flex gap-2">
+   660→                    <Input
+   661→                      value={galleryInput}
+   662→                      onChange={(e) => setGalleryInput(e.target.value)}
+   663→                      onKeyDown={(e) => {
+   664→                        if (e.key === "Enter") {
+   665→                          e.preventDefault();
+   666→                          addGallery();
+   667→                        }
+   668→                      }}
+   669→                      placeholder="Add an image URL, press Enter (max 8)"
+   670→                      aria-label="Add gallery image"
+   671→                      className="h-10"
+   672→                    />
+   673→                    <Button type="button" variant="outline" className="h-10" onClick={addGallery}>
+   674→                      Add
+   675→                    </Button>
+   676→                  </div>
+   677→                  {gallery.length > 0 ? (
+   678→                    <div className="mt-3 flex flex-wrap gap-2">
+   679→                      {gallery.map((src) => (
+   680→                        <div key={src} className="group relative">
+   681→                          <img
+   682→                            src={src}
+   683→                            alt=""
+   684→                            loading="lazy"
+   685→                            decoding="async"
+   686→                            className="size-20 rounded-md border object-cover"
+   687→                          />
+   688→                          <button
+   689→                            type="button"
+   690→                            onClick={() => {
+   691→                              setGallery(gallery.filter((s) => s !== src));
+   692→                              setExtraDirty(true);
+   693→                            }}
+   694→                            aria-label={`Remove gallery image ${src}`}
+   695→                            className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border bg-background text-destructive shadow-sm"
+   696→                          >
+   697→                            <X className="size-3" aria-hidden="true" />
+   698→                          </button>
+   699→                        </div>
+   700→                      ))}
+   701→                    </div>
+   702→                  ) : (
+   703→                    <p className="mt-2 text-xs text-muted-foreground">No gallery images yet.</p>
+   704→                  )}
+   705→                </div>
+   706→              </CardContent>
+   707→            </Card>
+   708→
+   709→            {/* Review verdict */}
+   710→            <Card>
+   711→              <CardHeader className="pb-3">
+   712→                <CardTitle className="text-base">Review verdict</CardTitle>
+   713→              </CardHeader>
+   714→              <CardContent className="space-y-6">
+   715→                <div>
+   716→                  <div className="flex items-center justify-between">
+   717→                    <FormLabel>Rating</FormLabel>
+   718→                    <span className="flex items-center gap-2">
+   719→                      <Stars rating={rating} size="md" />
+   720→                      <span className="text-sm font-medium tabular-nums">{rating.toFixed(1)} / 5</span>
+   721→                    </span>
+   722→                  </div>
+   723→                  <Slider
+   724→                    value={[rating]}
+   725→                    min={0}
+   726→                    max={5}
+   727→                    step={0.1}
+   728→                    onValueChange={([v]) => {
+   729→                      setRating(v);
+   730→                      setExtraDirty(true);
+   731→                    }}
+   732→                    aria-label="Product rating"
+   733→                    className="mt-3"
+   734→                  />
+   735→                </div>
+   736→
+   737→                <FormField
+   738→                  control={form.control}
+   739→                  name="reviewCount"
+   740→                  render={({ field }) => (
+   741→                    <FormItem>
+   742→                      <FormLabel>Review count</FormLabel>
+   743→                      <FormControl>
+   744→                        <Input {...field} value={field.value ?? ""} inputMode="numeric" placeholder="0" className="h-10 sm:max-w-[200px]" />
+   745→                      </FormControl>
+   746→                      <FormMessage />
+   747→                    </FormItem>
+   748→                  )}
+   749→                />
+   750→
+   751→                <div className="grid gap-6 md:grid-cols-2">
+   752→                  <div>
+   753→                    <FormLabel>Pros</FormLabel>
+   754→                    <p className="mb-2 text-xs text-muted-foreground">What earns the recommendation</p>
+   755→                    {rowEditor(pros, setPros, "Pro", "Great noise cancelling...")}
+   756→                  </div>
+   757→                  <div>
+   758→                    <FormLabel>Cons</FormLabel>
+   759→                    <p className="mb-2 text-xs text-muted-foreground">The honest trade-offs</p>
+   760→                    {rowEditor(cons, setCons, "Con", "Pricey for casual listeners...")}
+   761→                  </div>
+   762→                </div>
+   763→
+   764→                <div>
+   765→                  <FormLabel>Key specs</FormLabel>
+   766→                  <p className="mb-2 text-xs text-muted-foreground">Label → value rows shown on the product page</p>
+   767→                  <div className="space-y-2">
+   768→                    {keySpecs.map((row, i) => (
+   769→                      <div key={`spec-${i}`} className="flex gap-2">
+   770→                        <Input
+   771→                          value={row.key}
+   772→                          onChange={(e) => {
+   773→                            const next = [...keySpecs];
+   774→                            next[i] = { ...next[i], key: e.target.value };
+   775→                            setKeySpecs(next);
+   776→                            setExtraDirty(true);
+   777→                          }}
+   778→                          placeholder="Battery"
+   779→                          aria-label={`Spec label ${i + 1}`}
+   780→                          className="h-10 sm:max-w-[180px]"
+   781→                        />
+   782→                        <Input
+   783→                          value={row.value}
+   784→                          onChange={(e) => {
+   785→                            const next = [...keySpecs];
+   786→                            next[i] = { ...next[i], value: e.target.value };
+   787→                            setKeySpecs(next);
+   788→                            setExtraDirty(true);
+   789→                          }}
+   790→                          placeholder="30 hours ANC on"
+   791→                          aria-label={`Spec value ${i + 1}`}
+   792→                          className="h-10"
+   793→                        />
+   794→                        <Button
+   795→                          type="button"
+   796→                          variant="ghost"
+   797→                          size="icon"
+   798→                          className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
+   799→                          onClick={() => {
+   800→                            setKeySpecs(keySpecs.filter((_, idx) => idx !== i));
+   801→                            setExtraDirty(true);
+   802→                          }}
+   803→                          aria-label={`Remove spec ${i + 1}`}
+   804→                        >
+   805→                          <X className="size-4" aria-hidden="true" />
+   806→                        </Button>
+   807→                      </div>
+   808→                    ))}
+   809→                    <Button
+   810→                      type="button"
+   811→                      variant="outline"
+   812→                      size="sm"
+   813→                      className="h-9 gap-2"
+   814→                      onClick={() => {
+   815→                        setKeySpecs([...keySpecs, { key: "", value: "" }]);
+   816→                        setExtraDirty(true);
+   817→                      }}
+   818→                    >
+   819→                      <Plus className="size-4" aria-hidden="true" />
+   820→                      Add spec
+   821→                    </Button>
+   822→                  </div>
+   823→                </div>
+   824→              </CardContent>
+   825→            </Card>
+   826→          </div>
+   827→
+   828→          {/* ---------------- side column ---------------- */}
+   829→          <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+   830→            <Card>
+   831→              <CardHeader className="pb-3">
+   832→                <CardTitle className="text-base">Listing</CardTitle>
+   833→              </CardHeader>
+   834→              <CardContent className="space-y-5">
+   835→                <FormField
+   836→                  control={form.control}
+   837→                  name="status"
+   838→                  render={({ field }) => (
+   839→                    <FormItem>
+   840→                      <FormLabel>Status</FormLabel>
+   841→                      <Select value={field.value} onValueChange={field.onChange}>
+   842→                        <FormControl>
+   843→                          <SelectTrigger className="h-10">
+   844→                            <SelectValue placeholder="Status" />
+   845→                          </SelectTrigger>
+   846→                        </FormControl>
+   847→                        <SelectContent>
+   848→                          <SelectItem value="active">Active</SelectItem>
+   849→                          <SelectItem value="draft">Draft</SelectItem>
+   850→                          <SelectItem value="archived">Archived</SelectItem>
+   851→                        </SelectContent>
+   852→                      </Select>
+   853→                      <FormMessage />
+   854→                    </FormItem>
+   855→                  )}
+   856→                />
+   857→
+   858→                <FormField
+   859→                  control={form.control}
+   860→                  name="categoryId"
+   861→                  render={({ field }) => (
+   862→                    <FormItem>
+   863→                      <FormLabel>Category</FormLabel>
+   864→                      <Select value={field.value ?? ""} onValueChange={field.onChange}>
+   865→                        <FormControl>
+   866→                          <SelectTrigger className="h-10">
+   867→                            <SelectValue placeholder="Uncategorized" />
+   868→                          </SelectTrigger>
+   869→                        </FormControl>
+   870→                        <SelectContent>
+   871→                          {(categories.data ?? []).map((c) => (
+   872→                            <SelectItem key={c.id} value={c.id}>
+   873→                              {c.name}
+   874→                            </SelectItem>
+   875→                          ))}
+   876→                        </SelectContent>
+   877→                      </Select>
+   878→                      <FormMessage />
+   879→                    </FormItem>
+   880→                  )}
+   881→                />
+   882→
+   883→                <FormField
+   884→                  control={form.control}
+   885→                  name="isFeatured"
+   886→                  render={({ field }) => (
+   887→                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+   888→                      <div className="space-y-0.5">
+   889→                        <FormLabel className="text-sm">Featured</FormLabel>
+   890→                        <p className="text-xs text-muted-foreground">Rotates into the sponsored ad slots</p>
+   891→                      </div>
+   892→                      <FormControl>
+   893→                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+   894→                      </FormControl>
+   895→                    </FormItem>
+   896→                  )}
+   897→                />
+   898→
+   899→                {productQuery.data ? (
+   900→                  <div className="space-y-1 rounded-lg border p-3 text-xs text-muted-foreground">
+   901→                    <p>Clicks: <span className="font-medium text-foreground">{formatCompact(productQuery.data.clicksCount)}</span></p>
+   902→                    <p>Created: {fmtDate(productQuery.data.createdAt)}</p>
+   903→                  </div>
+   904→                ) : null}
+   905→
+   906→                <Button type="submit" className="h-10 w-full" disabled={saveMutation.isPending}>
+   907→                  {saveMutation.isPending ? "Saving..." : isNew ? "Create product" : "Save changes"}
+   908→                </Button>
+   909→              </CardContent>
+   910→            </Card>
+   911→
+   912→            {/* Live ProductCard preview */}
+   913→            <div>
+   914→              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold">
+   915→                Live card preview
+   916→              </p>
+   917→              <ProductCard
+   918→                product={{
+   919→                  slug: effectiveSlug || "preview",
+   920→                  name: watched.name || "Product name",
+   921→                  tagline: watched.tagline || null,
+   922→                  image: watched.imageUrl || null,
+   923→                  price: priceNum,
+   924→                  compareAtPrice: compareNum || null,
+   925→                  rating,
+   926→                  merchant: watched.merchant || null,
+   927→                }}
+   928→              />
+   929→            </div>
+   930→          </div>
+   931→        </form>
+   932→      </Form>
+   933→    </AdminShell>
+   934→  );
+   935→}
+   936→
