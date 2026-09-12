@@ -736,3 +736,37 @@ Stage Summary:
 - Admin credentials: intobusyness@gmail.com / Nihad@Admin2025 (change via #/account/settings).
 - 9-d fixed a latent critical bug: Zod 4 .partial() fires .default() → all partial PATCH schemas were destructive (now explicit optional-only; explains the historical plan drift).
 - Known nuance (documented by 9-d): undoing the FIRST save of a settings group leaves an empty {} row (resolvers fall back to defaults — harmless).
+
+---
+Task ID: 10
+Agent: Z.ai Code (orchestrator)
+Task: User feedback — "I don't like the design work you've done on the home page, and I don't like the color either. Please make the change professional." → Full professional re-skin of the site's color system + complete home page redesign + brand asset rework.
+
+Work Log:
+- Read worklog tail (update wave 9-a…9-h complete & browser-verified) and inspected the current design: emerald+gold "luxury" tokens (globals.css), image-backed hero with heavy emerald overlay, gold-gradient headline, gold-washed panels; logo/favicon/og assets in emerald+gold; auth "emerald" theme.
+- DECISION — new system "Graphite & Copper": warm stone neutrals (bg oklch 0.988/0.003/85), graphite ink primary (light: near-black buttons/links, dark: inverted off-white — Linear-style), ONE restrained copper accent. NO blue/indigo. Retired emerald entirely.
+- globals.css REWRITTEN (token names preserved so every component re-skins automatically):
+  · --primary light = graphite ink oklch(0.255 0.02 55) / dark = off-white oklch(0.938 0.005 80) (inverted).
+  · Legacy --gold token now carries COPPER: light oklch(0.558 0.115 47) (#A05A38, 4.9:1 on white), dark oklch(0.74 0.105 55); --gold-soft = light copper; --gold-foreground = near-white on copper. Added aliases --color-copper* alongside gold* (same tokens).
+  · --accent = warm sand hover wash; --ring = copper; charts = graphite/copper/taupe/terracotta/sand; sidebar vars synced; radius 0.75→0.625rem (crisper); ::selection copper; utilities (gold-rule, glass, scrollbar-slim, text-gold-gradient) auto-re-skin to copper.
+- BRAND ASSETS reworked: logo.svg + favicon.svg rewritten as font-independent MONOLINE vector monograms (MN + divider + KP as stroked paths — librsvg cannot render <text>, learned via VLM pixel-verification loop). Graphite bg + copper gradient strokes. All PNG icons re-rasterized with sharp (favicon-32, icon-192, icon-512, apple-touch-icon) and VLM-verified ("MN above smaller KP, copper/bronze gradient on black, clean and professional").
+- home-view.tsx COMPLETE REDESIGN (professional editorial):
+  · Hero: dropped og-cover.png background image + emerald overlay → clean bg with subtle copper radial glow; availability pill (pulsing copper dot + "Calicut · Kerala"); display-type name lockup with muted role subline; tagline; CTAs (dark "Start a project", outline "Explore services", WhatsApp icon); LiveVisitorBadge neutral. Faster LCP (no hero image).
+  · StatBand: hairline-divided dl (2×2 mobile / 4-up desktop, divide-x) replacing icon chips.
+  · Services: refined cards (neutral hover border-foreground/25, copper price, quote link hover copper); solid-border fill card replacing gold-dashed one.
+  · Brands band, about teaser (portrait: plain border+shadow, no gold ring), projects chips: restyled to neutral/copper.
+  · Newsletter: clean card with 2px copper top border, neutral success state.
+  · Final CTA: solid bg-primary band (graphite in light / off-white in dark = inverted), copper micro-label, secondary+outline buttons.
+  · Kept intact: SEOHead, queries (useHomePosts/useHomeProducts), HeroMarquee (ad system), AffiliateAdSlot home-strip, DataState grids, PostCard/ProductCard rendering, mobile responsive paddings.
+- AUTH THEME SWEEP: AuthTheme key "emerald" → "graphite" (professional stone-950 gradient + copper submit/micro/accents); swept all hardcoded emerald-* classes in login/verify-email/reset-password/forgot-password to stone/gold equivalents (footer notes, icon medallions, spinner, primary buttons). Register keeps amber theme (distinct by design); admin keeps obsidian; password-strength bar keeps conventional green; LiveVisitorBadge keeps conventional green status dot; success/error tones unchanged.
+- Auto re-skinned via tokens (untouched): site-header/footer, mobile-nav, stickers, ad components, states, admin console, account views — verified visually.
+- VERIFIED: bunx eslint on 6 touched files → 0 problems; bun run lint → clean. agent-browser (isolated sessions): home desktop 1280 (VLM: "high-quality, professional design… warm neutral palette, charcoal buttons, copper accents"), dark mode ✓ ("sophisticated, excellent contrast, no broken colors"), mobile 390 full-page (scrollWidth 390 == innerWidth 390, VLM: "well-optimized, no cut-off content"), Services nav click → #/services, login page graphite (VLM: "polished, trustworthy"), full admin login flow → #/admin no session-expired, store+blog VLM ("professional and cohesive, no color clashes"), mobile blog 390/390 no overflow. Fresh-load consoles clean (earlier hydration warning isolated to devtools-injected session, not reproducible).
+- Screenshots: screenshots/redesign-{home-desktop,home-dark,home-mobile-full,login-graphite,admin,store,blog}.png.
+
+Stage Summary:
+- SITE-WIDE COLOR SYSTEM: "Graphite & Copper" professional (replaces emerald+gold). All existing gold-* classes/tokens now render copper — future agents should treat `--gold` as the COPPER accent (aliases: text-copper/border-copper/bg-copper-soft valid).
+- primary is NEUTRAL INK (near-black light / off-white dark). Status colors (success green, warning amber, destructive red) intentionally kept conventional.
+- Brand assets: monoline path-based logo.svg/favicon.svg (NO <text> — librsvg-safe) + re-rasterized PNG icons in graphite/copper.
+- Auth themes: graphite (user) · amber (register) · obsidian (admin) — all copper-accented.
+- KNOWN REMAINING: /images/brand/og-cover.png still emerald/gold art (social-share og:image only — not visible on site; regenerate at will). Portrait photo unchanged (a photo, palette-neutral).
+- LESSON (tooling): parallel Write+Bash on the SAME file races (logo.svg/favicon.svg incident) — always verify file content after concurrent tool calls; agent-browser always use isolated --session.

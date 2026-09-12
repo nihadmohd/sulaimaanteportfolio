@@ -70,7 +70,7 @@ export default function ResetPasswordView() {
     }
   };
 
-  const t = AUTH_THEMES.emerald;
+  const t = AUTH_THEMES.graphite;
 
   return (
     <>
@@ -81,7 +81,7 @@ export default function ResetPasswordView() {
         noindex
       />
       <AuthShell
-        theme="emerald"
+        theme="graphite"
         microLabel="New Password"
         title={done ? "Password reset" : "Choose a new password"}
         description={
@@ -90,7 +90,7 @@ export default function ResetPasswordView() {
             : undefined
         }
         footer={
-          <p className="text-center text-xs text-emerald-100/60">
+          <p className="text-center text-xs text-stone-500">
             <ALink href="#/auth/login" className="underline-offset-2 hover:underline">
               Back to sign in
             </ALink>{" "}
@@ -107,31 +107,31 @@ export default function ResetPasswordView() {
               <AlertTriangle className="size-7 text-red-300" strokeWidth={1.75} aria-hidden="true" />
             </div>
             <p className="mt-5 text-xs font-medium uppercase tracking-[0.2em] text-red-300">Missing token</p>
-            <h2 className="mt-2 text-xl font-semibold text-emerald-50">This reset link looks incomplete</h2>
+            <h2 className="mt-2 text-xl font-semibold text-stone-100">This reset link looks incomplete</h2>
             <div aria-hidden="true" className="gold-rule-center mx-auto mt-4 w-24" />
-            <p className="mt-4 text-sm leading-relaxed text-emerald-100/70">
+            <p className="mt-4 text-sm leading-relaxed text-stone-400">
               Reset links come from the "forgot password" flow and carry a token.
               Request a fresh link to continue.
             </p>
             <Button
               asChild
-              className="mt-7 h-11 w-full gap-2 bg-emerald-500 font-medium text-emerald-950 hover:bg-emerald-400"
+              className="mt-7 h-11 w-full gap-2 bg-gold font-medium text-gold-foreground hover:bg-gold/90"
             >
               <ALink href="#/auth/forgot-password">Request a reset link</ALink>
             </Button>
           </div>
         ) : done ? (
           <div className="text-center" role="status" aria-live="polite">
-            <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-400/10">
-              <ShieldCheck className="size-7 text-emerald-300" strokeWidth={1.75} aria-hidden="true" />
+            <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-gold/40 bg-gold/10">
+              <ShieldCheck className="size-7 text-gold" strokeWidth={1.75} aria-hidden="true" />
             </div>
             <p className="mt-5 text-xs font-medium uppercase tracking-[0.2em] text-gold">Done</p>
-            <h2 className="mt-2 text-xl font-semibold text-emerald-50">Your password has been updated</h2>
+            <h2 className="mt-2 text-xl font-semibold text-stone-100">Your password has been updated</h2>
             <div aria-hidden="true" className="gold-rule-center mx-auto mt-4 w-24" />
-            <p className="mt-4 text-sm leading-relaxed text-emerald-100/70">
+            <p className="mt-4 text-sm leading-relaxed text-stone-400">
               Taking you to the sign-in page — use your new password there.
             </p>
-            <div className="mt-7 flex items-center justify-center gap-2 text-sm text-emerald-100/70">
+            <div className="mt-7 flex items-center justify-center gap-2 text-sm text-stone-400">
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               Redirecting in a moment…
             </div>
@@ -157,7 +157,7 @@ export default function ResetPasswordView() {
                     <FormLabel className={t.label}>New password</FormLabel>
                     <FormControl>
                       <PasswordInput
-                        theme="emerald"
+                        theme="graphite"
                         autoComplete="new-password"
                         placeholder="At least 8 characters"
                         {...field}
@@ -175,7 +175,7 @@ export default function ResetPasswordView() {
                     <FormLabel className={t.label}>Confirm new password</FormLabel>
                     <FormControl>
                       <PasswordInput
-                        theme="emerald"
+                        theme="graphite"
                         autoComplete="new-password"
                         placeholder="Re-enter your new password"
                         {...field}

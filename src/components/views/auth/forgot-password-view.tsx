@@ -48,7 +48,7 @@ export default function ForgotPasswordView() {
     }
   };
 
-  const t = AUTH_THEMES.emerald;
+  const t = AUTH_THEMES.graphite;
 
   return (
     <>
@@ -59,12 +59,12 @@ export default function ForgotPasswordView() {
         noindex
       />
       <AuthShell
-        theme="emerald"
+        theme="graphite"
         microLabel="Account Recovery"
         title="Forgot your password?"
         description="Enter the email on your account and we'll send a reset link. Links expire in one hour."
         footer={
-          <p className="text-center text-xs text-emerald-100/60">
+          <p className="text-center text-xs text-stone-500">
             Remembered it?{" "}
             <ALink href="#/auth/login" className="text-gold underline-offset-2 hover:underline">
               Back to sign in
@@ -74,15 +74,15 @@ export default function ForgotPasswordView() {
       >
         {sent ? (
           <div className="text-center" role="status" aria-live="polite">
-            <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-400/10">
-              <MailCheck className="size-7 text-emerald-300" strokeWidth={1.75} aria-hidden="true" />
+            <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-gold/40 bg-gold/10">
+              <MailCheck className="size-7 text-gold" strokeWidth={1.75} aria-hidden="true" />
             </div>
             <p className="mt-5 text-xs font-medium uppercase tracking-[0.2em] text-gold">Sent</p>
-            <h2 className="mt-2 text-xl font-semibold text-emerald-50">
+            <h2 className="mt-2 text-xl font-semibold text-stone-100">
               If an account exists, a reset link is on its way
             </h2>
             <div aria-hidden="true" className="gold-rule-center mx-auto mt-4 w-24" />
-            <p className="mt-4 text-sm leading-relaxed text-emerald-100/70">
+            <p className="mt-4 text-sm leading-relaxed text-stone-400">
               For your security we can't confirm whether the address is registered —
               but if it is, the instructions are already in your inbox.
             </p>
@@ -90,14 +90,14 @@ export default function ForgotPasswordView() {
               <div className="mt-7 space-y-3">
                 <Button
                   asChild
-                  className="h-11 w-full gap-2 bg-emerald-500 font-medium text-emerald-950 hover:bg-emerald-400"
+                  className="h-11 w-full gap-2 bg-gold font-medium text-gold-foreground hover:bg-gold/90"
                 >
                   <ALink href={sent.devResetUrl}>
                     <KeyRound className="size-4" aria-hidden="true" />
                     Open reset link (demo mode)
                   </ALink>
                 </Button>
-                <p className="text-xs text-emerald-100/60">
+                <p className="text-xs text-stone-500">
                   Demo mode: the email is mocked — this button stands in for the link.
                 </p>
               </div>

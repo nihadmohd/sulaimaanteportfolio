@@ -4,9 +4,11 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ============================================================================
-   MN.KP DESIGN TOKENS — luxury professional
-   Emerald primary · gold accent · warm paper / deep forest neutrals
-   NO blue / NO indigo anywhere.
+   MN.KP DESIGN TOKENS — "Graphite & Copper" professional system
+   Warm stone neutrals · graphite ink primary · restrained copper accent.
+   NO blue / NO indigo / NO flashy gradients. Editorial, calm, precise.
+   The legacy token name --gold now carries the COPPER accent, so every
+   existing `gold-*` utility re-skins to copper automatically.
    ========================================================================== */
 
 @theme inline {
@@ -47,91 +49,95 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  /* Gold accent scale — enables text-gold / border-gold / bg-gold-soft etc. */
+  /* Copper accent scale — text-copper reads better, but `gold` classes stay
+     valid (same token) so every existing component re-skins automatically. */
+  --color-copper: var(--gold);
+  --color-copper-soft: var(--gold-soft);
+  --color-copper-foreground: var(--gold-foreground);
   --color-gold: var(--gold);
   --color-gold-soft: var(--gold-soft);
   --color-gold-foreground: var(--gold-foreground);
 }
 
-/* ------------------------------- LIGHT — warm paper ---------------------- */
+/* ------------------------------- LIGHT — warm stone ---------------------- */
 :root {
-  --radius: 0.75rem;
-  --background: oklch(0.984 0.006 106); /* warm paper #FAFAF7 */
-  --foreground: oklch(0.22 0.01 110);
+  --radius: 0.625rem;
+  --background: oklch(0.988 0.003 85); /* warm stone #FAFAF8 */
+  --foreground: oklch(0.225 0.012 55); /* rich warm ink */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.01 110);
+  --card-foreground: oklch(0.225 0.012 55);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.01 110);
-  --primary: oklch(0.596 0.145 163); /* emerald-600 #059669 */
-  --primary-foreground: oklch(0.985 0.01 110);
-  --secondary: oklch(0.955 0.008 106);
-  --secondary-foreground: oklch(0.28 0.012 110);
-  --muted: oklch(0.952 0.008 106);
-  --muted-foreground: oklch(0.5 0.014 115);
-  --accent: oklch(0.945 0.035 160); /* soft emerald wash */
-  --accent-foreground: oklch(0.32 0.06 163);
+  --popover-foreground: oklch(0.225 0.012 55);
+  --primary: oklch(0.255 0.02 55); /* graphite ink — professional near-black */
+  --primary-foreground: oklch(0.985 0.003 85);
+  --secondary: oklch(0.955 0.005 85);
+  --secondary-foreground: oklch(0.3 0.016 55);
+  --muted: oklch(0.952 0.005 85);
+  --muted-foreground: oklch(0.475 0.012 60);
+  --accent: oklch(0.94 0.014 75); /* warm sand hover wash */
+  --accent-foreground: oklch(0.33 0.03 55);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.9 0.01 106);
-  --input: oklch(0.9 0.01 106);
-  --ring: oklch(0.596 0.145 163);
-  /* charts: emerald · gold · teal · amber · deep emerald */
-  --chart-1: oklch(0.596 0.145 163);
-  --chart-2: oklch(0.72 0.14 88); /* gold #C9A227 */
-  --chart-3: oklch(0.6 0.1 195); /* teal */
-  --chart-4: oklch(0.77 0.16 70); /* amber */
-  --chart-5: oklch(0.42 0.11 163); /* deep emerald */
-  --sidebar: oklch(0.975 0.008 106);
-  --sidebar-foreground: oklch(0.22 0.01 110);
-  --sidebar-primary: oklch(0.596 0.145 163);
-  --sidebar-primary-foreground: oklch(0.985 0.01 110);
-  --sidebar-accent: oklch(0.945 0.035 160);
-  --sidebar-accent-foreground: oklch(0.32 0.06 163);
-  --sidebar-border: oklch(0.9 0.01 106);
-  --sidebar-ring: oklch(0.596 0.145 163);
-  /* gold */
-  --gold: oklch(0.72 0.14 88); /* #C9A227 */
-  --gold-soft: oklch(0.83 0.115 92); /* #E5C76B */
-  --gold-foreground: oklch(0.24 0.04 90); /* ink readable on gold */
+  --border: oklch(0.905 0.006 80);
+  --input: oklch(0.905 0.006 80);
+  --ring: oklch(0.558 0.115 47); /* copper focus ring */
+  /* charts: graphite · copper · taupe · terracotta · sand */
+  --chart-1: oklch(0.35 0.02 55);
+  --chart-2: oklch(0.558 0.115 47); /* copper #A05A38 */
+  --chart-3: oklch(0.62 0.045 65); /* taupe */
+  --chart-4: oklch(0.64 0.14 45); /* terracotta */
+  --chart-5: oklch(0.82 0.03 80); /* sand */
+  --sidebar: oklch(0.975 0.005 85);
+  --sidebar-foreground: oklch(0.225 0.012 55);
+  --sidebar-primary: oklch(0.255 0.02 55);
+  --sidebar-primary-foreground: oklch(0.985 0.003 85);
+  --sidebar-accent: oklch(0.94 0.014 75);
+  --sidebar-accent-foreground: oklch(0.33 0.03 55);
+  --sidebar-border: oklch(0.905 0.006 80);
+  --sidebar-ring: oklch(0.558 0.115 47);
+  /* copper accent (token name kept for compatibility) */
+  --gold: oklch(0.558 0.115 47); /* copper #A05A38 — 4.9:1 on white */
+  --gold-soft: oklch(0.685 0.105 55); /* light copper #C07E52 */
+  --gold-foreground: oklch(0.99 0.003 85); /* near-white on copper */
 }
 
-/* ------------------------------- DARK — deep forest ---------------------- */
+/* ------------------------------- DARK — warm graphite ------------------- */
 .dark {
-  --background: oklch(0.17 0.012 165); /* #0C0F0E deep forest */
-  --foreground: oklch(0.93 0.008 115);
-  --card: oklch(0.212 0.014 165);
-  --card-foreground: oklch(0.93 0.008 115);
-  --popover: oklch(0.212 0.014 165);
-  --popover-foreground: oklch(0.93 0.008 115);
-  --primary: oklch(0.765 0.177 163); /* emerald-400 #34D399 */
-  --primary-foreground: oklch(0.18 0.04 163);
-  --secondary: oklch(0.262 0.016 165);
-  --secondary-foreground: oklch(0.93 0.008 115);
-  --muted: oklch(0.252 0.014 165);
-  --muted-foreground: oklch(0.66 0.016 120);
-  --accent: oklch(0.28 0.03 165); /* dark emerald wash */
-  --accent-foreground: oklch(0.9 0.06 160);
+  --background: oklch(0.172 0.006 60); /* warm near-black #131211 */
+  --foreground: oklch(0.932 0.004 80);
+  --card: oklch(0.215 0.008 60);
+  --card-foreground: oklch(0.932 0.004 80);
+  --popover: oklch(0.215 0.008 60);
+  --popover-foreground: oklch(0.932 0.004 80);
+  --primary: oklch(0.938 0.005 80); /* off-white — inverted, Linear-style */
+  --primary-foreground: oklch(0.205 0.01 55);
+  --secondary: oklch(0.262 0.008 60);
+  --secondary-foreground: oklch(0.932 0.004 80);
+  --muted: oklch(0.252 0.007 60);
+  --muted-foreground: oklch(0.66 0.012 70);
+  --accent: oklch(0.28 0.012 65);
+  --accent-foreground: oklch(0.92 0.02 70);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.765 0.177 163);
-  /* charts: emerald · gold · teal · amber · soft gold */
-  --chart-1: oklch(0.765 0.177 163);
-  --chart-2: oklch(0.83 0.115 92); /* gold #E5C76B */
-  --chart-3: oklch(0.7 0.1 195); /* teal */
-  --chart-4: oklch(0.8 0.15 75); /* amber */
-  --chart-5: oklch(0.87 0.1 95); /* soft gold */
-  --sidebar: oklch(0.212 0.014 165);
-  --sidebar-foreground: oklch(0.93 0.008 115);
-  --sidebar-primary: oklch(0.765 0.177 163);
-  --sidebar-primary-foreground: oklch(0.18 0.04 163);
-  --sidebar-accent: oklch(0.28 0.03 165);
-  --sidebar-accent-foreground: oklch(0.9 0.06 160);
+  --ring: oklch(0.72 0.105 55); /* bright copper */
+  /* charts: light ink · copper · taupe · terracotta · sand */
+  --chart-1: oklch(0.85 0.01 70);
+  --chart-2: oklch(0.74 0.105 55); /* copper */
+  --chart-3: oklch(0.7 0.04 65); /* taupe */
+  --chart-4: oklch(0.72 0.13 45); /* terracotta */
+  --chart-5: oklch(0.82 0.03 80); /* sand */
+  --sidebar: oklch(0.215 0.008 60);
+  --sidebar-foreground: oklch(0.932 0.004 80);
+  --sidebar-primary: oklch(0.938 0.005 80);
+  --sidebar-primary-foreground: oklch(0.205 0.01 55);
+  --sidebar-accent: oklch(0.28 0.012 65);
+  --sidebar-accent-foreground: oklch(0.92 0.02 70);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.765 0.177 163);
-  /* gold — brighter for dark surfaces */
-  --gold: oklch(0.83 0.115 92); /* #E5C76B */
-  --gold-soft: oklch(0.87 0.1 95);
-  --gold-foreground: oklch(0.2 0.04 90);
+  --sidebar-ring: oklch(0.72 0.105 55);
+  /* copper — brighter for dark surfaces */
+  --gold: oklch(0.74 0.105 55); /* #C9855B */
+  --gold-soft: oklch(0.8 0.09 65);
+  --gold-foreground: oklch(0.17 0.02 50); /* dark ink on copper */
 }
 
 @layer base {
@@ -143,14 +149,15 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
   }
   ::selection {
-    background: color-mix(in oklab, var(--gold) 32%, transparent);
+    background: color-mix(in oklab, var(--gold) 30%, transparent);
   }
 }
 
 @layer utilities {
-  /* Gold gradient clip text — luxury headline accent */
+  /* Copper gradient clip text — reserved for one signature headline accent */
   .text-gold-gradient {
     background-image: linear-gradient(
       105deg,
@@ -163,7 +170,7 @@
     color: transparent;
     -webkit-text-fill-color: transparent;
   }
-  /* Thin 1px gold gradient rule (fade out to the right) */
+  /* Thin 1px copper gradient rule (fade out to the right) */
   .gold-rule {
     height: 1px;
     border: 0;
@@ -195,7 +202,7 @@
     background: color-mix(in oklab, var(--card) 72%, transparent);
     backdrop-filter: blur(16px) saturate(1.4);
     -webkit-backdrop-filter: blur(16px) saturate(1.4);
-    border: 1px solid color-mix(in oklab, var(--gold) 28%, transparent);
+    border: 1px solid color-mix(in oklab, var(--gold) 24%, transparent);
     box-shadow: 0 8px 32px color-mix(in oklab, black 18%, transparent);
   }
   /* Slim custom scrollbar for long scroll areas */

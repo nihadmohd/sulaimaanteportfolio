@@ -53,7 +53,7 @@ export default function VerifyEmailView() {
     };
   }, [token]);
 
-  const t = AUTH_THEMES.emerald;
+  const t = AUTH_THEMES.graphite;
   const onboarded = user?.onboardingCompleted ?? false;
 
   return (
@@ -65,7 +65,7 @@ export default function VerifyEmailView() {
         noindex
       />
       <AuthShell
-        theme="emerald"
+        theme="graphite"
         microLabel="Email Verification"
         title={status === "verified" ? "Email verified" : status === "invalid" ? "Link problem" : "Verifying…"}
         description={
@@ -74,7 +74,7 @@ export default function VerifyEmailView() {
             : undefined
         }
         footer={
-          <p className="text-center text-xs text-emerald-100/60">
+          <p className="text-center text-xs text-stone-500">
             Stuck?{" "}
             <ALink href="#/support" className="underline-offset-2 hover:underline">
               Contact support
@@ -88,18 +88,18 @@ export default function VerifyEmailView() {
       >
         {status === "verifying" ? (
           <div className="flex flex-col items-center gap-4 py-8 text-center" role="status" aria-live="polite">
-            <Loader2 className="size-10 animate-spin text-emerald-300" aria-hidden="true" />
+            <Loader2 className="size-10 animate-spin text-gold" aria-hidden="true" />
             <p className={t.sub}>Confirming your token…</p>
           </div>
         ) : status === "verified" ? (
           <div className="text-center" role="status">
-            <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-400/10">
-              <BadgeCheck className="size-7 text-emerald-300" strokeWidth={1.75} aria-hidden="true" />
+            <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-gold/40 bg-gold/10">
+              <BadgeCheck className="size-7 text-gold" strokeWidth={1.75} aria-hidden="true" />
             </div>
             <p className="mt-5 text-xs font-medium uppercase tracking-[0.2em] text-gold">Done</p>
-            <h2 className="mt-2 text-xl font-semibold text-emerald-50">Your email is verified</h2>
+            <h2 className="mt-2 text-xl font-semibold text-stone-100">Your email is verified</h2>
             <div aria-hidden="true" className="gold-rule-center mx-auto mt-4 w-24" />
-            <p className="mt-4 text-sm leading-relaxed text-emerald-100/70">
+            <p className="mt-4 text-sm leading-relaxed text-stone-400">
               Your MN.KP account is fully active. Receipts, recovery and important
               notices will now reach your inbox.
             </p>
@@ -107,7 +107,7 @@ export default function VerifyEmailView() {
               {onboarded ? (
                 <Button
                   asChild
-                  className="h-11 w-full gap-2 bg-emerald-500 font-medium text-emerald-950 hover:bg-emerald-400"
+                  className="h-11 w-full gap-2 bg-gold font-medium text-gold-foreground hover:bg-gold/90"
                 >
                   <ALink href="#/account">
                     Go to my account
@@ -117,7 +117,7 @@ export default function VerifyEmailView() {
               ) : (
                 <>
                   <Button
-                    className="h-11 w-full gap-2 bg-emerald-500 font-medium text-emerald-950 hover:bg-emerald-400"
+                    className="h-11 w-full gap-2 bg-gold font-medium text-gold-foreground hover:bg-gold/90"
                     onClick={() => navigate("/onboarding")}
                   >
                     Continue to onboarding
@@ -140,16 +140,16 @@ export default function VerifyEmailView() {
               <AlertTriangle className="size-7 text-red-300" strokeWidth={1.75} aria-hidden="true" />
             </div>
             <p className="mt-5 text-xs font-medium uppercase tracking-[0.2em] text-red-300">Invalid link</p>
-            <h2 className="mt-2 text-xl font-semibold text-emerald-50">This verification link is invalid</h2>
+            <h2 className="mt-2 text-xl font-semibold text-stone-100">This verification link is invalid</h2>
             <div aria-hidden="true" className="gold-rule-center mx-auto mt-4 w-24" />
-            <p className="mt-4 text-sm leading-relaxed text-emerald-100/70">
+            <p className="mt-4 text-sm leading-relaxed text-stone-400">
               {message ??
                 "The link may have expired or was already used. Verification links are single-use."}
             </p>
             <div className="mt-7 space-y-3">
               <Button
                 asChild
-                className="h-11 w-full gap-2 bg-emerald-500 font-medium text-emerald-950 hover:bg-emerald-400"
+                className="h-11 w-full gap-2 bg-gold font-medium text-gold-foreground hover:bg-gold/90"
               >
                 <ALink href="#/auth/login">Back to sign in</ALink>
               </Button>
@@ -157,7 +157,7 @@ export default function VerifyEmailView() {
                 <ALink href="#/support">Get help verifying your email</ALink>
               </Button>
             </div>
-            <p className="mt-5 text-xs text-emerald-100/60">
+            <p className="mt-5 text-xs text-stone-500">
               Already signed in? You can keep using MN.KP and verify later from
               your account dashboard.
             </p>

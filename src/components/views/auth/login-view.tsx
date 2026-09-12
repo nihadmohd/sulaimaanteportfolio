@@ -32,7 +32,7 @@ interface LoginReply {
 }
 
 /**
- * #/auth/login (route key auth-login) — emerald glass sign-in.
+ * #/auth/login (route key auth-login) — graphite glass sign-in.
  * Reads ?expired=1 (session-expired banner) and ?next= (return path);
  * staff land in #/admin, fresh accounts in #/onboarding — never a loop.
  */
@@ -66,7 +66,7 @@ export default function LoginView() {
     }
   };
 
-  const t = AUTH_THEMES.emerald;
+  const t = AUTH_THEMES.graphite;
 
   return (
     <>
@@ -77,7 +77,7 @@ export default function LoginView() {
         noindex
       />
       <AuthShell
-        theme="emerald"
+        theme="graphite"
         microLabel="MN.KP Member Access"
         title="Sign in to continue"
         description={
@@ -86,7 +86,7 @@ export default function LoginView() {
             : "Your account, subscriptions and saved work — one sign-in away."
         }
         footer={
-          <p className="text-center text-xs text-emerald-100/60">
+          <p className="text-center text-xs text-stone-500">
             Protected by MN.KP · <ALink href="#/legal/privacy-policy" className="underline-offset-2 hover:underline">Privacy Policy</ALink>
           </p>
         }
@@ -132,14 +132,14 @@ export default function LoginView() {
                     <FormLabel className={t.label}>Password</FormLabel>
                     <ALink
                       href="#/auth/forgot-password"
-                      className="text-xs text-emerald-200/70 underline-offset-2 hover:text-emerald-100 hover:underline"
+                      className="text-xs text-stone-400 underline-offset-2 hover:text-stone-200 hover:underline"
                     >
                       Forgot password?
                     </ALink>
                   </div>
                   <FormControl>
                     <PasswordInput
-                      theme="emerald"
+                      theme="graphite"
                       autoComplete="current-password"
                       placeholder="Your password"
                       {...field}
@@ -165,7 +165,7 @@ export default function LoginView() {
         </Form>
 
         <DemoCredentialsCard
-          theme="emerald"
+          theme="graphite"
           account="user"
           note={
             <>
@@ -194,7 +194,7 @@ export default function LoginView() {
             Need a hand?{" "}
             <ALink
               href="#/support"
-              className="font-medium text-emerald-100 underline-offset-2 hover:underline"
+              className="font-medium text-stone-200 underline-offset-2 hover:underline"
             >
               Visit Support
             </ALink>

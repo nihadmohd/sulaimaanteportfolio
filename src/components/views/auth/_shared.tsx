@@ -46,10 +46,10 @@ export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 /* ========================================================================== */
-/* auth themes — emerald (user) · amber (register) · obsidian+gold (admin)     */
+/* auth themes — graphite+copper (user) · amber (register) · obsidian+gold (admin)     */
 /* ========================================================================== */
 
-export type AuthTheme = "emerald" | "amber" | "obsidian";
+export type AuthTheme = "graphite" | "amber" | "obsidian";
 
 export interface AuthThemeTokens {
   /** Full-bleed page gradient. */
@@ -75,18 +75,18 @@ export interface AuthThemeTokens {
 }
 
 export const AUTH_THEMES: Record<AuthTheme, AuthThemeTokens> = {
-  emerald: {
-    page: "bg-gradient-to-b from-emerald-950 via-emerald-900 to-emerald-950",
-    panel: "border-gold/25 bg-white/[0.06] backdrop-blur-xl shadow-2xl",
-    text: "text-emerald-50",
-    sub: "text-emerald-100/70",
+  graphite: {
+    page: "bg-gradient-to-b from-stone-950 via-stone-900 to-stone-950",
+    panel: "border-gold/20 bg-white/[0.05] backdrop-blur-xl shadow-2xl",
+    text: "text-stone-100",
+    sub: "text-stone-400",
     input:
-      "h-11 border-emerald-800/60 bg-emerald-950/60 text-emerald-50 placeholder:text-emerald-100/40 focus-visible:ring-emerald-400/40 dark:border-emerald-800/60 dark:bg-emerald-950/60",
-    label: "text-emerald-100/80",
-    submit: "h-11 bg-emerald-500 text-emerald-950 hover:bg-emerald-400",
-    ghost: "text-emerald-100/80 hover:bg-white/10 hover:text-emerald-50",
+      "h-11 border-stone-700/70 bg-stone-900/70 text-stone-100 placeholder:text-stone-500 focus-visible:ring-gold/40 dark:border-stone-700/70 dark:bg-stone-900/70",
+    label: "text-stone-300",
+    submit: "h-11 bg-gold text-gold-foreground hover:bg-gold/90",
+    ghost: "text-stone-400 hover:bg-white/10 hover:text-stone-100",
     micro: "text-gold",
-    ring: "focus-visible:ring-emerald-400/40",
+    ring: "focus-visible:ring-gold/40",
   },
   amber: {
     page: "bg-gradient-to-b from-amber-950 via-amber-900 to-amber-950",
@@ -243,7 +243,7 @@ function CopyValue({ value, theme, label }: { value: string; theme: AuthTheme; l
     >
       <span className="break-all">{value}</span>
       {copied ? (
-        <Check className="size-3.5 shrink-0 text-emerald-400" aria-hidden="true" />
+        <Check className="size-3.5 shrink-0 text-gold" aria-hidden="true" />
       ) : (
         <Copy className="size-3.5 shrink-0 opacity-70" aria-hidden="true" />
       )}
@@ -267,7 +267,7 @@ export function DemoCredentialsCard({ theme, account, note }: DemoCredentialsCar
     <div
       className={cn(
         "mt-6 rounded-xl border border-dashed px-4 py-3",
-        theme === "emerald" && "border-emerald-400/30 bg-emerald-950/40",
+        theme === "graphite" && "border-gold/25 bg-stone-900/60",
         theme === "amber" && "border-amber-400/30 bg-amber-950/40",
         theme === "obsidian" && "border-gold/30 bg-zinc-900/60"
       )}

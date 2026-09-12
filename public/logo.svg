@@ -1,18 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MN.KP monogram">
   <defs>
     <linearGradient id="mnkp-bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0A5C46"/>
-      <stop offset="1" stop-color="#03271E"/>
+      <stop stop-color="#33322E"/>
+      <stop offset="1" stop-color="#151412"/>
     </linearGradient>
-    <linearGradient id="mnkp-gold" x1="0" y1="8" x2="0" y2="56" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#EED88C"/>
-      <stop offset="0.5" stop-color="#C9A227"/>
-      <stop offset="1" stop-color="#9C7A1E"/>
+    <linearGradient id="mnkp-copper" x1="0" y1="12" x2="0" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D89A6A"/>
+      <stop offset="0.5" stop-color="#A05A38"/>
+      <stop offset="1" stop-color="#7E4123"/>
     </linearGradient>
   </defs>
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#mnkp-bg)" stroke="url(#mnkp-gold)" stroke-width="2.5"/>
-  <rect x="7.5" y="7.5" width="49" height="49" rx="9.5" fill="none" stroke="#C9A227" stroke-opacity="0.35"/>
-  <text x="32" y="39" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="23" font-weight="700" letter-spacing="0.5" fill="url(#mnkp-gold)">MN</text>
-  <rect x="21" y="45" width="22" height="1.6" rx="0.8" fill="url(#mnkp-gold)" opacity="0.9"/>
-  <text x="32" y="55" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="8.5" font-weight="600" letter-spacing="3" fill="#E5C76B">KP</text>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#mnkp-bg)" stroke="url(#mnkp-copper)" stroke-width="2.5"/>
+  <rect x="7.5" y="7.5" width="49" height="49" rx="9.5" fill="none" stroke="#A05A38" stroke-opacity="0.35"/>
+  <g stroke="url(#mnkp-copper)" stroke-width="3" fill="none" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M12,38.5 L12,13.5 L20.5,27.5 L29,13.5 L29,38.5"/>
+    <path d="M35,38.5 L35,13.5 L53,38.5 L53,13.5"/>
+  </g>
+  <rect x="24" y="43" width="16" height="1.4" rx="0.7" fill="url(#mnkp-copper)" opacity="0.85"/>
+  <g stroke="url(#mnkp-copper)" stroke-width="1.9" fill="none" stroke-linecap="square" stroke-linejoin="miter">
+    <path d="M22,56 L22,47 M28.5,47 L22,51.2 L28.5,56"/>
+    <path d="M35,56 L35,47 L39,47 Q42,47 42,49.7 Q42,52.4 39,52.4 L35,52.4"/>
+  </g>
 </svg>

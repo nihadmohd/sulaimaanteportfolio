@@ -2,17 +2,7 @@
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ArrowRight,
-  Briefcase,
-  Building2,
-  Check,
-  Globe,
-  Mail,
-  MessageCircle,
-  Rocket,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, Check, Mail, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ALink } from "@/components/router/link";
@@ -22,8 +12,6 @@ import { LiveVisitorBadge } from "@/components/shared/live-visitor-badge";
 import { PostCard, type PostCardData } from "@/components/shared/post-card";
 import { ProductCard, formatINR, type ProductCardData } from "@/components/shared/product-card";
 import { SectionHeading } from "@/components/shared/section-heading";
-import { StatChip } from "@/components/shared/stat-chip";
-import { Icon } from "@/components/shared/lucide-icon";
 import { SEOHead } from "@/components/shared/seo-head";
 import { useSettings } from "@/hooks/use-settings";
 import { useToast } from "@/hooks/use-toast";
@@ -35,9 +23,10 @@ import type { Paginated, PostDTO, ProductDTO } from "@/types";
 /**
  * HomeView — route key "home" (#/).
  *
- * The "at a glance" landing page: hero, scrolling brand marquee, stat chips,
- * services preview, featured blog posts + affiliate strip, featured store
- * picks, brands band, about teaser, newsletter band and a final CTA.
+ * Professional editorial landing page: typographic hero, hairline stat band,
+ * services, featured writing, affiliate strip, store picks, brands, about
+ * teaser, newsletter and a final CTA. Calm hierarchy, generous whitespace,
+ * one restrained copper accent on a graphite-and-stone system.
  */
 
 const MARQUEE_CSS = `
@@ -126,65 +115,66 @@ function useHomeProducts(limit: number) {
 }
 
 /* ------------------------------------------------------------------ */
-/* hero + marquee                                                      */
+/* hero                                                                */
 /* ------------------------------------------------------------------ */
 
 function HeroSection() {
   return (
-    <section className="relative isolate overflow-hidden">
-      <img
-        src="/images/brand/og-cover.png"
-        alt=""
-        aria-hidden="true"
-        fetchPriority="high"
-        decoding="async"
-        className="absolute inset-0 -z-10 size-full object-cover"
-      />
+    <section className="relative isolate overflow-hidden border-b">
+      {/* quiet warm glow — depth without decoration */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-gradient-to-b from-emerald-950/85 via-emerald-950/75 to-emerald-950/90"
+        className="absolute inset-0 -z-10"
+        style={{
+          background:
+            "radial-gradient(900px circle at 88% -12%, color-mix(in oklab, var(--gold) 9%, transparent), transparent 62%)",
+        }}
       />
-      <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-10 sm:px-6 sm:py-16 md:py-28 lg:px-8">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold-soft">
-          Calicut · Kerala · Worldwide
+      <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 sm:py-20 md:py-24 lg:px-8">
+        <p className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+          <span aria-hidden="true" className="relative flex size-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold opacity-60" />
+            <span className="relative inline-flex size-full rounded-full bg-gold" />
+          </span>
+          Available for new projects
+          <span aria-hidden="true" className="text-border">|</span>
+          Calicut · Kerala
         </p>
-        <h1 className="mt-3 max-w-3xl text-balance text-3xl font-semibold leading-[1.1] tracking-tight text-white sm:mt-4 sm:text-4xl md:text-5xl">
-          <span className="text-gold-gradient block">MOHAMMED NIHAD KP</span>
-          <span className="mt-2 block text-xl font-semibold sm:text-2xl md:text-3xl">
-            AI-Powered Web &amp; App Development in Calicut
+
+        <h1 className="mt-6 max-w-4xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight sm:mt-8 sm:text-5xl md:text-6xl">
+          Mohammed Nihad KP
+          <span className="mt-3 block text-lg font-medium leading-snug text-muted-foreground sm:mt-4 sm:text-xl md:text-2xl">
+            AI-powered web &amp; app development, media and growth
           </span>
         </h1>
-        <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-emerald-50/85 sm:mt-6 md:text-lg">
+
+        <p className="mt-5 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground sm:mt-6 md:text-lg">
           {SITE.tagline}
         </p>
 
-        <div className="mt-6 flex flex-wrap items-center gap-3 sm:mt-8">
-          <ALink href="#/services">
+        <div className="mt-7 flex flex-wrap items-center gap-3 sm:mt-9">
+          <ALink href="#/contact">
             <Button size="lg" className="gap-2">
-              Hire me
+              Start a project
               <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
           </ALink>
-          <ALink href="#/blog">
-            <Button
-              size="lg"
-              variant="outline"
-              className="gap-2 border-gold/60 bg-transparent text-gold-soft hover:bg-gold/10 hover:text-gold"
-            >
-              Explore the blog
+          <ALink href="#/services">
+            <Button size="lg" variant="outline" className="gap-2">
+              Explore services
             </Button>
           </ALink>
           <ALink
             href={SITE.whatsappUrl}
             aria-label="Chat on WhatsApp"
-            className="inline-flex size-11 items-center justify-center rounded-lg border border-white/25 text-emerald-50 transition-colors hover:border-gold-soft/60 hover:text-gold-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-soft/60"
+            className="inline-flex size-11 items-center justify-center rounded-lg border text-muted-foreground transition-colors hover:border-gold/50 hover:text-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <MessageCircle className="size-5" aria-hidden="true" />
           </ALink>
         </div>
 
         <div className="mt-6 sm:mt-8">
-          <LiveVisitorBadge className="border-gold-soft/30 bg-white/10 text-gold-soft" />
+          <LiveVisitorBadge />
         </div>
       </div>
     </section>
@@ -198,7 +188,7 @@ function HeroMarquee() {
   if (!marquee?.enabled || images.length === 0) return null;
 
   return (
-    <section aria-hidden="true" className="border-y border-gold/20 bg-muted/50 py-3 sm:py-4 md:py-5">
+    <section aria-hidden="true" className="border-b bg-muted/40 py-3 sm:py-4 md:py-5">
       <style>{MARQUEE_CSS}</style>
       <div className="mnkp-marquee">
         <div className="mnkp-marquee__track">
@@ -209,10 +199,35 @@ function HeroMarquee() {
               alt=""
               loading="lazy"
               decoding="async"
-              className="mx-3 h-14 w-auto max-w-none rounded-lg border border-border/60 object-cover grayscale transition-all duration-300 hover:scale-[1.04] hover:grayscale-0 sm:h-24 md:h-36"
+              className="mx-3 h-14 w-auto max-w-none rounded-md border object-cover grayscale transition-all duration-300 hover:scale-[1.04] hover:grayscale-0 sm:h-24 md:h-32"
             />
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* stat band                                                           */
+/* ------------------------------------------------------------------ */
+
+function StatBand() {
+  return (
+    <section aria-label="MN.KP at a glance" className="border-b bg-card">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-4 md:gap-x-0 md:divide-x md:divide-border">
+          {STATS.map((stat, index) => (
+            <div key={stat.label} className={index === 0 ? "md:pr-6" : "md:px-6"}>
+              <dd className="text-2xl font-semibold tabular-nums tracking-tight sm:text-3xl">
+                {stat.value}
+              </dd>
+              <dt className="mt-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                {stat.label}
+              </dt>
+            </div>
+          ))}
+        </dl>
       </div>
     </section>
   );
@@ -250,8 +265,8 @@ function NewsletterBand() {
   };
 
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-14 lg:px-8">
-      <div className="rounded-2xl border border-gold/40 bg-gold/[0.05] p-4 sm:p-6 md:p-10">
+    <section className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+      <div className="rounded-2xl border border-border border-t-2 border-t-gold/70 bg-card p-6 sm:p-8 md:p-10">
         <div className="grid items-center gap-6 md:grid-cols-[1.2fr_1fr]">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">Newsletter</p>
@@ -267,9 +282,9 @@ function NewsletterBand() {
           {state === "done" ? (
             <div
               role="status"
-              className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 p-4 text-sm font-medium text-primary"
+              className="flex items-center gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm font-medium text-foreground"
             >
-              <Check className="size-5 shrink-0" aria-hidden="true" />
+              <Check className="size-5 shrink-0 text-gold" aria-hidden="true" />
               <span>You&rsquo;re in — watch your inbox for the next issue.</span>
             </div>
           ) : (
@@ -286,7 +301,7 @@ function NewsletterBand() {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-11 bg-card"
+                  className="h-11"
                 />
               </div>
               <Button type="submit" disabled={state === "loading"} className="h-11 gap-2">
@@ -319,8 +334,6 @@ function NewsletterBand() {
 /* view                                                                */
 /* ------------------------------------------------------------------ */
 
-const STAT_ICONS = [Globe, Building2, Briefcase, Rocket];
-
 export default function HomeView() {
   const postsQuery = useHomePosts(3);
   const productsQuery = useHomeProducts(4);
@@ -336,26 +349,10 @@ export default function HomeView() {
 
       <HeroSection />
       <HeroMarquee />
+      <StatBand />
 
-      {/* at a glance — 2x2 grid on mobile, 4-up from md */}
-      <section aria-label="MN.KP at a glance" className="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6 sm:pt-10 lg:px-8">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-          At a glance
-        </p>
-        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {STATS.map((stat, index) => (
-            <StatChip
-              key={stat.label}
-              value={stat.value}
-              label={stat.label}
-              icon={STAT_ICONS[index % STAT_ICONS.length]}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* services preview */}
-      <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-14 lg:px-8">
+      {/* services */}
+      <section className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <SectionHeading
           microLabel="Services"
           title="What I do"
@@ -365,26 +362,23 @@ export default function HomeView() {
           {SERVICES.map((service) => (
             <article
               key={service.slug}
-              className="flex h-full flex-col rounded-xl border bg-card p-5 shadow-xs transition-shadow hover:shadow-md"
+              className="group flex h-full flex-col rounded-xl border bg-card p-5 transition-all hover:border-foreground/25 hover:shadow-sm sm:p-6"
             >
-              <span
-                aria-hidden="true"
-                className="flex size-10 items-center justify-center rounded-lg border border-gold/30 bg-gold/10 text-gold"
-              >
-                <Icon name={service.icon} className="size-5" strokeWidth={1.75} />
-              </span>
-              <h3 className="mt-4 text-base font-semibold leading-snug tracking-tight">
-                <ALink href="#/services" className="transition-colors hover:text-primary">
+              <h3 className="text-base font-semibold leading-snug tracking-tight">
+                <ALink
+                  href="#/services"
+                  className="transition-colors group-hover:text-primary"
+                >
                   {service.name}
                 </ALink>
               </h3>
-              <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-2.5 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
                 {service.blurb}
               </p>
-              <p className="mt-3 text-sm font-semibold text-gold">
+              <p className="mt-4 text-sm font-semibold tabular-nums text-gold">
                 from {formatINR(service.priceFrom)}
               </p>
-              <div className="mt-auto flex items-center gap-4 pt-4 text-sm">
+              <div className="mt-auto flex items-center gap-4 pt-5 text-sm">
                 <ALink
                   href="#/services"
                   className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
@@ -403,14 +397,17 @@ export default function HomeView() {
           ))}
 
           {/* fill card — keeps the 3-col grid balanced with 5 services */}
-          <article className="flex h-full flex-col justify-center rounded-xl border border-dashed border-gold/40 bg-gold/[0.04] p-5">
-            <Sparkles className="size-5 text-gold" aria-hidden="true" />
-            <p className="mt-3 text-sm font-medium leading-relaxed">
-              Not sure which one fits? One conversation sorts it out.
+          <article className="flex h-full flex-col justify-center rounded-xl border bg-muted/30 p-5 sm:p-6">
+            <p className="text-sm font-semibold leading-snug tracking-tight">
+              Not sure which one fits?
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              One conversation sorts it out — tell me the goal and you will have a scoped
+              quote within 24 hours.
             </p>
             <ALink
               href="#/contact"
-              className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+              className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
             >
               Ask me anything
               <ArrowRight className="size-3.5" aria-hidden="true" />
@@ -420,7 +417,7 @@ export default function HomeView() {
       </section>
 
       {/* featured posts */}
-      <section className="mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 sm:pb-14 lg:px-8">
+      <section className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <SectionHeading
             microLabel="Fresh writing"
@@ -450,12 +447,12 @@ export default function HomeView() {
       </section>
 
       {/* affiliate strip */}
-      <div className="mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 sm:pb-14 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8">
         <AffiliateAdSlot placement="home-strip" />
       </div>
 
       {/* featured products */}
-      <section className="mx-auto w-full max-w-6xl px-4 pb-8 sm:px-6 sm:pb-14 lg:px-8">
+      <section className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <SectionHeading
             microLabel="Affiliate picks"
@@ -485,7 +482,7 @@ export default function HomeView() {
       </section>
 
       {/* brands + projects band */}
-      <section className="border-y bg-muted/40 py-8 sm:py-14">
+      <section className="border-y bg-muted/40 py-12 sm:py-16">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
           <SectionHeading
             microLabel="The ecosystem"
@@ -494,7 +491,10 @@ export default function HomeView() {
           />
           <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
             {BRANDS.map((brand) => (
-              <article key={brand.name} className="flex h-full flex-col rounded-xl border bg-card p-5 shadow-xs">
+              <article
+                key={brand.name}
+                className="flex h-full flex-col rounded-xl border bg-card p-5 transition-all hover:border-foreground/25 sm:p-6"
+              >
                 <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">{brand.role}</p>
                 <h3 className="mt-2 text-lg font-semibold tracking-tight">{brand.name}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{brand.description}</p>
@@ -518,7 +518,6 @@ export default function HomeView() {
                   title={project.description}
                   className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-gold/50 hover:text-gold"
                 >
-                  <Globe className="size-3" aria-hidden="true" />
                   {project.name}
                 </ALink>
               </li>
@@ -528,14 +527,14 @@ export default function HomeView() {
       </section>
 
       {/* about teaser */}
-      <section className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-4 py-8 sm:px-6 sm:py-14 lg:grid-cols-[280px_1fr] lg:px-8">
+      <section className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[280px_1fr] lg:px-8">
         <div className="mx-auto w-full max-w-[280px]">
           <img
             src="/images/brand/portrait.png"
             alt="Portrait of MOHAMMED NIHAD KP — AI-first developer and freelancer from Calicut"
             loading="lazy"
             decoding="async"
-            className="aspect-[4/5] w-full rounded-2xl border border-gold/30 object-cover shadow-md ring-1 ring-gold/40"
+            className="aspect-[4/5] w-full rounded-xl border object-cover shadow-sm"
           />
         </div>
         <div>
@@ -551,13 +550,12 @@ export default function HomeView() {
           <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-muted-foreground md:text-base">
             {ABOUT_PARAGRAPHS[1]}
           </p>
-          <span className="mt-5 inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-4 py-1.5 text-xs font-medium text-gold">
-            <Globe className="size-3.5" aria-hidden="true" />
+          <span className="mt-5 inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/5 px-4 py-1.5 text-xs font-medium text-gold">
             The 195-country mission
           </span>
           <div className="mt-5">
             <ALink href="#/about">
-              <Button variant="outline" className="gap-2 border-gold/50 text-gold hover:bg-gold/10">
+              <Button variant="outline" className="gap-2">
                 Read my story
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Button>
@@ -569,16 +567,15 @@ export default function HomeView() {
       <NewsletterBand />
 
       {/* final CTA band */}
-      <section className="mx-auto w-full max-w-6xl px-4 pb-10 sm:px-6 sm:pb-16 lg:px-8">
-        <div className="relative isolate overflow-hidden rounded-2xl bg-primary px-4 py-8 text-center sm:px-6 sm:py-12 md:px-12 md:py-16">
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/90 via-transparent to-gold/20"
-          />
-          <h2 className="text-balance text-2xl font-semibold tracking-tight text-primary-foreground md:text-4xl">
+      <section className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8">
+        <div className="rounded-2xl bg-primary px-4 py-10 text-center sm:px-8 sm:py-14 md:px-12 md:py-16">
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">
+            Let&rsquo;s build together
+          </p>
+          <h2 className="mt-3 text-balance text-2xl font-semibold tracking-tight text-primary-foreground md:text-4xl">
             Have an idea? Let&rsquo;s ship it.
           </h2>
-          <p className="mx-auto mt-3 max-w-xl text-pretty text-sm leading-relaxed text-primary-foreground/85 md:text-base">
+          <p className="mx-auto mt-3 max-w-xl text-pretty text-sm leading-relaxed text-primary-foreground/80 md:text-base">
             Websites, apps, photos, videos or a growth plan — tell me the goal and you will have
             a scoped quote within 24 hours. No jargon, no delay.
           </p>
