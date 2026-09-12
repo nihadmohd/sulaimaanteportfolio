@@ -4,28 +4,16 @@ import { fail, ok, readJson, withApi } from "@/lib/api-helpers";
 import { getSessionUser, requireUser } from "@/lib/auth";
 import { parseJsonRecord, toJson } from "@/types";
 import { toSafeUser } from "../_lib";
-import { ACTIVE_SUB_STATUSES, toSubscriptionDTO } from "../../subscriptions/_lib";
-import type { SubscriptionDTO } from "@/types";
 
 /**
  * GET /api/auth/me — session probe used by useSession().
  * Guest → 401 envelope {code:"UNAUTHENTICATED"} (client treats as guest).
- * Signed in → {user, subscription} where subscription is the current
- * trialing/active/past_due row with its parsed plan (null otherwise) plus
- * planCode/interval aliases matching use-session's SessionSubscription
- * shape, and a devVerifyUrl while the email is still unverified (mock
- * transport).
+ * Signed in → {user} plus a devVerifyUrl while the email is still
+ * unverified (mock transport).
  */
-
-/** Full DTO + the flat aliases useSession's SessionSubscription reads. */
-type SessionSubscriptionPayload = SubscriptionDTO & {
-  planCode: string;
-  interval: SubscriptionDTO["billingInterval"];
-};
 
 interface MePayload {
   user: ReturnType<typeof toSafeUser>;
-  subscription: SessionSubscriptionPayload | null;
   devVerifyUrl?: string;
 }
 
@@ -35,24 +23,10 @@ export const GET = withApi(async (req) => {
     return fail(401, "UNAUTHENTICATED", "Please sign in to continue.");
   }
 
-  const [user, subscription] = await Promise.all([
-    db.user.findUniqueOrThrow({ where: { id: sessionUser.id } }),
-    db.subscription.findFirst({
-      where: { userId: sessionUser.id, status: { in: [...ACTIVE_SUB_STATUSES] } },
-      include: { plan: true },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+  const user = await db.user.findUniqueOrThrow({ where: { id: sessionUser.id } });
 
   const payload: MePayload = {
     user: toSafeUser(user),
-    subscription: subscription
-      ? {
-          ...toSubscriptionDTO(subscription),
-          planCode: subscription.plan.code,
-          interval: subscription.billingInterval as SubscriptionDTO["billingInterval"],
-        }
-      : null,
   };
   if (!user.emailVerified && user.verificationToken) {
     payload.devVerifyUrl = `#/auth/verify?token=${user.verificationToken}`;

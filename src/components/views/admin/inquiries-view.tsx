@@ -44,7 +44,17 @@ import {
 
 type StatusTab = "" | "new" | "in_progress" | "replied" | "closed" | "spam";
 const PAGE_SIZE = 10;
-const TYPE_OPTIONS = ["", "general", "sponsorship", "partnership", "advertising", "support", "feedback"] as const;
+const TYPE_OPTIONS = [
+  "",
+  "general",
+  "sponsorship",
+  "partnership",
+  "advertising",
+  "support",
+  "feedback",
+  "venture",
+  "collab",
+] as const;
 
 interface InquiryCounts {
   all: number;
@@ -288,7 +298,15 @@ export default function InquiriesView() {
                             </span>
                           ) : null}
                         </span>
-                        <Badge variant="outline" className="border-border text-muted-foreground">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "capitalize",
+                            inquiry.type === "venture" || inquiry.type === "collab"
+                              ? "border-gold/40 bg-gold/10 text-gold"
+                              : "border-border text-muted-foreground"
+                          )}
+                        >
                           {inquiry.type}
                         </Badge>
                         {inquiry.subject ? (

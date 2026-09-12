@@ -6,7 +6,7 @@ import type { SessionUser } from "@/hooks/use-session";
 import { cn } from "@/lib/utils";
 
 /**
- * Shared helpers for the 5-a account views (dashboard / billing / settings).
+ * Shared helpers for the account views (dashboard / settings).
  */
 
 /**
@@ -47,42 +47,7 @@ export function chipsToString(values: string[]): string {
   return JSON.stringify(values);
 }
 
-/** Color-coded subscription status badge classes. */
-export function subStatusBadge(status: string): string {
-  switch (status) {
-    case "active":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
-    case "trialing":
-      return "border-gold/40 bg-gold/10 text-gold";
-    case "past_due":
-      return "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400";
-    case "canceled":
-    case "expired":
-      return "border-muted bg-muted text-muted-foreground";
-    default:
-      return "border-muted bg-muted text-muted-foreground";
-  }
-}
-
-/** Human status label. */
-export function subStatusLabel(status: string): string {
-  switch (status) {
-    case "active":
-      return "Active";
-    case "trialing":
-      return "Trialing";
-    case "past_due":
-      return "Past due";
-    case "canceled":
-      return "Canceled";
-    case "expired":
-      return "Expired";
-    default:
-      return status;
-  }
-}
-
-/** "12 Sep 2026" style dates for period ends / history rows. */
+/** "12 Sep 2026" style dates for member rows. */
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   try {
@@ -90,24 +55,6 @@ export function formatDate(iso: string | null | undefined): string {
   } catch {
     return "—";
   }
-}
-
-/** Renewal copy for the subscription card. */
-export function renewalNote(sub: {
-  status: string;
-  cancelAtPeriodEnd?: boolean;
-  billingInterval?: string;
-  interval?: string;
-  currentPeriodEnd?: string | null;
-}): string {
-  const interval = sub.billingInterval ?? sub.interval ?? "monthly";
-  if (sub.cancelAtPeriodEnd) {
-    return `Cancels on ${formatDate(sub.currentPeriodEnd)} — access stays until then.`;
-  }
-  if (sub.status === "past_due") {
-    return `Payment issue — renew by ${formatDate(sub.currentPeriodEnd)} to keep access.`;
-  }
-  return `Renews ${interval === "yearly" ? "yearly" : "monthly"} on ${formatDate(sub.currentPeriodEnd)}.`;
 }
 
 /** RHF-friendly object-is-empty check for chips saves. */

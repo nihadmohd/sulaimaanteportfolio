@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Eye,
   FilePlus2,
-  IndianRupee,
   Inbox,
   MousePointerClick,
   Package,
@@ -24,7 +23,6 @@ import { AdminShell } from "./_shell";
 import {
   apiFetch,
   formatCompact,
-  formatINR,
   InquiryStatusBadge,
   KpiCard,
   timeAgo,
@@ -147,16 +145,10 @@ export default function OverviewView() {
               icon={Users}
             />
             <KpiCard
-              label="Subscribers"
-              value={stats.kpis.confirmedSubscribers}
-              sub={`${stats.kpis.subscribers} on the list`}
+              label="Newsletter"
+              value={`${stats.kpis.confirmedSubscribers}/${stats.kpis.subscribers}`}
+              sub="confirmed subscribers"
               icon={UserPlus}
-            />
-            <KpiCard
-              label="MRR"
-              value={formatINR(stats.kpis.mrr)}
-              sub={`${stats.kpis.activeSubscriptions} active subscriptions`}
-              icon={IndianRupee}
             />
           </div>
         )}

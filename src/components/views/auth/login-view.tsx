@@ -72,7 +72,7 @@ export default function LoginView() {
     <>
       <SEOHead
         title="Sign In | MN.KP"
-        description="Sign in to your MN.KP account to manage subscriptions, inquiries and content."
+        description="Sign in to your MN.KP account to manage inquiries, newsletters and content."
         canonicalPath="/auth/login"
         noindex
       />
@@ -83,7 +83,7 @@ export default function LoginView() {
         description={
           next
             ? "Sign in to pick up right where you left off."
-            : "Your account, subscriptions and saved work — one sign-in away."
+            : "Your account, inquiries and saved work — one sign-in away."
         }
         footer={
           <p className="text-center text-xs text-stone-500">

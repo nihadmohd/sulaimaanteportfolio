@@ -36,6 +36,30 @@ export interface SiteSettings {
     message?: string;
     estimatedEnd?: string | null;
   };
+  /** Task 11-c groups — resolved with defaults by GET /api/settings. */
+  contact?: {
+    email?: string;
+    phone?: string;
+    whatsappNumber?: string;
+    whatsappUrl?: string;
+    address?: string;
+    city?: string;
+    responseTimeHours?: number;
+    socials?: Record<string, string>;
+  };
+  localization?: {
+    currency?: string;
+    currencySymbol?: string;
+    timezone?: string;
+    dateFormat?: string;
+    measurement?: string;
+  };
+  analytics?: {
+    enabled?: boolean;
+    googleAnalyticsId?: string;
+    plausibleDomain?: string;
+    trackOutboundClicks?: boolean;
+  };
 }
 
 async function fetchSettings(): Promise<SiteSettings | null> {
@@ -93,5 +117,33 @@ export function maintenanceInfo(
     enabled: m?.enabled === true,
     message: m?.message,
     estimatedEnd: m?.estimatedEnd ?? null,
+  };
+}
+
+/**
+ * Resolved contact block (Task 11-c) — the API already merges the documented
+ * defaults; these fallbacks only apply when the endpoint is unreachable.
+ * Default mode: live MN.KP contact details, empty contact socials map.
+ */
+export function contactInfo(settings: SiteSettings | null | undefined): {
+  email: string;
+  phone: string;
+  whatsappNumber: string;
+  whatsappUrl: string;
+  address: string;
+  city: string;
+  responseTimeHours: number;
+  socials: Record<string, string>;
+} {
+  const c = settings?.contact;
+  return {
+    email: c?.email ?? "intobusyness@gmail.com",
+    phone: c?.phone ?? "+91 98467 50898",
+    whatsappNumber: c?.whatsappNumber ?? "+91 98467 50898",
+    whatsappUrl: c?.whatsappUrl ?? "https://wa.me/919846750898",
+    address: c?.address ?? "Calicut (Kozhikode), Kerala, India",
+    city: c?.city ?? "Calicut",
+    responseTimeHours: typeof c?.responseTimeHours === "number" ? c.responseTimeHours : 24,
+    socials: c?.socials ?? {},
   };
 }

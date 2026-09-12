@@ -169,7 +169,9 @@ export type InquiryType =
   | "partnership"
   | "advertising"
   | "support"
-  | "feedback";
+  | "feedback"
+  | "venture"
+  | "collab";
 
 export type InquiryStatus = "new" | "in_progress" | "replied" | "closed" | "spam";
 export type InquiryPriority = "low" | "normal" | "high" | "urgent";
@@ -206,92 +208,12 @@ export interface NewsletterSubscriberDTO {
 }
 
 /* ------------------------------------------------------------------ */
-/* billing: plans / subscriptions / events                             */
-/* ------------------------------------------------------------------ */
-
-export interface PlanDTO {
-  id: string;
-  code: string;
-  name: string;
-  description: string | null;
-  priceMonthly: number;
-  priceYearly: number;
-  currency: string;
-  /** Parsed JSON column (parseJsonArray). */
-  features: string[];
-  /** Parsed JSON column (parseJsonRecord). */
-  limits: Record<string, string>;
-  isActive: boolean;
-  isDefault: boolean;
-  sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type BillingInterval = "monthly" | "yearly";
-export type SubscriptionStatus =
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "canceled"
-  | "expired";
-
-export interface SubscriptionDTO {
-  id: string;
-  userId: string;
-  planId: string;
-  billingInterval: BillingInterval;
-  status: SubscriptionStatus;
-  currentPeriodStart: string;
-  currentPeriodEnd: string;
-  cancelAtPeriodEnd: boolean;
-  canceledAt: string | null;
-  paymentBrand: string | null;
-  paymentLast4: string | null;
-  createdAt: string;
-  updatedAt: string;
-  /** Joined plan (GET /api/subscriptions, /api/auth/me). */
-  plan: PlanDTO;
-}
-
-export type SubscriptionEventType =
-  | "created"
-  | "plan_changed"
-  | "interval_changed"
-  | "renewed"
-  | "canceled"
-  | "resumed"
-  | "payment_succeeded"
-  | "payment_failed"
-  | "trial_ended";
-
-export interface SubscriptionEventDTO {
-  id: string;
-  subscriptionId: string;
-  userId: string;
-  type: SubscriptionEventType;
-  amount: number | null;
-  currency: string | null;
-  /** Parsed JSON column — loosely typed metadata. */
-  payload: Record<string, unknown>;
-  createdAt: string;
-}
-
-/** GET /api/subscriptions → {plans, current, history}. */
-export interface SubscriptionsResponse {
-  plans: PlanDTO[];
-  current: SubscriptionDTO | null;
-  history: SubscriptionEventDTO[];
-}
-
-/* ------------------------------------------------------------------ */
 /* notifications / stats (admin)                                       */
 /* ------------------------------------------------------------------ */
 
 export type NotificationType =
   | "inquiry"
   | "subscriber"
-  | "billing"
   | "system"
   | "mention";
 
@@ -326,15 +248,11 @@ export interface StatsResponse {
     newInquiries: number;
     subscribers: number;
     confirmedSubscribers: number;
-    activeSubscriptions: number;
-    /** Monthly recurring revenue in plan currency units. */
-    mrr: number;
   };
   series: {
     viewsByPost: Array<{ title: string; views: number }>;
     clicksByProduct: Array<{ name: string; clicks: number }>;
     inquiriesByDay: Array<{ day: string; count: number }>;
-    planDist: Array<{ plan: string; count: number }>;
   };
 }
 
@@ -435,6 +353,35 @@ export interface SeoSettings {
   bingVerification: string;
 }
 
+/** site_settings key "contact" — contact details + social links (Task 11). */
+export interface ContactSettings {
+  email: string;
+  phone: string;
+  whatsappNumber: string;
+  whatsappUrl: string;
+  address: string;
+  city: string;
+  responseTimeHours: number;
+  socials: SocialsSettings;
+}
+
+/** site_settings key "localization" — currency / timezone / formats (Task 11). */
+export interface LocalizationSettings {
+  currency: string;
+  currencySymbol: string;
+  timezone: string;
+  dateFormat: "d MMM yyyy" | "dd/MM/yyyy" | "MM/dd/yyyy";
+  measurement: "metric" | "imperial";
+}
+
+/** site_settings key "analytics" — tracking integrations (Task 11). */
+export interface AnalyticsSettings {
+  enabled: boolean;
+  googleAnalyticsId: string;
+  plausibleDomain: string;
+  trackOutboundClicks: boolean;
+}
+
 /* ------------------------------------------------------------------ */
 /* ads — full ad management system (Task 9)                            */
 /* ------------------------------------------------------------------ */
@@ -483,6 +430,43 @@ export interface AdStatsDTO {
 }
 
 /* ------------------------------------------------------------------ */
+/* ventures — "Ventures & Business Ideas" (Task 11)                    */
+/* ------------------------------------------------------------------ */
+
+export type VentureStatus = "live" | "incubating" | "planned" | "idea" | "retired";
+
+/** "venture" is the generic fallback bucket (the column default). */
+export type VentureCategory =
+  | "venture"
+  | "store"
+  | "community"
+  | "tech"
+  | "product"
+  | "service"
+  | "media";
+
+export interface VentureDTO {
+  id: string;
+  slug: string;
+  name: string;
+  tagline: string | null;
+  description: string | null;
+  category: VentureCategory;
+  status: VentureStatus;
+  location: string | null;
+  websiteUrl: string | null;
+  imageUrl: string | null;
+  /** Parsed JSON column (parseJsonArray). */
+  highlights: string[];
+  /** Parsed JSON column (parseJsonArray) — collaboration roles wanted. */
+  collabRoles: string[];
+  sortOrder: number;
+  isFeatured: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/* ------------------------------------------------------------------ */
 /* audit log — undo/redo system (Task 9)                               */
 /* ------------------------------------------------------------------ */
 
@@ -509,6 +493,9 @@ export interface PublicSettings {
   ads: AdsSettings;
   features: FeaturesSettings;
   seo: SeoSettings;
+  contact: ContactSettings;
+  localization: LocalizationSettings;
+  analytics: AnalyticsSettings;
   maintenance: MaintenanceSettings;
 }
 
@@ -520,6 +507,9 @@ export interface AdminSettings {
   ads: JsonRecord;
   features: JsonRecord;
   seo: JsonRecord;
+  contact: JsonRecord;
+  localization: JsonRecord;
+  analytics: JsonRecord;
   maintenance: JsonRecord;
   [key: string]: JsonRecord | undefined;
 }

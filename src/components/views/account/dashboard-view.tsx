@@ -5,10 +5,10 @@ import {
   ArrowRight,
   BadgeCheck,
   BellRing,
-  CreditCard,
   Mail,
   MessageCircle,
   Newspaper,
+  Rss,
   Settings,
   ShoppingBag,
   UserRound,
@@ -25,25 +25,9 @@ import { SITE } from "@/lib/constants";
 import { apiFetch } from "@/components/views/auth/_shared";
 import {
   ContactRow,
-  renewalNote,
-  subStatusBadge,
-  subStatusLabel,
   formatDate,
   type ClientUser,
 } from "./_shared";
-import type { PlanDTO } from "@/types";
-
-/** The /api/auth/me subscription payload (full DTO + planCode/interval aliases). */
-interface DashboardSubscription {
-  id: string;
-  planCode: string;
-  status: string;
-  interval: string;
-  currentPeriodEnd: string | null;
-  cancelAtPeriodEnd?: boolean;
-  billingInterval?: string;
-  plan?: PlanDTO;
-}
 
 const ROLE_LABELS: Record<string, string> = {
   reader: "Reader",
@@ -81,12 +65,11 @@ const QUICK_LINKS = [
 
 /**
  * #/account (route key account, guard auth) — the member dashboard:
- * greeting, verify banner, profile + subscription cards, quick links.
+ * greeting, verify banner, profile + newsletter cards, quick links.
  */
 export default function DashboardView() {
-  const { user: rawUser, subscription: rawSub } = useSession();
+  const { user: rawUser } = useSession();
   const user = rawUser as ClientUser | null;
-  const sub = rawSub as DashboardSubscription | null;
 
   const [verifyUrl, setVerifyUrl] = React.useState<string | null>(null);
 
@@ -118,7 +101,7 @@ export default function DashboardView() {
     <>
       <SEOHead
         title="My Account | MN.KP"
-        description="Your MN.KP profile, activity and subscription overview."
+        description="Your MN.KP profile, activity and newsletter preferences."
         canonicalPath="/account"
         noindex
       />
@@ -177,7 +160,7 @@ export default function DashboardView() {
               <BellRing className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               <p>
                 <span className="font-medium">Your email isn't verified yet.</span>{" "}
-                Verify {user.email} to secure recovery and receive billing receipts.
+                Verify {user.email} to secure account recovery and important updates.
               </p>
             </div>
             {verifyUrl ? (
@@ -245,64 +228,56 @@ export default function DashboardView() {
             </CardContent>
           </Card>
 
-          {/* subscription card */}
+          {/* newsletter & communication card */}
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between gap-2 text-base">
-                <span className="flex items-center gap-2">
-                  <CreditCard className="size-4 text-gold" aria-hidden="true" />
-                  Subscription
-                </span>
-                {sub ? (
-                  <Badge variant="outline" className={subStatusBadge(sub.status)}>
-                    {subStatusLabel(sub.status)}
-                  </Badge>
-                ) : null}
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Rss className="size-4 text-gold" aria-hidden="true" />
+                Newsletter &amp; communication
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              {sub ? (
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <p className="text-lg font-semibold">{sub.plan?.name ?? sub.planCode}</p>
-                    <span className="text-sm text-muted-foreground">
-                      {sub.interval ?? sub.billingInterval} billing
-                    </span>
-                  </div>
-                  <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                    <div className="flex justify-between gap-4 sm:block">
-                      <dt className="text-xs text-muted-foreground">Current period ends</dt>
-                      <dd className="font-medium">{formatDate(sub.currentPeriodEnd)}</dd>
-                    </div>
-                    <div className="flex justify-between gap-4 sm:block">
-                      <dt className="text-xs text-muted-foreground">Payment method</dt>
-                      <dd className="font-medium">Visa ·· 4242 (demo)</dd>
-                    </div>
-                  </dl>
-                  <p className="rounded-lg border bg-muted/30 px-4 py-2.5 text-sm text-muted-foreground">
-                    {renewalNote(sub)}
-                  </p>
-                  <Button asChild className="h-11 w-full gap-2 bg-primary font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto">
-                    <ALink href="#/account/billing">
-                      Manage billing
-                      <ArrowRight className="size-4" aria-hidden="true" />
-                    </ALink>
-                  </Button>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/30 px-4 py-3">
+                <div className="flex items-center gap-3 text-sm">
+                  <span
+                    className={`flex size-2.5 rounded-full ${
+                      user.marketingOptIn
+                        ? "bg-emerald-500"
+                        : "bg-muted-foreground/40"
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span className="font-medium">
+                    {user.marketingOptIn ? "Subscribed to the MN.KP newsletter" : "Newsletter paused"}
+                  </span>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    You're on the Free Reader plan — every published post and store
-                    listing, no card needed.
-                  </p>
-                  <Button asChild className="h-11 w-full gap-2 bg-primary font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto">
-                    <ALink href="#/account/billing">
-                      Explore plans
-                      <ArrowRight className="size-4" aria-hidden="true" />
-                    </ALink>
-                  </Button>
-                </div>
-              )}
+                <Badge
+                  variant="outline"
+                  className={
+                    user.emailVerified
+                      ? "gap-1 border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  }
+                >
+                  {user.emailVerified ? "Email verified" : "Email unverified"}
+                </Badge>
+              </div>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                One practical email when something worth reading ships — AI workflows,
+                new ventures and honest gear picks. No spam, unsubscribe anytime from
+                the newsletter footer.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button asChild className="h-11 gap-2">
+                  <ALink href="#/account/settings">
+                    Manage preferences
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </ALink>
+                </Button>
+                <Button asChild variant="outline" className="h-11 gap-2">
+                  <ALink href="#/blog">Latest on the blog</ALink>
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

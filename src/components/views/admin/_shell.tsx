@@ -2,13 +2,13 @@
 
 import * as React from "react";
 import {
-  CreditCard,
   ExternalLink,
   FileText,
   FolderTree,
   History,
   Inbox,
   LayoutDashboard,
+  Lightbulb,
   LogOut,
   Mail,
   Megaphone,
@@ -28,17 +28,16 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import { ALink } from "@/components/router/link";
 import { isPathActive } from "@/hooks/use-router";
 import { useRouter } from "@/hooks/use-router";
 import { useSession } from "@/hooks/use-session";
 import { toast } from "@/hooks/use-toast";
+import { useUiStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import { apiFetch, RoleBadge } from "./_shared";
 
@@ -48,7 +47,10 @@ import { apiFetch, RoleBadge } from "./_shared";
  * Desktop: fixed left sidebar (w-64) under the site header, grouped nav
  * with micro-labels, active item = gold left border + primary text,
  * admin identity card + View site + Sign out at the bottom.
- * Mobile: slim sticky top bar with a Sheet menu carrying the same nav.
+ * Mobile: slim sticky top bar (top-14, matching the mobile site header
+ * height) whose menu opens the shared admin-nav Sheet. The same Sheet is
+ * opened by the site header's hamburger on /admin routes (store-driven,
+ * see ui-store adminNavOpen) so BOTH buttons work.
  * Content: p-4 md:p-6 lg:p-8, max-w-7xl.
  */
 
@@ -74,13 +76,13 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Posts", href: "/admin/posts", icon: FileText },
       { label: "Categories", href: "/admin/categories", icon: FolderTree },
+      { label: "Ventures", href: "/admin/ventures", icon: Lightbulb },
     ],
   },
   {
     label: "COMMERCE",
     items: [
       { label: "Products", href: "/admin/products", icon: ShoppingBag },
-      { label: "Plans", href: "/admin/plans", icon: CreditCard },
     ],
   },
   {
@@ -127,6 +129,12 @@ function initials(name: string): string {
 export function AdminShell({ title, description, actions, children }: AdminShellProps) {
   const { path } = useRouter();
   const { user, refetch } = useSession();
+  const { adminNavOpen, setAdminNavOpen } = useUiStore();
+
+  // Close the admin nav sheet whenever the route changes (e.g. nav click).
+  React.useEffect(() => {
+    setAdminNavOpen(false);
+  }, [path, setAdminNavOpen]);
 
   const signOut = async () => {
     try {
@@ -242,14 +250,19 @@ export function AdminShell({ title, description, actions, children }: AdminShell
         {adminCard}
       </aside>
 
-      {/* Mobile slim top bar + Sheet menu */}
-      <div className="sticky top-16 z-30 flex h-12 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur lg:hidden">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="size-9" aria-label="Open admin menu">
-              <PanelLeft className="size-4" aria-hidden="true" />
-            </Button>
-          </SheetTrigger>
+      {/* Mobile slim top bar + Sheet menu (shared state with site header) */}
+      <div className="sticky top-14 z-30 flex h-12 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur lg:hidden">
+        <Button
+          variant="outline"
+          size="icon"
+          className="size-9 shrink-0"
+          aria-label="Open admin menu"
+          aria-expanded={adminNavOpen}
+          onClick={() => setAdminNavOpen(true)}
+        >
+          <PanelLeft className="size-4" aria-hidden="true" />
+        </Button>
+        <Sheet open={adminNavOpen} onOpenChange={setAdminNavOpen}>
           <SheetContent side="left" className="w-72 p-0">
             <SheetHeader className="border-b px-5 py-4">
               <SheetTitle className="flex items-center gap-2 text-sm">
@@ -268,9 +281,7 @@ export function AdminShell({ title, description, actions, children }: AdminShell
                 MN.KP Console
               </p>
             </SheetHeader>
-            <SheetClose asChild>
-              <div className="flex h-[calc(100%-8rem)] flex-col">{navList}</div>
-            </SheetClose>
+            <div className="flex h-[calc(100%-8rem)] flex-col">{navList}</div>
             <div className="border-t">{adminCard}</div>
           </SheetContent>
         </Sheet>

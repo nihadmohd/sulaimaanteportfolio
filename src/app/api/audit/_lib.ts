@@ -11,7 +11,7 @@ import type { SessionUser } from "@/lib/auth";
 export type AuditAction = "create" | "update" | "delete" | "toggle" | "undo" | "redo" | "import";
 
 /** Entities whose snapshots can be automatically restored (undo/redo). */
-export const RESTORABLE_ENTITIES = new Set(["setting", "ad", "post", "product"]);
+export const RESTORABLE_ENTITIES = new Set(["setting", "ad", "post", "product", "venture"]);
 
 export interface WriteAuditInput {
   user: Pick<SessionUser, "id" | "fullName" | "email"> | null;
@@ -117,6 +117,25 @@ interface ProductRow {
   createdAt?: string;
 }
 
+interface VentureRow {
+  id?: string;
+  slug?: string;
+  name?: string;
+  tagline?: string | null;
+  description?: string | null;
+  category?: string;
+  status?: string;
+  location?: string | null;
+  websiteUrl?: string | null;
+  imageUrl?: string | null;
+  highlights?: string;
+  collabRoles?: string;
+  sortOrder?: number;
+  isFeatured?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 function reviveDate(value: unknown): Date | null {
   return typeof value === "string" && value ? new Date(value) : null;
 }
@@ -161,6 +180,24 @@ function postRowToData(row: PostRow) {
     authorId: row.authorId ?? null,
     categoryId: row.categoryId ?? null,
     publishedAt: reviveDate(row.publishedAt),
+  };
+}
+
+function ventureRowToData(row: VentureRow) {
+  return {
+    slug: row.slug ?? `restored-venture-${Date.now()}`,
+    name: row.name ?? "Restored venture",
+    tagline: row.tagline ?? null,
+    description: row.description ?? null,
+    category: row.category ?? "venture",
+    status: row.status ?? "live",
+    location: row.location ?? null,
+    websiteUrl: row.websiteUrl ?? null,
+    imageUrl: row.imageUrl ?? null,
+    highlights: typeof row.highlights === "string" ? row.highlights : JSON.stringify(row.highlights ?? []),
+    collabRoles: typeof row.collabRoles === "string" ? row.collabRoles : JSON.stringify(row.collabRoles ?? []),
+    sortOrder: row.sortOrder ?? 0,
+    isFeatured: row.isFeatured ?? false,
   };
 }
 
@@ -242,6 +279,18 @@ export async function applySnapshot(entity: string, entityId: string | null, sna
         update: data,
         create: { id: entityId, ...data },
       });
+      return { id: entityId };
+    }
+    case "venture": {
+      if (!entityId) throw new ApiError(400, "VALIDATION", "Venture snapshot has no entity id.");
+      if (!snapshot) {
+        await db.venture.deleteMany({ where: { id: entityId } });
+        return { id: entityId, deleted: true };
+      }
+      const row = JSON.parse(snapshot) as VentureRow;
+      // id / createdAt / updatedAt are stripped — only content fields are written.
+      const data = ventureRowToData(row);
+      await db.venture.upsert({ where: { id: entityId }, update: data, create: { id: entityId, ...data } });
       return { id: entityId };
     }
     default:

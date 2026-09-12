@@ -56,8 +56,6 @@ model User {
 
   posts               Post[]
   inquiries           Inquiry[]
-  subscriptions       Subscription[]
-  subscriptionEvents  SubscriptionEvent[]
   affiliateClicks     AffiliateClick[]
   visitorSessions     VisitorSession[]
   settingsUpdated     SiteSetting[]
@@ -160,7 +158,7 @@ model Inquiry {
   name         String
   email        String
   phone        String?
-  type         String    @default("general") // general|sponsorship|partnership|advertising|support|feedback
+  type         String    @default("general") // general|sponsorship|partnership|advertising|support|feedback|venture|collab
   subject      String?
   message      String
   status       String    @default("new") // new|in_progress|replied|closed|spam
@@ -174,74 +172,6 @@ model Inquiry {
 
   @@index([status, createdAt(sort: Desc)])
   @@index([email])
-}
-
-// ----------------------------------------------------------------------------
-//  PLANS (billing catalog)
-// ----------------------------------------------------------------------------
-model Plan {
-  id           String   @id @default(uuid())
-  code         String   @unique // free | pro | business
-  name         String
-  description  String?
-  priceMonthly Float    @default(0)
-  priceYearly  Float    @default(0)
-  currency     String   @default("INR")
-  features     String   @default("[]") // JSON array of strings
-  limits       String   @default("{}") // JSON object {key:value}
-  isActive     Boolean  @default(true)
-  isDefault    Boolean  @default(false)
-  sortOrder    Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  subscriptions Subscription[]
-}
-
-// ----------------------------------------------------------------------------
-//  SUBSCRIPTIONS (mock billing lifecycle) + audit events
-// ----------------------------------------------------------------------------
-model Subscription {
-  id                 String    @id @default(uuid())
-  userId             String
-  planId             String
-  billingInterval    String    @default("monthly") // monthly|yearly
-  status             String    @default("trialing") // trialing|active|past_due|canceled|expired
-  currentPeriodStart DateTime  @default(now())
-  currentPeriodEnd   DateTime
-  cancelAtPeriodEnd  Boolean   @default(false)
-  canceledAt         DateTime?
-  paymentBrand       String? // mock, e.g. 'Visa'
-  paymentLast4       String? // mock, e.g. '4242'
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-
-  user   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan   Plan                @relation(fields: [planId], references: [id], onDelete: Restrict)
-  events SubscriptionEvent[]
-
-  // Production has a partial unique index (one active per user); not
-  // expressible in Prisma/SQLite — the API layer enforces it instead.
-  @@index([userId])
-  @@index([status])
-}
-
-// append-only audit trail (doubles as mock invoice history)
-model SubscriptionEvent {
-  id             String   @id @default(uuid())
-  subscriptionId String
-  userId         String
-  type           String // created|plan_changed|interval_changed|renewed|canceled|resumed|payment_succeeded|payment_failed|trial_ended
-  amount         Float?
-  currency       String?
-  payload        String   @default("{}") // JSON object
-  createdAt      DateTime @default(now())
-
-  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([subscriptionId, createdAt(sort: Desc)])
-  @@index([userId, createdAt(sort: Desc)])
 }
 
 // ----------------------------------------------------------------------------
@@ -332,6 +262,34 @@ model Ad {
 
   @@index([placement, active])
   @@index([active, priority(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+}
+
+// ----------------------------------------------------------------------------
+//  VENTURES — "Ventures & Business Ideas" (Calicut Store, Chaliyam Connect,
+//  MN.KP Digital, Project 195...). Managed from Admin & Developer; public
+//  /ventures page + startup-idea inquiry form. Mirrors the ventures table
+//  appended to supabase/schema.sql.
+// ----------------------------------------------------------------------------
+model Venture {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  tagline     String?
+  description String? // markdown
+  category    String   @default("venture") // venture|store|community|tech|product|service|media
+  status      String   @default("live") // live|incubating|planned|idea|retired
+  location    String?
+  websiteUrl  String?
+  imageUrl    String?
+  highlights  String   @default("[]") // JSON array of strings
+  collabRoles String   @default("[]") // JSON array of strings — roles wanted
+  sortOrder   Int      @default(0)
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, sortOrder])
   @@index([createdAt(sort: Desc)])
 }
 

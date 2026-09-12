@@ -4,7 +4,7 @@
  * Run with:  bun prisma/seed.ts
  *
  * Idempotent by design: every row with a natural unique key (email, slug,
- * code, key) is upserted; inquiries/subscriptions (no unique key) are
+ * code, key) is upserted; inquiries (no unique key) are
  * create-if-missing. Re-running restores canonical seed state without
  * duplicating rows.
  *
@@ -947,65 +947,6 @@ Usage is deliberately frictionless: import once, browse by category, tap to prev
 ];
 
 /* ------------------------------------------------------------------ */
-/* seed content: plans (production SQL §15, adapted to INR)            */
-/* ------------------------------------------------------------------ */
-
-const PLANS = [
-  {
-    code: "free",
-    name: "Free Reader",
-    description: "Full access to every published post and store listing.",
-    priceMonthly: 0,
-    priceYearly: 0,
-    isDefault: true,
-    sortOrder: 0,
-    features: [
-      "Every published blog post",
-      "All store listings and price comparisons",
-      "Weekly newsletter digest",
-      "Save posts to your reading list",
-      "Personal account with preferences",
-    ],
-    limits: { savedItems: "20", newsletter: "weekly" },
-  },
-  {
-    code: "pro",
-    name: "Pro Member",
-    description: "Premium deep-dives, early deal alerts and saved comparisons.",
-    priceMonthly: 399,
-    priceYearly: 3990,
-    isDefault: false,
-    sortOrder: 1,
-    features: [
-      "Everything in Free",
-      "Premium in-depth guides and deep-dives",
-      "Early affiliate deal alerts",
-      "Save and compare products side-by-side",
-      "Ad-free reading experience",
-      "Priority email support within 72 hours",
-    ],
-    limits: { savedItems: "500", newsletter: "instant", adFree: "true" },
-  },
-  {
-    code: "business",
-    name: "Business",
-    description: "For sponsors and teams: outreach inbox, media kit and priority replies.",
-    priceMonthly: 1499,
-    priceYearly: 14990,
-    isDefault: false,
-    sortOrder: 2,
-    features: [
-      "Everything in Pro",
-      "Sponsorship and advertising inbox",
-      "Media kit and rate card access",
-      "Priority replies within 48 hours",
-      "Team seats for collaboration",
-      "API access (beta)",
-    ],
-    limits: { savedItems: "5000", newsletter: "instant", adFree: "true", teamSeats: "5" },
-  },
-];
-
 /* ------------------------------------------------------------------ */
 /* seed content: inquiries / newsletter                                */
 /* ------------------------------------------------------------------ */
@@ -1061,6 +1002,95 @@ const NEWSLETTER = [
   { email: "devika.nair@outlook.com", status: "confirmed", source: "store", daysAgo: 33 },
   { email: "karthik.menon@gmail.com", status: "pending", source: "blog", daysAgo: 9 },
   { email: "saniya.pv@gmail.com", status: "confirmed", source: "footer", daysAgo: 52 },
+];
+
+/* ------------------------------------------------------------------ */
+/* seed content: ventures (Ventures & Business Ideas, Task 11)         */
+/* ------------------------------------------------------------------ */
+
+const VENTURES = [
+  {
+    slug: "calicut-store",
+    name: "Calicut Store",
+    tagline: "Curated creator and everyday gear, handpicked in Calicut.",
+    description:
+      "A local-commerce retail venture: a curated shelf of creator and everyday gear for Calicut, blended with the MN.KP affiliate store's honestly-reviewed picks. Order over WhatsApp, pick up in the city, and get gear that has actually been tested — not just listed.",
+    category: "store",
+    status: "live",
+    location: "Calicut, Kerala",
+    websiteUrl: null as string | null,
+    imageUrl: null as string | null,
+    highlights: [
+      "Curated creator & everyday gear",
+      "Local pickup in Calicut city",
+      "WhatsApp-first ordering",
+      "Honest, tested recommendations",
+    ],
+    collabRoles: ["Operations partner", "Local supplier"],
+    sortOrder: 0,
+    isFeatured: true,
+  },
+  {
+    slug: "chaliyam-connect",
+    name: "Chaliyam Connect",
+    tagline: "A community and local-tech network for the Chaliyam area.",
+    description:
+      "A community + local-tech initiative for Chaliyam (Kozhikode): connecting people, local businesses and events in one lightweight network — a local business directory, a community noticeboard, and digital help for shops that want to come online without jargon.",
+    category: "community",
+    status: "incubating",
+    location: "Chaliyam, Kozhikode",
+    websiteUrl: null as string | null,
+    imageUrl: null as string | null,
+    highlights: [
+      "Community network for Chaliyam",
+      "Local business directory",
+      "Meetups & local events",
+      "Digital help for local shops",
+    ],
+    collabRoles: ["Community lead", "Content volunteer"],
+    sortOrder: 10,
+    isFeatured: true,
+  },
+  {
+    slug: "mnkp-digital",
+    name: "MN.KP Digital",
+    tagline: "First-party digital products — templates, presets and tools.",
+    description:
+      "The first-party digital-products arm of MN.KP: Notion templates, presets and workflow tools built from the same AI-first process documented on the blog. Zero inventory, instant delivery, sold through the MN.KP store.",
+    category: "product",
+    status: "live",
+    location: null as string | null,
+    websiteUrl: null as string | null,
+    imageUrl: null as string | null,
+    highlights: [
+      "Notion templates & presets",
+      "Sold through the MN.KP store",
+      "Zero-inventory digital catalog",
+    ],
+    collabRoles: ["Affiliate partner"],
+    sortOrder: 20,
+    isFeatured: true,
+  },
+  {
+    slug: "project-195",
+    name: "Project 195",
+    tagline: "Taking the AI-first build workflow to creators in 195 countries.",
+    description:
+      "The long-horizon vision: package the AI-first build workflow — the same one that ships MN.KP projects in days — and put it in the hands of creators across all 195 countries. Early-stage: scoping, prototyping and looking for the right founding team.",
+    category: "tech",
+    status: "idea",
+    location: null as string | null,
+    websiteUrl: null as string | null,
+    imageUrl: null as string | null,
+    highlights: [
+      "AI-first build workflow, packaged",
+      "Ambition: creators in 195 countries",
+      "Early research & scoping",
+    ],
+    collabRoles: ["Co-founder", "Investor", "Country ambassador"],
+    sortOrder: 30,
+    isFeatured: false,
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -1289,27 +1319,6 @@ async function main() {
     });
   }
 
-  /* ---------- plans ---------- */
-  for (const pl of PLANS) {
-    const base = {
-      name: pl.name,
-      description: pl.description,
-      priceMonthly: pl.priceMonthly,
-      priceYearly: pl.priceYearly,
-      currency: "INR",
-      features: JSON.stringify(pl.features),
-      limits: JSON.stringify(pl.limits),
-      isActive: true,
-      isDefault: pl.isDefault,
-      sortOrder: pl.sortOrder,
-    };
-    await db.plan.upsert({
-      where: { code: pl.code },
-      update: base,
-      create: { code: pl.code, ...base },
-    });
-  }
-
   /* ---------- inquiries (create-if-missing; no natural unique key) ---------- */
   for (const inq of INQUIRIES) {
     const existing = await db.inquiry.findFirst({
@@ -1349,6 +1358,29 @@ async function main() {
         subscribedAt: daysAgo(sub.daysAgo),
         confirmedAt: sub.status === "confirmed" ? daysAgo(sub.daysAgo - 1) : null,
       },
+    });
+  }
+
+  /* ---------- ventures ---------- */
+  for (const v of VENTURES) {
+    const base = {
+      name: v.name,
+      tagline: v.tagline,
+      description: v.description,
+      category: v.category,
+      status: v.status,
+      location: v.location,
+      websiteUrl: v.websiteUrl,
+      imageUrl: v.imageUrl,
+      highlights: JSON.stringify(v.highlights),
+      collabRoles: JSON.stringify(v.collabRoles),
+      sortOrder: v.sortOrder,
+      isFeatured: v.isFeatured,
+    };
+    await db.venture.upsert({
+      where: { slug: v.slug },
+      update: base,
+      create: { slug: v.slug, ...base },
     });
   }
 
@@ -1414,117 +1446,14 @@ async function main() {
     });
   }
 
-  /* ---------- subscriptions + events (create-if-missing) ---------- */
-  const proPlan = await db.plan.findUniqueOrThrow({ where: { code: "pro" } });
-  const businessPlan = await db.plan.findUniqueOrThrow({ where: { code: "business" } });
-
-  // reader on pro / monthly / active (period renewed today, ends +30d)
-  const existingReaderSub = await db.subscription.findFirst({
-    where: { userId: reader.id, planId: proPlan.id },
-  });
-  if (!existingReaderSub) {
-    const sub = await db.subscription.create({
-      data: {
-        userId: reader.id,
-        planId: proPlan.id,
-        billingInterval: "monthly",
-        status: "active",
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: daysFromNow(30),
-        cancelAtPeriodEnd: false,
-        paymentBrand: "Visa",
-        paymentLast4: "4242",
-        createdAt: daysAgo(30),
-      },
-    });
-    const subStarted = daysAgo(30);
-    await db.subscriptionEvent.createMany({
-      data: [
-        {
-          subscriptionId: sub.id,
-          userId: reader.id,
-          type: "created",
-          amount: 399,
-          currency: "INR",
-          payload: JSON.stringify({ planCode: "pro", interval: "monthly", method: "mock-card" }),
-          createdAt: subStarted,
-        },
-        {
-          subscriptionId: sub.id,
-          userId: reader.id,
-          type: "payment_succeeded",
-          amount: 399,
-          currency: "INR",
-          payload: JSON.stringify({ brand: "Visa", last4: "4242", gateway: "mock" }),
-          createdAt: new Date(subStarted.getTime() + 3 * 60_000),
-        },
-        {
-          subscriptionId: sub.id,
-          userId: reader.id,
-          type: "renewed",
-          amount: 399,
-          currency: "INR",
-          payload: JSON.stringify({ interval: "monthly", nextChargeInDays: 30 }),
-          createdAt: new Date(),
-        },
-      ],
-    });
-  }
-
-  // admin on business / yearly / active
-  const existingAdminSub = await db.subscription.findFirst({
-    where: { userId: admin.id, planId: businessPlan.id },
-  });
-  if (!existingAdminSub) {
-    const sub = await db.subscription.create({
-      data: {
-        userId: admin.id,
-        planId: businessPlan.id,
-        billingInterval: "yearly",
-        status: "active",
-        currentPeriodStart: daysAgo(3),
-        currentPeriodEnd: daysFromNow(362),
-        cancelAtPeriodEnd: false,
-        paymentBrand: "Mastercard",
-        paymentLast4: "5100",
-        createdAt: daysAgo(3),
-      },
-    });
-    const adminSubStarted = daysAgo(3);
-    await db.subscriptionEvent.createMany({
-      data: [
-        {
-          subscriptionId: sub.id,
-          userId: admin.id,
-          type: "created",
-          amount: 14990,
-          currency: "INR",
-          payload: JSON.stringify({ planCode: "business", interval: "yearly", method: "mock-card" }),
-          createdAt: adminSubStarted,
-        },
-        {
-          subscriptionId: sub.id,
-          userId: admin.id,
-          type: "payment_succeeded",
-          amount: 14990,
-          currency: "INR",
-          payload: JSON.stringify({ brand: "Mastercard", last4: "5100", gateway: "mock" }),
-          createdAt: new Date(adminSubStarted.getTime() + 3 * 60_000),
-        },
-      ],
-    });
-  }
-
   /* ---------- summary ---------- */
   const [
     users,
     categories,
     posts,
     products,
+    ventures,
     inquiries,
-    plans,
-    subscriptions,
-    subscriptionEvents,
     newsletter,
     siteSettings,
   ] = await Promise.all([
@@ -1532,10 +1461,8 @@ async function main() {
     db.category.count(),
     db.post.count(),
     db.product.count(),
+    db.venture.count(),
     db.inquiry.count(),
-    db.plan.count(),
-    db.subscription.count(),
-    db.subscriptionEvent.count(),
     db.newsletterSubscriber.count(),
     db.siteSetting.count(),
   ]);
@@ -1546,10 +1473,8 @@ async function main() {
   console.log(`categories:           ${categories}`);
   console.log(`posts:                ${posts}`);
   console.log(`products:             ${products}`);
+  console.log(`ventures:             ${ventures}`);
   console.log(`inquiries:            ${inquiries}`);
-  console.log(`plans:                ${plans}`);
-  console.log(`subscriptions:        ${subscriptions}`);
-  console.log(`subscription_events:  ${subscriptionEvents}`);
   console.log(`newsletter:           ${newsletter}`);
   console.log(`site_settings:        ${siteSettings}`);
   console.log("------------------------------------------------");

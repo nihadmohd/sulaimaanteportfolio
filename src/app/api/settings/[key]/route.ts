@@ -10,10 +10,13 @@ import { writeAudit } from "@/app/api/audit/_lib";
  * PATCH /api/settings/:key — ADMIN (STAFF_ROLES).
  *
  * Upserts one site_settings row. Keys are limited to the managed groups
- * (brand/footer/media/ads/features/seo/maintenance); value must be a JSON
- * object (settingsUpdateSchema). updatedBy tracks the acting admin. Returns
- * the stored value parsed back into JSON. Every change is audit-logged with
- * before/after snapshots so it can be undone/redone.
+ * (brand/footer/media/ads/features/seo/contact/localization/analytics/
+ * maintenance); value must be a JSON object (settingsUpdateSchema). All ten
+ * groups are safe to store as-is — the public GET resolves them through the
+ * shape guards (analytics GA/Plausible IDs are public by nature). updatedBy
+ * tracks the acting admin. Returns the stored value parsed back into JSON.
+ * Every change is audit-logged with before/after snapshots so it can be
+ * undone/redone.
  */
 
 interface Ctx {

@@ -33,18 +33,8 @@ export interface SessionUser {
   createdAt: string;
 }
 
-export interface SessionSubscription {
-  id: string;
-  planCode: string;
-  status: string;
-  interval: string;
-  currentPeriodEnd: string | null;
-  [key: string]: unknown;
-}
-
-interface SessionPayload {
+export interface SessionPayload {
   user: SessionUser;
-  subscription: SessionSubscription | null;
 }
 
 /** Client-side role mirrors of src/lib/auth.ts (kept client-safe on purpose). */
@@ -75,7 +65,6 @@ async function fetchSession(): Promise<SessionPayload | null> {
 
 export interface UseSessionResult {
   user: SessionUser | null;
-  subscription: SessionSubscription | null;
   isLoading: boolean;
   refetch: () => Promise<unknown>;
 }
@@ -92,7 +81,6 @@ export function useSession(): UseSessionResult {
 
   return {
     user: query.data?.user ?? null,
-    subscription: query.data?.subscription ?? null,
     isLoading: query.isPending,
     refetch: query.refetch,
   };

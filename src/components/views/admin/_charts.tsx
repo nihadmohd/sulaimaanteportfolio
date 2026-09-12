@@ -5,12 +5,8 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
-  Legend,
   Line,
   LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -25,12 +21,10 @@ import type { StatsResponse } from "@/types";
  * This module statically imports recharts — it is ONLY loaded through
  * overview-view's React.lazy() so the charting library never enters the
  * initial bundle (BUILD CONTRACT §9). Palette = --chart-1..5 tokens from
- * globals.css (emerald/gold/teal/amber/deep-emerald).
+ * globals.css (graphite/copper/taupe/terracotta/sand).
  */
 
 type Series = StatsResponse["series"];
-
-const CHART_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 
 const tooltipStyle = {
   borderRadius: "0.75rem",
@@ -47,7 +41,7 @@ function shortLabel(label: string, max = 22): string {
 
 export function AdminCharts({ series }: { series: Series }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Top posts by views</CardTitle>
@@ -130,41 +124,6 @@ export function AdminCharts({ series }: { series: Series }) {
                   activeDot={{ r: 5 }}
                 />
               </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Active subscriptions by plan</CardTitle>
-          <CardDescription>trialing · active · past_due</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={series.planDist}
-                  dataKey="count"
-                  nameKey="plan"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={90}
-                  paddingAngle={3}
-                  stroke="var(--background)"
-                >
-                  {series.planDist.map((entry, index) => (
-                    <Cell key={entry.plan} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend
-                  iconType="circle"
-                  formatter={(value: string) => <span style={{ fontSize: 12 }}>{value}</span>}
-                />
-              </PieChart>
             </ResponsiveContainer>
           </div>
         </CardContent>

@@ -7,7 +7,7 @@
  * FAQ_CATEGORIES, FaqItem and FaqCategory as needed.
  */
 
-export type FaqCategory = "services" | "orders" | "billing" | "privacy" | "support";
+export type FaqCategory = "services" | "orders" | "payments" | "privacy" | "support";
 
 export interface FaqItem {
   question: string;
@@ -62,24 +62,18 @@ export const FAQ_ITEMS: FaqItem[] = [
       "Digital products such as templates and presets are delivered instantly by email after checkout, with a download link inside. If the email has not arrived within a few minutes, check the spam folder, then contact intobusyness@gmail.com and the link will be resent quickly.",
   },
 
-  /* ------------------------------- billing ------------------------------ */
+  /* ------------------------------ payments ------------------------------ */
   {
-    category: "billing",
-    question: "What's included in the Pro plan?",
-    answer:
-      "Pro costs ₹399 per month (or ₹3,990 a year) and unlocks premium blog content, priority inquiry handling, member downloads and early access to new digital products. Business (₹1,499/month) adds team seats, service discounts and concierge support. The Free plan stays free forever.",
-  },
-  {
-    category: "billing",
-    question: "Can I cancel my subscription anytime?",
-    answer:
-      "Yes. Open Account → Billing and cancel in one click — there is no cancellation fee, and access continues until the end of the paid period. Yearly plans can also be refunded pro-rata within 14 days of a renewal.",
-  },
-  {
-    category: "billing",
+    category: "payments",
     question: "Which payment methods are supported?",
     answer:
-      "Payments are handled in Indian Rupees and support UPI, cards and net banking through the payment provider. In this demo environment payments are simulated, but the checkout flow mirrors the production experience.",
+      "Service invoices and first-party digital products are billed in Indian Rupees and support UPI, cards and net banking through the payment provider. Affiliate orders are paid directly to the merchant (Amazon.in, Flipkart) with their own payment options.",
+  },
+  {
+    category: "payments",
+    question: "How do refunds work?",
+    answer:
+      "First-party digital products are refunded within 14 days if the file is faulty or the link never arrives. Physical affiliate orders follow the merchant's own return window. Service engagements follow the milestones agreed in the written scope.",
   },
 
   /* ------------------------------- privacy ------------------------------ */
@@ -122,7 +116,7 @@ export const FAQ_CATEGORIES: ReadonlyArray<{ value: "all" | FaqCategory; label: 
   { value: "all", label: "All" },
   { value: "services", label: "Services" },
   { value: "orders", label: "Orders" },
-  { value: "billing", label: "Billing" },
+  { value: "payments", label: "Payments" },
   { value: "privacy", label: "Privacy" },
   { value: "support", label: "Support" },
 ];

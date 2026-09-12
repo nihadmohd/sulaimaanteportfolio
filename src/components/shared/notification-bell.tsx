@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, CreditCard, Info, Mail, Users, type LucideIcon } from "lucide-react";
+import { Bell, Info, Mail, Users, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +31,7 @@ const SEEN_CAP = 200;
 
 export interface NotificationItem {
   id: string;
-  type: "inquiry" | "subscriber" | "billing" | "system" | string;
+  type: "inquiry" | "subscriber" | "system" | string;
   title: string;
   body?: string | null;
   time?: string | Date | null;
@@ -46,7 +46,6 @@ interface NotificationsPayload {
 const TYPE_ICONS: Record<string, LucideIcon> = {
   inquiry: Mail,
   subscriber: Users,
-  billing: CreditCard,
   system: Info,
 };
 

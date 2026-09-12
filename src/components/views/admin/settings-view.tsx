@@ -7,9 +7,12 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  BarChart3,
   Check,
+  Globe,
   Plus,
   Save,
+  ShieldCheck,
   Sparkles,
   Wrench,
   X,
@@ -51,7 +54,8 @@ import { apiFetch, formatUptime, useAdminGuard } from "./_shared";
 
 /**
  * Settings (#/admin/settings — route key "admin-settings").
- * Tabs: Brand / Footer / Media & Decor / Ads / Features / SEO / Maintenance / System.
+ * Tabs: Brand / Footer / Media & Decor / Ads / Features / SEO / Contact &
+ * Social / Localization / Analytics / Maintenance / System.
  * Loads /api/settings/all; per-tab Save → PATCH /api/settings/:key, then
  * invalidates the PUBLIC settings query (queryKey ["settings"] — shared
  * with the whole shell via use-settings) so header/footer/ads/maintenance
@@ -140,6 +144,33 @@ interface SeoDraft {
   bingVerification: string;
 }
 
+interface ContactDraft {
+  email: string;
+  phone: string;
+  whatsappNumber: string;
+  whatsappUrl: string;
+  address: string;
+  city: string;
+  /** string for the number input — coerced (0–168) on save */
+  responseTimeHours: string;
+  socials: SocialRow[];
+}
+
+interface LocalizationDraft {
+  currency: string;
+  currencySymbol: string;
+  timezone: string;
+  dateFormat: string;
+  measurement: string;
+}
+
+interface AnalyticsDraft {
+  enabled: boolean;
+  googleAnalyticsId: string;
+  plausibleDomain: string;
+  trackOutboundClicks: boolean;
+}
+
 /* ------------------------------------------------------------------ */
 /* JSON readers                                                        */
 /* ------------------------------------------------------------------ */
@@ -160,6 +191,11 @@ function asRecord(v: unknown): Record<string, string> {
     if (typeof val === "string") out[k] = val;
   }
   return out;
+}
+function asNumString(v: unknown, fallback: number): string {
+  const n =
+    typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN;
+  return Number.isFinite(n) ? String(n) : String(fallback);
 }
 
 /* Sticker emoji palette — these ARE sticker admin-data values (the single
@@ -185,6 +221,49 @@ const SOCIAL_KEYS = [
   "Google Business",
 ];
 
+/** Contact-tab social suggestions (contact.socials defaults to EMPTY — the
+ * Brand tab owns the canonical social profile map). */
+const CONTACT_SOCIAL_KEYS = [
+  "Instagram",
+  "YouTube",
+  "LinkedIn",
+  "GitHub",
+  "X",
+  "Facebook",
+  "WhatsApp",
+  "Threads",
+];
+
+/* Localization presets (Task 11-c) — defaults: INR / ₹ / Asia/Calcutta /
+ * d MMM yyyy / metric (India-first default mode). */
+const CURRENCIES = [
+  { value: "INR", label: "INR — Indian Rupee (₹)" },
+  { value: "USD", label: "USD — US Dollar ($)" },
+  { value: "EUR", label: "EUR — Euro (€)" },
+  { value: "GBP", label: "GBP — British Pound (£)" },
+  { value: "AED", label: "AED — UAE Dirham" },
+];
+
+const TIMEZONES = [
+  { value: "Asia/Calcutta", label: "Asia/Calcutta — India (IST)" },
+  { value: "Asia/Dubai", label: "Asia/Dubai — UAE (GST)" },
+  { value: "Asia/Riyadh", label: "Asia/Riyadh — Saudi Arabia" },
+  { value: "Europe/London", label: "Europe/London — UK" },
+  { value: "UTC", label: "UTC — Coordinated Universal Time" },
+  { value: "America/New_York", label: "America/New_York — US Eastern" },
+];
+
+const DATE_FORMAT_OPTIONS = [
+  { value: "d MMM yyyy", label: "d MMM yyyy — 5 Mar 2026" },
+  { value: "dd/MM/yyyy", label: "dd/MM/yyyy — 05/03/2026" },
+  { value: "MM/dd/yyyy", label: "MM/dd/yyyy — 03/05/2026" },
+];
+
+const MEASUREMENT_OPTIONS = [
+  { value: "metric", label: "Metric — km / kg / °C" },
+  { value: "imperial", label: "Imperial — miles / lb / °F" },
+];
+
 /** One row per features toggle — label + one-line hint. */
 const FEATURE_ROWS: Array<{ key: keyof FeaturesDraft; label: string; hint: string }> = [
   { key: "newsletter", label: "Newsletter", hint: "Newsletter capture forms" },
@@ -198,7 +277,17 @@ const FEATURE_ROWS: Array<{ key: keyof FeaturesDraft; label: string; hint: strin
   { key: "affiliateSlots", label: "Affiliate slots", hint: "Affiliate product ad slots" },
 ];
 
-type SettingKey = "brand" | "footer" | "media" | "ads" | "features" | "seo" | "maintenance";
+type SettingKey =
+  | "brand"
+  | "footer"
+  | "media"
+  | "ads"
+  | "features"
+  | "seo"
+  | "contact"
+  | "localization"
+  | "analytics"
+  | "maintenance";
 
 export default function SettingsView() {
   const { isLoading, allowed } = useAdminGuard();
@@ -243,6 +332,9 @@ export default function SettingsView() {
   const [ads, setAds] = React.useState<AdsDraft | null>(null);
   const [features, setFeatures] = React.useState<FeaturesDraft | null>(null);
   const [seo, setSeo] = React.useState<SeoDraft | null>(null);
+  const [contact, setContact] = React.useState<ContactDraft | null>(null);
+  const [localization, setLocalization] = React.useState<LocalizationDraft | null>(null);
+  const [analytics, setAnalytics] = React.useState<AnalyticsDraft | null>(null);
   const [maintenance, setMaintenance] = React.useState<MaintenanceDraft | null>(null);
   const [dirty, setDirty] = React.useState<Record<string, boolean>>({});
   const [maintenanceConfirm, setMaintenanceConfirm] = React.useState(false);
@@ -259,6 +351,9 @@ export default function SettingsView() {
     const a = data.ads ?? {};
     const ft = data.features ?? {};
     const se = data.seo ?? {};
+    const ct = data.contact ?? {};
+    const lz = data.localization ?? {};
+    const an = data.analytics ?? {};
     const mt = data.maintenance ?? {};
 
     const hero = (m.heroMarquee ?? {}) as Record<string, unknown>;
@@ -331,6 +426,29 @@ export default function SettingsView() {
       keywords: asStrArr(se.keywords),
       googleVerification: asString(se.googleVerification),
       bingVerification: asString(se.bingVerification),
+    });
+    setContact({
+      email: asString(ct.email, "intobusyness@gmail.com"),
+      phone: asString(ct.phone, "+91 98467 50898"),
+      whatsappNumber: asString(ct.whatsappNumber, "+91 98467 50898"),
+      whatsappUrl: asString(ct.whatsappUrl, "https://wa.me/919846750898"),
+      address: asString(ct.address, "Calicut (Kozhikode), Kerala, India"),
+      city: asString(ct.city, "Calicut"),
+      responseTimeHours: asNumString(ct.responseTimeHours, 24),
+      socials: Object.entries(asRecord(ct.socials)).map(([key, url]) => ({ key, url })),
+    });
+    setLocalization({
+      currency: asString(lz.currency, "INR"),
+      currencySymbol: asString(lz.currencySymbol, "₹"),
+      timezone: asString(lz.timezone, "Asia/Calcutta"),
+      dateFormat: asString(lz.dateFormat, "d MMM yyyy"),
+      measurement: asString(lz.measurement, "metric"),
+    });
+    setAnalytics({
+      enabled: asBool(an.enabled, false),
+      googleAnalyticsId: asString(an.googleAnalyticsId),
+      plausibleDomain: asString(an.plausibleDomain),
+      trackOutboundClicks: asBool(an.trackOutboundClicks, true),
     });
     setMaintenance({
       enabled: asBool(mt.enabled),
@@ -420,6 +538,45 @@ export default function SettingsView() {
     bingVerification: seo?.bingVerification ?? "",
   });
 
+  const buildContactValue = (): Record<string, unknown> => {
+    const rt = Number(contact?.responseTimeHours);
+    return {
+      email: contact?.email?.trim() ?? "",
+      phone: contact?.phone?.trim() ?? "",
+      whatsappNumber: contact?.whatsappNumber?.trim() ?? "",
+      whatsappUrl: contact?.whatsappUrl?.trim() ?? "",
+      address: contact?.address ?? "",
+      city: contact?.city?.trim() ?? "",
+      responseTimeHours: Number.isFinite(rt) ? Math.max(0, Math.min(168, Math.round(rt))) : 24,
+      socials: Object.fromEntries(
+        (contact?.socials ?? [])
+          .filter((s) => s.key.trim())
+          .map((s) => [s.key.trim(), s.url.trim()])
+      ),
+    };
+  };
+
+  const buildLocalizationValue = (): Record<string, unknown> => ({
+    currency: localization?.currency ?? "INR",
+    currencySymbol: localization?.currencySymbol?.trim() || "₹",
+    timezone: localization?.timezone ?? "Asia/Calcutta",
+    dateFormat: localization?.dateFormat ?? "d MMM yyyy",
+    measurement: localization?.measurement ?? "metric",
+  });
+
+  const buildAnalyticsValue = (): Record<string, unknown> => ({
+    enabled: analytics?.enabled ?? false,
+    googleAnalyticsId: analytics?.googleAnalyticsId?.trim() ?? "",
+    plausibleDomain: analytics?.plausibleDomain?.trim() ?? "",
+    trackOutboundClicks: analytics?.trackOutboundClicks ?? true,
+  });
+
+  /** Auto-derived wa.me link shown as a hint under the WhatsApp number field. */
+  const derivedWhatsappUrl = (() => {
+    const digits = (contact?.whatsappNumber ?? "").replace(/\D/g, "");
+    return digits ? `https://wa.me/${digits}` : "";
+  })();
+
   const buildMaintenanceValue = (): Record<string, unknown> => ({
     enabled: maintenance?.enabled ?? false,
     message: maintenance?.message ?? "",
@@ -457,19 +614,25 @@ export default function SettingsView() {
   };
 
   return (
-    <AdminShell title="Settings" description="Total control — brand, footer, decor, ads, features, SEO and maintenance.">
+    <AdminShell
+      title="Settings"
+      description="Total control — brand, footer, decor, ads, features, SEO, contact, locale, analytics and maintenance."
+    >
       <SEOHead title="Settings — Admin & Developer | MN.KP" noindex />
 
       <DataState query={settingsQuery} skeletonRows={6} empty={false}>
         {() => (
           <Tabs defaultValue="brand" className="space-y-6">
-            <TabsList className="h-11 w-full justify-start overflow-x-auto sm:w-auto">
+            <TabsList className="scrollbar-slim h-11 w-full justify-start overflow-x-auto sm:w-auto sm:max-w-full">
               <TabsTrigger value="brand" className="h-9">Brand</TabsTrigger>
               <TabsTrigger value="footer" className="h-9">Footer</TabsTrigger>
               <TabsTrigger value="media" className="h-9">Media &amp; Decor</TabsTrigger>
               <TabsTrigger value="ads" className="h-9">Ads</TabsTrigger>
               <TabsTrigger value="features" className="h-9">Features</TabsTrigger>
               <TabsTrigger value="seo" className="h-9">SEO</TabsTrigger>
+              <TabsTrigger value="contact" className="h-9">Contact &amp; Social</TabsTrigger>
+              <TabsTrigger value="localization" className="h-9">Localization</TabsTrigger>
+              <TabsTrigger value="analytics" className="h-9">Analytics</TabsTrigger>
               <TabsTrigger value="maintenance" className="h-9">Maintenance</TabsTrigger>
               <TabsTrigger value="system" className="h-9">System</TabsTrigger>
             </TabsList>
@@ -1290,6 +1453,370 @@ export default function SettingsView() {
               ) : null}
             </TabsContent>
 
+            {/* ------------------------- CONTACT & SOCIAL ------------------------- */}
+            <TabsContent value="contact" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold">Contact &amp; social</h2>
+                <div className="flex items-center gap-2">
+                  {dirtyChip("contact")}
+                  <SaveButton tab="contact" build={buildContactValue} />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Defaults mirror the live MN.KP contact details — every field lists its default in the hint below it.
+              </p>
+              {contact ? (
+                <Card>
+                  <CardContent className="grid gap-5 pt-6 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="c-email">Email</Label>
+                      <Input
+                        id="c-email"
+                        type="email"
+                        value={contact.email}
+                        onChange={(e) => { setContact({ ...contact, email: e.target.value }); touch("contact"); }}
+                        placeholder="intobusyness@gmail.com"
+                      />
+                      <p className="text-xs text-muted-foreground">Default: intobusyness@gmail.com</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="c-phone">Phone</Label>
+                      <Input
+                        id="c-phone"
+                        value={contact.phone}
+                        onChange={(e) => { setContact({ ...contact, phone: e.target.value }); touch("contact"); }}
+                        placeholder="+91 98467 50898"
+                      />
+                      <p className="text-xs text-muted-foreground">Default: +91 98467 50898</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="c-wanum">WhatsApp number</Label>
+                      <Input
+                        id="c-wanum"
+                        value={contact.whatsappNumber}
+                        onChange={(e) => { setContact({ ...contact, whatsappNumber: e.target.value }); touch("contact"); }}
+                        placeholder="+91 98467 50898"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Default: +91 98467 50898 · auto-link:{" "}
+                        <span className="font-mono">{derivedWhatsappUrl || "—"}</span>
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="c-waurl">WhatsApp URL</Label>
+                      <Input
+                        id="c-waurl"
+                        value={contact.whatsappUrl}
+                        onChange={(e) => { setContact({ ...contact, whatsappUrl: e.target.value }); touch("contact"); }}
+                        placeholder="https://wa.me/919846750898"
+                        className="font-mono text-xs"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Leave empty to auto-build from the WhatsApp number — Default: https://wa.me/919846750898
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="c-address">Address</Label>
+                      <Input
+                        id="c-address"
+                        value={contact.address}
+                        onChange={(e) => { setContact({ ...contact, address: e.target.value }); touch("contact"); }}
+                        placeholder="Calicut (Kozhikode), Kerala, India"
+                      />
+                      <p className="text-xs text-muted-foreground">Default: Calicut (Kozhikode), Kerala, India</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="c-city">City</Label>
+                      <Input
+                        id="c-city"
+                        value={contact.city}
+                        onChange={(e) => { setContact({ ...contact, city: e.target.value }); touch("contact"); }}
+                        placeholder="Calicut"
+                      />
+                      <p className="text-xs text-muted-foreground">Default: Calicut</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="c-rt">Response time (hours)</Label>
+                      <Input
+                        id="c-rt"
+                        type="number"
+                        min={0}
+                        max={168}
+                        value={contact.responseTimeHours}
+                        onChange={(e) => { setContact({ ...contact, responseTimeHours: e.target.value }); touch("contact"); }}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Shown as “replies within X hours” on contact pages — Default: 24
+                      </p>
+                    </div>
+
+                    <div className="space-y-3 md:col-span-2">
+                      <Label>Contact social links</Label>
+                      {contact.socials.map((row, i) => (
+                        <div key={`c-social-${i}`} className="flex flex-col gap-2 sm:flex-row">
+                          <Input
+                            value={row.key}
+                            list="contact-social-keys"
+                            onChange={(e) => {
+                              const next = [...contact.socials];
+                              next[i] = { ...next[i], key: e.target.value };
+                              setContact({ ...contact, socials: next });
+                              touch("contact");
+                            }}
+                            placeholder="Platform"
+                            aria-label={`Contact social platform ${i + 1}`}
+                            className="sm:max-w-[180px]"
+                          />
+                          <Input
+                            value={row.url}
+                            onChange={(e) => {
+                              const next = [...contact.socials];
+                              next[i] = { ...next[i], url: e.target.value };
+                              setContact({ ...contact, socials: next });
+                              touch("contact");
+                            }}
+                            placeholder="https://..."
+                            aria-label={`Contact social URL ${i + 1}`}
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => {
+                              setContact({ ...contact, socials: contact.socials.filter((_, idx) => idx !== i) });
+                              touch("contact");
+                            }}
+                            aria-label={`Remove contact social ${i + 1}`}
+                          >
+                            <X className="size-4" aria-hidden="true" />
+                          </Button>
+                        </div>
+                      ))}
+                      <datalist id="contact-social-keys">
+                        {CONTACT_SOCIAL_KEYS.map((k) => (
+                          <option key={k} value={k} />
+                        ))}
+                      </datalist>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 gap-2"
+                          disabled={contact.socials.length >= 8}
+                          onClick={() => {
+                            setContact({ ...contact, socials: [...contact.socials, { key: "", url: "" }] });
+                            touch("contact");
+                          }}
+                        >
+                          <Plus className="size-4" aria-hidden="true" />
+                          Add social link
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          Empty by default — Brand owns the canonical socials; add up to 8 contact-page links
+                          (Instagram, YouTube, LinkedIn, GitHub, X…).
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </TabsContent>
+
+            {/* ------------------------- LOCALIZATION ------------------------- */}
+            <TabsContent value="localization" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold">Localization</h2>
+                <div className="flex items-center gap-2">
+                  {dirtyChip("localization")}
+                  <SaveButton tab="localization" build={buildLocalizationValue} />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Default mode: India-first — ₹ INR · Asia/Calcutta (IST) · d MMM yyyy · metric.
+              </p>
+              {localization ? (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Globe className="size-4 text-primary" aria-hidden="true" />
+                      Locale &amp; formats
+                    </CardTitle>
+                    <CardDescription>Applied to prices, dates and measurements across the site</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-5 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="l-currency">Currency</Label>
+                      <Select
+                        value={localization.currency}
+                        onValueChange={(v) => { setLocalization({ ...localization, currency: v }); touch("localization"); }}
+                      >
+                        <SelectTrigger id="l-currency" className="w-full" aria-label="Currency">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CURRENCIES.map((c) => (
+                            <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                          ))}
+                          {localization.currency && !CURRENCIES.some((c) => c.value === localization.currency) ? (
+                            <SelectItem value={localization.currency}>{localization.currency}</SelectItem>
+                          ) : null}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Default: INR — Indian Rupee</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="l-symbol">Currency symbol</Label>
+                      <Input
+                        id="l-symbol"
+                        value={localization.currencySymbol}
+                        onChange={(e) => { setLocalization({ ...localization, currencySymbol: e.target.value }); touch("localization"); }}
+                        placeholder="₹"
+                        className="max-w-[120px]"
+                      />
+                      <p className="text-xs text-muted-foreground">Prepended to prices — Default: ₹</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="l-tz">Timezone</Label>
+                      <Select
+                        value={localization.timezone}
+                        onValueChange={(v) => { setLocalization({ ...localization, timezone: v }); touch("localization"); }}
+                      >
+                        <SelectTrigger id="l-tz" className="w-full" aria-label="Timezone">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIMEZONES.map((t) => (
+                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                          ))}
+                          {localization.timezone && !TIMEZONES.some((t) => t.value === localization.timezone) ? (
+                            <SelectItem value={localization.timezone}>{localization.timezone}</SelectItem>
+                          ) : null}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Default: Asia/Calcutta (IST)</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="l-date">Date format</Label>
+                      <Select
+                        value={localization.dateFormat}
+                        onValueChange={(v) => { setLocalization({ ...localization, dateFormat: v }); touch("localization"); }}
+                      >
+                        <SelectTrigger id="l-date" className="w-full" aria-label="Date format">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DATE_FORMAT_OPTIONS.map((d) => (
+                            <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Default: d MMM yyyy (5 Mar 2026)</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="l-measure">Measurement units</Label>
+                      <Select
+                        value={localization.measurement}
+                        onValueChange={(v) => { setLocalization({ ...localization, measurement: v }); touch("localization"); }}
+                      >
+                        <SelectTrigger id="l-measure" className="w-full" aria-label="Measurement units">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MEASUREMENT_OPTIONS.map((m) => (
+                            <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Default: metric (km / kg / °C)</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </TabsContent>
+
+            {/* ------------------------- ANALYTICS ------------------------- */}
+            <TabsContent value="analytics" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold">Analytics</h2>
+                <div className="flex items-center gap-2">
+                  {dirtyChip("analytics")}
+                  <SaveButton tab="analytics" build={buildAnalyticsValue} />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Default mode: privacy-first — tracking stays OFF until you opt in.
+              </p>
+              {analytics ? (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <BarChart3 className="size-4 text-primary" aria-hidden="true" />
+                      Tracking integrations
+                    </CardTitle>
+                    <CardDescription>Google Analytics and/or Plausible — off by default</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <p className="flex items-center gap-2 text-sm font-medium">
+                          <ShieldCheck className="size-4 text-gold" aria-hidden="true" />
+                          Analytics enabled
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Privacy-first: tracking stays off until you enable it — Default: OFF
+                        </p>
+                      </div>
+                      <Switch
+                        checked={analytics.enabled}
+                        onCheckedChange={(v) => { setAnalytics({ ...analytics, enabled: v }); touch("analytics"); }}
+                        aria-label="Toggle analytics"
+                      />
+                    </div>
+                    <div className="grid gap-5 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="a-ga">Google Analytics ID</Label>
+                        <Input
+                          id="a-ga"
+                          value={analytics.googleAnalyticsId}
+                          onChange={(e) => { setAnalytics({ ...analytics, googleAnalyticsId: e.target.value }); touch("analytics"); }}
+                          placeholder="G-XXXXXXXXXX"
+                          className="font-mono text-xs"
+                        />
+                        <p className="text-xs text-muted-foreground">Leave empty = disabled — Default: empty</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="a-plausible">Plausible domain</Label>
+                        <Input
+                          id="a-plausible"
+                          value={analytics.plausibleDomain}
+                          onChange={(e) => { setAnalytics({ ...analytics, plausibleDomain: e.target.value }); touch("analytics"); }}
+                          placeholder="mohdnihadkp.com"
+                          className="font-mono text-xs"
+                        />
+                        <p className="text-xs text-muted-foreground">Leave empty = disabled — Default: empty</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <p className="text-sm font-medium">Track outbound clicks</p>
+                        <p className="text-xs text-muted-foreground">
+                          Count clicks on external / affiliate links — only fires while analytics is enabled — Default: ON
+                        </p>
+                      </div>
+                      <Switch
+                        checked={analytics.trackOutboundClicks}
+                        onCheckedChange={(v) => { setAnalytics({ ...analytics, trackOutboundClicks: v }); touch("analytics"); }}
+                        aria-label="Toggle outbound click tracking"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </TabsContent>
+
             {/* ------------------------- MAINTENANCE ------------------------- */}
             <TabsContent value="maintenance" className="space-y-4">
               <div className="flex items-center justify-between">
@@ -1443,8 +1970,8 @@ export default function SettingsView() {
                           <dd className="font-semibold tabular-nums">{statsQuery.data.kpis.subscribers}</dd>
                         </div>
                         <div>
-                          <dt className="text-xs text-muted-foreground">Subscriptions</dt>
-                          <dd className="font-semibold tabular-nums">{statsQuery.data.kpis.activeSubscriptions}</dd>
+                          <dt className="text-xs text-muted-foreground">Confirmed</dt>
+                          <dd className="font-semibold tabular-nums">{statsQuery.data.kpis.confirmedSubscribers}</dd>
                         </div>
                       </dl>
                     ) : (

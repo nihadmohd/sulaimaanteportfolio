@@ -770,3 +770,124 @@ Stage Summary:
 - Auth themes: graphite (user) · amber (register) · obsidian (admin) — all copper-accented.
 - KNOWN REMAINING: /images/brand/og-cover.png still emerald/gold art (social-share og:image only — not visible on site; regenerate at will). Portrait photo unchanged (a photo, palette-neutral).
 - LESSON (tooling): parallel Write+Bash on the SAME file races (logo.svg/favicon.svg incident) — always verify file content after concurrent tool calls; agent-browser always use isolated --session.
+
+---
+Task ID: 11-0 (wave 11 phase 1 — orchestrator)
+Agent: Z.ai Code (orchestrator)
+Task: User wave-11 items 1/2/7 — remove billing & subscription COMPLETELY; fix mobile admin hamburger; compact services page on mobile. (Items 3/4/5/6 delegated to 11-a/11-b/11-c/11-d.)
+
+Work Log:
+- BILLING REMOVED (user: "Remove the billing and subscription feature completely"):
+  · DELETED: src/app/api/plans/**, src/app/api/subscriptions/**, account/billing-view.tsx, admin/plans-view.tsx.
+  · prisma/schema.prisma: Plan/Subscription/SubscriptionEvent models + User relations removed; db:push applied (tables dropped — remaining: Ad, AffiliateClick, AuditLog, Category, Inquiry, NewsletterSubscriber, Post, Product, SiteSetting, User, VisitorSession). prisma/seed.ts: PLANS const + plan upserts + subscriptions/events seeding + summary counts removed (blog content mentions of 3rd-party subscriptions in reviews kept — legit).
+  · supabase/schema.sql: plans/subscriptions/subscription_events tables + RLS lines + policies + indexes + seed block removed; section 7 banner renumbered to NEWSLETTER SUBSCRIBERS.
+  · routes.ts: admin-plans + account-billing routes REMOVED (file-route parity kept); login/register/support descriptions de-subscriptioned. view-registry.ts: 2 entries removed.
+  · types/index.ts: billing section (PlanDTO/SubscriptionDTO/events/SubscriptionsResponse) + StatsResponse.{activeSubscriptions,mrr,planDist} + NotificationType "billing" removed. validation.ts: planCreate/planUpdate/subscriptionManageSchema removed. serialize.ts: serializePlan/PlanRow removed.
+  · api/auth/me: subscription payload removed ({user, devVerifyUrl} only). hooks/use-session: SessionSubscription removed. api/notifications: reader billing-events branch removed (verify-email remains). stats route rewritten without MRR/planDist.
+  · Frontend sweep: overview MRR KPI → Newsletter KPI; _charts planDist pie removed (3 charts, grid xl:grid-cols-3); marketing MRR card removed (11-d rebuilds view); dashboard-view subscription card → "Newsletter & communication" card; account/_shared sub helpers removed; site-header Billing menu item removed; mobile-nav Billing link removed; admin _shell Plans nav removed; admin settings-view System stats Subscriptions → Confirmed subscribers; notification-bell billing type/icon removed; http-states PaymentState copy de-subscriptioned.
+  · Copy sweep: faq.ts billing category → payments (2 new FAQs), legal.ts privacy/terms/refund/cancellation rewritten without subscriptions, onboarding/login/register/support copy fixed.
+- MOBILE ADMIN HAMBURGER FIXED (user: "admin & developer page does not open properly by clicking the three line button"): root cause MobileNav returned null on /admin so the site-header hamburger had NO mounted sheet. Fix: ui-store gains adminNavOpen/setAdminNavOpen; AdminShell mobile Sheet is store-controlled (both the slim-bar PanelLeft button AND the site header hamburger open it); admin mobile bar sticky top-16 → top-14 (matches h-14 mobile header); MobileNav now hides only the bottom tab bar on /admin|/auth — the More sheet stays mounted (auth pages fixed too).
+- SERVICES MOBILE COMPACTED (user: "grids and layout columns a little big — make everything smaller"): root py-10→py-6 md:py-14; sections space-y-12→8/12/16; grid gap-8→5/8/12; icon size-12→10/12; h2 2xl→xl/2xl/3xl; body text-sm→13px/sm/base; price lg→base/lg; buttons h-9 md:h-10; checklist card p-6→p-4/5/8 rounded-xl/2xl; checklist rows size-5→4/5 + 13px; process strip p-5→p-4 md:5, gaps 3/4; CTA band p-6→5/10 + smaller heading/copy; related-links 13px.
+- VERIFIED: bunx eslint full src → 0 problems. Dev server RESTARTED (stale Prisma client after generate caused 500s): /api/settings /api/posts /  → all 200.
+
+Stage Summary:
+- Billing/subscription is FULLY gone from schema, API, routes, UI, copy, seed and production DDL. StatsResponse shape: kpis{totalUsers,totalPosts,publishedPosts,totalViews,totalProducts,activeProducts,totalClicks,totalInquiries,newInquiries,subscribers,confirmedSubscribers} series{viewsByPost,clicksByProduct,inquiriesByDay}.
+- Admin nav state pattern: useUiStore.adminNavOpen — site header hamburger routes to admin sheet on /admin paths.
+- NEXT (parallel wave): 11-a Ventures feature · 11-b CSV import/export · 11-c settings expansion · 11-d marketing polish. Ownership map in dispatch payloads.
+
+---
+Task ID: 11-d
+Agent: Z.ai Code
+Task: Marketing Hub professional rebuild — replace admin/marketing-view.tsx with a 7-section growth console (KPI row, UTM campaign builder, affiliate funnel, top content, ad performance, SEO health checklist, quick actions).
+
+Work Log:
+- Read worklog tail (Task 10 Graphite & Copper tokens; Task 11-0 billing fully removed, StatsResponse shape confirmed) + current marketing-view.tsx, _shared.tsx (apiFetch/KpiCard/useAdminGuard/formatCompact), _shell.tsx, ads-view.tsx (compact table style reference), types/index.ts, use-settings.ts, api/settings route + _lib resolveSeo (public /api/settings DOES return the resolved seo group).
+- REBUILT src/components/views/admin/marketing-view.tsx (only file owned; nothing else touched): default export, AdminShell "Marketing Hub", SEOHead noindex, route key admin-marketing unchanged.
+  · KPI row: 5 KpiCards grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 — Ad impressions · Ad clicks (sub CTR%) · Newsletter (confirmed / total) · Affiliate clicks · Total views.
+  · UTM CAMPAIGN BUILDER (star, pure client): base URL (default https://mohdnihadkp.vercel.app, auto-https prefix) + required source/campaign + optional medium/term/content; live read-only mono URL preview; Copy (clipboard + execCommand fallback → toast "Campaign URL copied", button flips to "Copied"); Open (_blank noopener,noreferrer); amber AlertCircle hint when base invalid or source/campaign missing, green Check "N UTM parameters tagged" when complete.
+  · Affiliate funnel: views → clicks → CTR blocks (CTR copper-accented) + thin proportional copper conversion bar + top-3 clicked products with proportional bars.
+  · Top content: top-3 posts by views, rank chip (1=copper), proportional bars, title + views only (no fake links — series keyed by title).
+  · Ad performance: top 6 ads by clicks — Ad (name + placement chip), Status dot (active copper / off muted, hidden md:table-cell), Impressions (hidden md:table-cell), Clicks, CTR; rows cursor-pointer onClick → #/admin/ads; CardAction "Ad Manager" button; >6 footer note; inline empty state + Create ad CTA.
+  · SEO health: useSettings seo group via `as unknown as { seo?: SeoSettings }` cast (hook's SiteSettings type lacks seo; keeps compiling regardless of 11-c's concurrent edits) — 5 checks (titleSuffix, description ≥70 chars w/ live count, keywords ≥3, googleVerification, bingVerification), green Check / amber AlertTriangle, "X / 5 checks passing" + 5-segment copper strip, CTA "Open SEO settings" → #/admin/settings; skeletons while pending, muted note if settings null.
+  · Quick actions: Ad Manager / Import & Export / Subscribers / SEO settings compact outline buttons.
+- VERIFIED: bunx eslint on the file → 0 problems; bunx tsc --noEmit → no errors in this file. agent-browser session 11d-marketing (UI login intobusyness@gmail.com): desktop 1280 — all 7 sections render, 6 ad rows, SEO "3 / 5 checks passing" (matches live API), UTM fill → https://mohdnihadkp.vercel.app/?utm_source=whatsapp&utm_medium=social&utm_campaign=venture-launch, Copy → toast "Campaign URL copied", ad row click → #/admin/ads, fresh reload 0 console errors. Mobile 390×844 — scrollWidth 390 == innerWidth 390 at top AND bottom (zero overflow), all sections + table present, UTM + copy toast work. Screenshots: screenshots/{11d-marketing-desktop,11d-marketing-mobile}.png.
+- INCIDENT (environmental): shared dev server on :3000 was OOM-killed repeatedly mid-verification (dmesg: next-server ~2.3GB RSS on 3.9GB box with multiple concurrent agents/browsers); restored via detached `setsid nohup bun run dev` — plain `nohup … &` gets reaped by tool process-group cleanup. Browser ChunkLoadError console entries were outage artifacts only.
+- Work record: /agent-ctx/11-d-zai-code.md.
+
+Stage Summary:
+- FILE: REPLACED src/components/views/admin/marketing-view.tsx (sole file). Query keys consumed read-only: ["admin-ads-stats"] (GET /api/ads?all=1&stats=1), ["admin-stats"] (GET /api/stats), useSettings ["settings"] (seo group). NO recharts — proportional copper div bars only; loading via DataState(skeleton)/inline skeletons; guard via useAdminGuard.
+- DESIGN: Graphite & Copper — copper only as accent (icons, micro-labels, active borders border-gold/40, bars bg-gold, active ad dot copper per spec; conventional green/amber reserved for SEO pass/warn + UTM complete). Cards py-4 md:py-6 / px-4 md:px-6 compact mobile; tables drop Status+Impr. columns below md with inline status dot; title cells truncate at 45% — 390px clean.
+- DEVIATIONS: (1) seo group read via unknown-cast off useSettings (hook type lacks seo; API returns it resolved) — simplifiable if 11-c types it. (2) UTM values kept as typed/trimmed (Google builder behavior). (3) dev server restarts were environmental (OOM), not code.
+- HANDOFF: if dev server dies again: `cd /home/z/my-project && setsid nohup bun run dev > /dev/null 2>&1 < /dev/null &`. Marketing view needs no new APIs; ad row click + quick actions deep-link to ads/import/subscribers/settings views owned by other agents.
+
+---
+Task ID: 11-c
+Agent: Z.ai Code
+Task: User item — "add all the settings that will be needed, and in which mode should they be used as default": shipped 3 new setting groups (contact / localization / analytics) end-to-end — backend defaults + resolvers + public/admin API + admin UI tabs — with every default documented in the UI.
+
+Work Log:
+- Read worklog tail (Task 10 Graphite & Copper + Task 11-0 billing removal), _lib.ts, all three settings routes, settings-view.tsx (Features/SEO tabs as template), use-settings.ts, and the orchestrator-prewired types/index.ts (READ ONLY — ContactSettings/LocalizationSettings/AnalyticsSettings + PublicSettings/AdminSettings groups already declared; consumed, never re-declared).
+- BACKEND _lib.ts: SETTING_KEYS 7→10 (brand|footer|media|ads|features|seo|contact|localization|analytics|maintenance). defaultContact = live MN.KP details (intobusyness@gmail.com, +91 98467 50898, wa.me/919846750898, Calicut (Kozhikode), city Calicut, responseTimeHours 24, socials {} — Brand tab owns the canonical social map). defaultLocalization = India-first (INR/₹/Asia/Calcutta/d MMM yyyy/metric). defaultAnalytics = privacy-first (enabled FALSE until opt-in, empty GA/Plausible IDs, trackOutboundClicks TRUE). Resolvers follow the features/seo pattern: str/bool/record guards + new num() (Number.isFinite fallback) and pick() enum guard; contact strings trimmed, responseTimeHours clamped 0–168, analytics IDs trimmed, dateFormat/measurement whitelisted, currency uppercased ≤6, symbol ≤4.
+- /all route: defaultForKey += contact/localization/analytics cases (admin forms load effective values even with no DB rows). Public GET /api/settings: returns all 10 resolved groups (analytics safe publicly — GA/Plausible IDs are public by nature; group ships disabled). [key]/route.ts: KEY_SET already derives from SETTING_KEYS → new keys PATCHable automatically; comment updated to document 10 groups; PATCH sanitization unchanged (upsert + audit snapshot).
+- FRONTEND settings-view.tsx (existing 8 tabs untouched): TabsList 8→11 triggers (Brand/Footer/Media & Decor/Ads/Features/SEO/Contact & Social/Localization/Analytics/Maintenance/System) with scrollbar-slim + overflow-x-auto + sm:max-w-full so mobile scrolls cleanly. Contact tab: 7 inputs each with a "Default: …" hint; live auto-derived wa.me hint under WhatsApp number (digits-only); whatsappUrl helper "leave empty to auto-build"; dynamic socials key/value editor (datalist Instagram/YouTube/LinkedIn/GitHub/X…, limit 8, add/remove). Localization tab: currency/currencySymbol/timezone/dateFormat/measurement (Selects with preset options + stored-custom passthrough items; INR/USD/EUR/GBP/AED; Asia/Calcutta + Dubai/Riyadh/London/UTC/New_York). Analytics tab: enabled Switch (privacy-first OFF hint), GA id (mono G-XXXXXXXXXX), Plausible domain (mono), trackOutboundClicks Switch. All save via existing PATCH /api/settings/:key {value} + invalidate ["settings"] & ["admin-settings"]. One-line "Defaults" note under each new tab header.
+- use-settings.ts (additive): SiteSettings gains optional contact/localization/analytics typed groups + contactInfo() resolver (fallback defaults only when the API is unreachable) mirroring maintenanceInfo().
+- VERIFIED: bunx eslint on 6 touched files → 0 problems. curl with admin cookie: GET /api/settings → 200 with all 10 groups ("contact":{"email":"intobusyness@gmail.com",...,"responseTimeHours":24,"socials":{}}; localization INR/₹/Asia/Calcutta/d MMM yyyy/metric; analytics off/empty/trackOutboundClicks true); GET /api/settings/all → 200 with 10 keys; PATCH contact/localization/analytics with test values → 200, persisted, resolver coercion proven (partial rows merge to defaults, " G-TEST123 " trimmed, clamp/pick guards work); canonical defaults RESTORED via PATCH and deep-equality asserted (DB left in default state). agent-browser isolated sessions: desktop 1440 — 11 tabs render, Contact tab populated with defaults (all inputs checked), Localization/Analytics content verified, UI save E2E (city→Kozhikode→Save→persisted→restored), no console errors; mobile 390×844 — TabsList scrolls horizontally (913>358px), document scrollWidth 390 == innerWidth 390 (NO overflow), Contact tab populated. Screenshots: screenshots/settings-11c-contact-desktop.png · settings-11c-contact-mobile-390.png · settings-11c-tabs-mobile-390.png.
+- INCIDENT (shared env): the shared next dev on :3000 was OOM-killed mid-task (kernel: next-server 2.3GB RSS on 4GB box alongside 4+ parallel agents' headless Chromes). Restored it with the canonical `nohup bun run dev` + closed my browser sessions; one EADDRINUSE flap while another agent concurrently restored it, then stable and serving 200s. dev.log truncated by tee on restart (recent entries only).
+
+Stage Summary:
+- Files: src/app/api/settings/_lib.ts · src/app/api/settings/route.ts · src/app/api/settings/all/route.ts · src/app/api/settings/[key]/route.ts (comment only) · src/components/views/admin/settings-view.tsx · src/hooks/use-settings.ts · agent-ctx/11-c-zai-code.md.
+- 10 setting keys & defaults: brand=constants SITE · footer=FOOTER_DEFAULT · media=decor OFF/empty · ads=ON+4 placements · features=9×ON · seo="| MN.KP" baseline · contact=live MN.KP details (email intobusyness@gmail.com, phone/whatsapp +91 98467 50898, wa.me/919846750898, Calicut (Kozhikode) Kerala India, city Calicut, responseTimeHours 24, socials {}) · localization=India-first (INR, ₹, Asia/Calcutta, d MMM yyyy, metric) · analytics=privacy-first (enabled FALSE, GA/Plausible empty, trackOutboundClicks TRUE) · maintenance=OFF.
+- API: public GET /api/settings now returns 10 resolved groups; /all defaultForKey covers 10 keys; PATCH accepts all 10 (audit-logged upserts).
+- UI: settings tabs 8→11 (Contact & Social / Localization / Analytics added between SEO and Maintenance), mobile-scrollable tab bar, per-field default hints + per-tab one-line default-mode notes, Graphite & Copper styling (copper text-gold accents only).
+- Deviations: contact.socials defaults to {} (spec; Brand remains canonical social map) · GA/Plausible loader scripts NOT yet wired site-wide (settings + storage only — future task: inject next/script in app shell gated on analytics.enabled) · dev server OOM incident handled as above.
+- Handoff notes: contactInfo() in use-settings.ts for contact-page consumers; analytics/localization groups now consumable via useSettings(); 11-d's marketing seo cast unaffected; keep headless-browser sessions minimal on this 4GB box and close them promptly.
+
+---
+Task ID: 11-a (recorded by orchestrator — agent hit a context-deadline during reporting AFTER completing the work; everything below was verified live by the orchestrator)
+Agent: full-stack-developer subagent (Task 11-a)
+Task: Ventures feature — Venture model + public #/ventures page (Calicut Store, Chaliyam Connect, MN.KP Digital, Project 195) + join/collab startup-idea inquiry form + full admin CRUD + audit/undo wiring.
+
+Work Log:
+- prisma/schema.prisma: Venture model added (slug unique, name, tagline, description markdown, category store|community|tech|product|service|media, status live|incubating|planned|idea|retired, location, websiteUrl, imageUrl, highlights/collabRoles JSON arrays, sortOrder, isFeatured); db:push applied; supabase/schema.sql gains the ventures table + RLS + indexes; Inquiry type CHECK extended with venture|collab.
+- src/types/index.ts: VentureStatus/VentureDTO added; InquiryDTO type union extended with "venture"|"collab".
+- src/lib/validation.ts: ventureCreateSchema + EXPLICIT OPTIONAL-ONLY ventureUpdateSchema (Zod4 partial-default lesson honored); inquiry create schema accepts venture|collab.
+- API: GET /api/ventures (public: non-retired, sortOrder asc + createdAt desc; ?all=1 staff mode), POST/PATCH/DELETE /api/ventures/[id] (staff, audit-logged with before/after snapshots; PATCH {isFeatured} logs "toggle"); audit _lib: "venture" case in applySnapshot + RESTORABLE_ENTITIES → undo/redo works for ventures.
+- Public views/ventures/ventures-view.tsx: professional page (SEOHead + JSON-LD ItemList + breadcrumbs), venture cards (status badges, category chips, location, highlights, collab-role chips, website links), "Build the next startup with me" band, startup-idea inquiry form (intent select: join/co-found/pitch/partner + venture select + name/email/phone/idea) → POST /api/inquiries type="venture".
+- Admin views/admin/ventures-view.tsx: KPI chips, compact table with inline featured Switch, New/Edit dialog (all fields, chip inputs for highlights/collabRoles, auto-slug), Delete confirm; invalidates ["admin-ventures"], ["ventures"].
+- Wiring: routes.ts + view-registry.ts (ventures, admin-ventures); NAV_MAIN + footer + mobile MORE_LINKS ("Ventures & Ideas", rocket icon); admin _shell CONTENT group gains Ventures (Lightbulb); inquiries-view shows/filters venture|collab types.
+- prisma/seed.ts: 4 ventures seeded idempotently (calicut-store live, chaliyam-connect incubating, mnkp-digital live, project-195 idea).
+
+Stage Summary:
+- ORCHESTRATOR E2E VERIFIED: GET /api/ventures 200 (4 items); create→toggle→delete roundtrip with audit rows (create/toggle/delete "venture" entries confirmed); public form submission E2E → "Pitch received" success UI + Inquiry row (type venture, subject "Pitch my own startup idea — A new idea"); admin Ventures view renders table + featured switches; New-venture dialog created "Dialog Test Venture" → appeared in table → deleted; mobile 390px scrollWidth==innerWidth on #/ventures and #/admin/ventures; header hamburger on #/admin opens the ADMIN nav sheet and its Ventures link navigates + closes the sheet. Test data cleaned (throwaway ventures + inquiries + audit rows removed; canonical 4 ventures remain).
+
+---
+Task ID: 11-b (recorded by orchestrator — agent hit a context-deadline during reporting AFTER completing the work; everything below was verified live by the orchestrator)
+Agent: full-stack-developer subagent (Task 11-b)
+Task: CSV import/export for EVERYTHING — /api/export (9 entity types), RFC-4180 CSV toolkit, CSV import mode, admin Import & Export view rework.
+
+Work Log:
+- src/lib/csv.ts (new): parseCsv (RFC-4180: quotes, escaped quotes, newlines-in-quotes, CRLF, BOM), toCsv (header + escaped fields), csvToObjects, jsonArrayCell (JSON array cell with |-separated fallback).
+- src/app/api/export/route.ts (new, staff-only): ?type=posts|products|categories|ventures|ads|inquiries|subscribers|users|settings → text/csv attachment mnkp-<type>-<date>.csv (full-content columns; JSON columns as JSON-string cells; users export is PRIVACY-SAFE — no passwordHash/tokens; settings as key,value rows).
+- src/app/api/import/route.ts: legacy JSON mode untouched; new CSV mode {format:"csv", entity:"posts|products|categories|ventures|ads|subscribers", csv} reuses the duplicate-slug skip + error-collection + audit "import" logging; response adds format/entity/skippedNotes/createdItems.
+- views/admin/import-view.tsx → "Import & Export": export card with 9 per-entity download buttons (fetch credentials + blob + a.download), import Tabs Posts/Products/Categories/Ventures/Ads/Subscribers with JSON|CSV toggle, CSV validate preview + import summary, per-entity CSV column guides; invalidates the relevant admin queries.
+
+Stage Summary:
+- ORCHESTRATOR E2E VERIFIED: GET /api/export?type=posts → 200 CSV with the full header row; settings + ventures + users exports correct (users has NO passwordHash — grepped 0); CSV import roundtrip created "Roundtrip Test Cat" category then deleted; the view's 9 export buttons + tablist render and clicking Export triggers a real file download; mobile 390px no overflow. A prior smoke "import import — CSV import — 1 ventures created" audit row from the agent's own verification was observed, then cleaned.
+
+---
+Task ID: 11-e (wave 11 close-out)
+Agent: Z.ai Code (orchestrator)
+Task: Wave-11 E2E verification + close-out (all 7 user requests).
+
+Work Log:
+- Verified 11-c delivery: GET /api/settings returns 10 groups (contact/localization/analytics resolved with documented defaults: intobusyness@gmail.com contact block, INR/₹/Asia/Calicut/d MMM yyyy/metric, analytics privacy-first OFF); admin settings renders 11 tabs; Contact & Social / Localization / Analytics tabs load defaults (browser-checked, fields populated).
+- Verified 11-d delivery: Marketing Hub renders all 7 sections; UTM builder live-generates https://mohdnihadkp.vercel.app/?utm_source=whatsapp&utm_campaign=venture-launch with Copy button (browser-checked); SEO checklist + funnel + ad table + quick actions present.
+- MOBILE ADMIN HAMBURGER (user bug #2) fixed and browser-VERIFIED on 390px: on #/admin the header three-line button opens the "Admin & Developer" sheet (nav + admin card); nav link click navigates and closes; on #/auth/login the hamburger opens the public More sheet (previously MobileNav returned null on /auth too — also fixed); public pages' More sheet includes "Ventures & Ideas".
+- SERVICES MOBILE (user request #1) compacted; #/services at 390px: scrollWidth 390 == innerWidth 390, full-page screenshot saved.
+- Cross-checks: home desktop + ventures desktop render clean (no console/page errors); account dashboard shows the new "Newsletter & communication" card (billing gone); presence API 200; bunx eslint full src → 0 problems; dev server restarted once after OOM kills during the parallel agent wave (restored, all endpoints 200).
+- Screenshots: screenshots/11-{ventures-mobile,admin-ventures-mobile,services-mobile,home-desktop,ventures-desktop}.png (+ agents' own 11d-marketing-*).
+
+Stage Summary:
+- ALL SEVEN user requests delivered and browser-verified: (1) services mobile compact ✓ (2) mobile admin hamburger opens properly ✓ (3) Ventures page + join/collab/pitch inquiry form + admin CRUD + audit/undo ✓ (4) settings expanded to 10 groups with visible defaults ✓ (5) full CSV import/export for every content type ✓ (6) marketing & ads professional (Marketing Hub + UTM builder + SEO health + 10-placement ad system) ✓ (7) billing & subscription completely removed ✓.
+- Admin credentials: intobusyness@gmail.com / Nihad@Admin2025.
+- Infra note: 4 parallel agents OOM-killed the shared dev server twice on this 4GB box — future waves should cap at 2 parallel agents or stagger browser verification.

@@ -174,7 +174,16 @@ export const inquiryCreateSchema = z.object({
   email: z.string().email("Enter a valid email").max(160),
   phone: z.string().max(20).optional().or(z.literal("")),
   type: z
-    .enum(["general", "sponsorship", "partnership", "advertising", "support", "feedback"])
+    .enum([
+      "general",
+      "sponsorship",
+      "partnership",
+      "advertising",
+      "support",
+      "feedback",
+      "venture",
+      "collab",
+    ])
     .default("general"),
   subject: z.string().max(160).optional(),
   message: z.string().min(10, "Tell us a bit more (min 10 characters)").max(4000),
@@ -207,45 +216,9 @@ export const newsletterUpdateSchema = z.object({
   status: z.enum(["pending", "confirmed", "unsubscribed"]),
 });
 
-// ---------- billing (mock) ----------
-export const subscriptionManageSchema = z.object({
-  action: z.enum(["change", "cancel", "resume", "renew", "simulate"]),
-  planCode: z.string().max(30).optional(),
-  interval: z.enum(["monthly", "yearly"]).optional(),
-  paymentOutcome: z.enum(["success", "failed", "pending"]).optional(),
-});
-
 // ---------- settings ----------
 export const settingsUpdateSchema = z.object({
   value: z.record(z.string(), z.unknown()),
-});
-
-// ---------- plans (admin) ----------
-export const planCreateSchema = z.object({
-  code: z.string().min(2).max(30),
-  name: z.string().min(2).max(60),
-  description: z.string().max(300).optional(),
-  priceMonthly: z.number().min(0).max(1_000_000).default(0),
-  priceYearly: z.number().min(0).max(1_000_000).default(0),
-  currency: z.string().min(1).max(8).default("INR"),
-  features: z.array(z.string().min(1).max(80)).max(12).default([]),
-  isActive: z.boolean().default(true),
-  isDefault: z.boolean().default(false),
-  sortOrder: z.number().int().min(0).max(99).default(0),
-});
-
-/** Update schema — explicit optional-only shape (see postUpdateSchema note). */
-export const planUpdateSchema = z.object({
-  code: z.string().min(2).max(30).optional(),
-  name: z.string().min(2).max(60).optional(),
-  description: z.string().max(300).optional(),
-  priceMonthly: z.number().min(0).max(1_000_000).optional(),
-  priceYearly: z.number().min(0).max(1_000_000).optional(),
-  currency: z.string().min(1).max(8).optional(),
-  features: z.array(z.string().min(1).max(80)).max(12).optional(),
-  isActive: z.boolean().optional(),
-  isDefault: z.boolean().optional(),
-  sortOrder: z.number().int().min(0).max(99).optional(),
 });
 
 // ---------- ads (admin, Task 9) ----------
@@ -306,6 +279,51 @@ export const adUpdateSchema = z.object({
   priority: z.number().int().min(0).max(100).optional(),
   startAt: z.string().datetime().optional().nullable().or(z.literal("").transform(() => null)),
   endAt: z.string().datetime().optional().nullable().or(z.literal("").transform(() => null)),
+});
+
+// ---------- ventures (Task 11) ----------
+export const VENTURE_CATEGORIES = [
+  "venture",
+  "store",
+  "community",
+  "tech",
+  "product",
+  "service",
+  "media",
+] as const;
+export const VENTURE_STATUSES = ["live", "incubating", "planned", "idea", "retired"] as const;
+
+export const ventureCreateSchema = z.object({
+  name: z.string().min(2, "Venture name is required").max(120),
+  slug: slug.optional(), // auto-derived from name when absent (route slugifies)
+  tagline: z.string().max(160).optional().or(z.literal("")),
+  description: z.string().max(20_000).optional(),
+  category: z.enum(VENTURE_CATEGORIES).default("venture"),
+  status: z.enum(VENTURE_STATUSES).default("live"),
+  location: z.string().max(120).optional().or(z.literal("")),
+  websiteUrl: optionalUrl,
+  imageUrl: optionalUrl,
+  highlights: z.array(z.string().min(1).max(80)).max(8).default([]),
+  collabRoles: z.array(z.string().min(1).max(80)).max(8).default([]),
+  sortOrder: z.number().int().min(0).max(999).default(0),
+  isFeatured: z.boolean().default(false),
+});
+
+/** Update schema — explicit optional-only shape (see postUpdateSchema note). */
+export const ventureUpdateSchema = z.object({
+  name: z.string().min(2, "Venture name is required").max(120).optional(),
+  slug: slug.optional(),
+  tagline: z.string().max(160).optional().or(z.literal("")),
+  description: z.string().max(20_000).optional(),
+  category: z.enum(VENTURE_CATEGORIES).optional(),
+  status: z.enum(VENTURE_STATUSES).optional(),
+  location: z.string().max(120).optional().or(z.literal("")),
+  websiteUrl: optionalUrl,
+  imageUrl: optionalUrl,
+  highlights: z.array(z.string().min(1).max(80)).max(8).optional(),
+  collabRoles: z.array(z.string().min(1).max(80)).max(8).optional(),
+  sortOrder: z.number().int().min(0).max(999).optional(),
+  isFeatured: z.boolean().optional(),
 });
 
 // ---------- audit undo/redo (admin, Task 9) ----------

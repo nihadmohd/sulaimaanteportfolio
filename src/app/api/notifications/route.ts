@@ -12,30 +12,12 @@ import type { NotificationItem, NotificationsResponse } from "@/types";
  *   · subscribers confirmed last 7d    → type "subscriber"
  *   · maintenance-mode-on system item  → type "system"
  * Reader/author:
- *   · own latest 10 subscription_events → type "billing"
  *   · verify-email system item while unverified
  *
  * unreadCount = items.length (NotificationBell subtracts locally-seen ids).
  */
 
 const MAX_ITEMS = 12;
-
-const EVENT_LABELS: Record<string, string> = {
-  created: "Subscription started",
-  plan_changed: "Plan changed",
-  interval_changed: "Billing interval changed",
-  renewed: "Subscription renewed",
-  canceled: "Subscription canceled",
-  resumed: "Subscription resumed",
-  payment_succeeded: "Payment succeeded",
-  payment_failed: "Payment failed",
-  payment_pending: "Payment processing",
-  trial_ended: "Trial ended",
-};
-
-function inr(amount: number): string {
-  return `INR ${amount.toLocaleString("en-IN")}`;
-}
 
 export const GET = withApi(async (req: Request) => {
   const user = await requireUser(req);
@@ -97,34 +79,6 @@ export const GET = withApi(async (req: Request) => {
       }
     }
   } else {
-    const events = await db.subscriptionEvent.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    });
-
-    for (const evt of events) {
-      let planCode: string | null = null;
-      try {
-        const payload = JSON.parse(evt.payload) as { planCode?: unknown };
-        if (typeof payload.planCode === "string") planCode = payload.planCode;
-      } catch {
-        planCode = null;
-      }
-      const label = EVENT_LABELS[evt.type] ?? "Billing update";
-      const parts: string[] = [];
-      if (planCode) parts.push(planCode);
-      if (evt.amount != null) parts.push(inr(evt.amount));
-      items.push({
-        id: `evt-${evt.id}`,
-        type: "billing",
-        title: label,
-        body: parts.length > 0 ? parts.join(" · ") : "Your subscription was updated.",
-        time: evt.createdAt.toISOString(),
-        href: "#/account/billing",
-      });
-    }
-
     if (!user.emailVerified) {
       items.push({
         id: "sys-verify-email",

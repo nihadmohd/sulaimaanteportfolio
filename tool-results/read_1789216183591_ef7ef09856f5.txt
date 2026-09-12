@@ -1,0 +1,238 @@
+   560→  4. presence:path self-heals unknown sockets (adopt socket.id as key) + presence:join drops the socket's previously-owned key — kills the phantom-entry double-count caused by mount-time buffered emits flushing before join; N tabs share ONE sessionKey (spec's Map<sessionKey> upsert semantics).
+   561→  5. Hook additionally listens presence:welcome (instant count on join — additive, no contract change); fallback triggers on reconnect_failed OR 4th connect_error (guarded against double-start); singleton is consumer-refcounted so multiple badges (header+hero) share one socket and "cleanup disconnect" fires only when the last one unmounts.
+   562→  6. Daemonization via setsid --fork (double-fork orphan, PPID 1) — plain `nohup ... &` is reaped by the tool harness at invocation end. Platform note: .zscripts/dev.sh start_mini_services auto-starts this service on future sandbox boots (package.json has a "dev" script; log → .zscripts/mini-service-presence-service.log).
+   563→  7. init-fullstack bootstrap deliberately NOT re-run (env initialized since 1-b; re-running spawns a 2nd dev server on the busy :3000).
+   564→- HANDOFF NOTES:
+   565→  → ORCHESTRATOR (Task 8): (1) 6-a's admin overview "Live activity" card (polls ["admin-presence"]/api/presence 10s via usePresenceOnline) can swap to usePresence() for realtime — byPath top-10 is exported and ready for a "where visitors are" mini-list. (2) home hero badge can pass variant="hero" for the larger LIVE NOW treatment (works today with just className overrides). (3) When AppShell/SiteHeader mounts in page.tsx, the header badge joins as a 2nd usePresence consumer — refcounted singleton handles it (one session, one socket, one count). (4) Dev server was restarted post-OOM at ~11:32 (PIDs 12661/12662; .zscripts/dev.pid stale); presence-service manual restart: cd mini-services/presence-service && setsid --fork bun run dev > presence.log 2>&1 < /dev/null. (5) Client engine requests hit /socket.io/?EIO=4&...&XTransformPort=3003 (client-default engine path) — server path "/" claims them; both /?EIO and /socket.io/?EIO handshakes verified through the gateway.
+   566→
+   567→---
+   568→Task ID: 8
+   569→Agent: Z.ai Code (orchestrator)
+   570→Task: Integration + SEO metadata routes + full browser E2E verification + fixes.
+   571→
+   572→Work Log:
+   573→- Wired src/router/view-registry.ts with all 34 route keys → lazy view imports (code-split per view).
+   574→- Replaced 4-a's temporary smoke page.tsx with the real <AppShell/> root (src/app/page.tsx).
+   575→- Mounted <SiteStickers/> in app-shell.tsx (6-a handoff item — stickers now render site-wide when enabled in settings).
+   576→- Created src/app/sitemap.ts (static core + DB posts/products + 18 legal docs, production origin https://mnkp.vercel.app), src/app/robots.ts (allow all, disallow /api//admin/account/auth, sitemap ref), public/llms.txt (GEO/AEO index for answer engines).
+   577→- CRITICAL FIX in src/router/routes.ts matchRoute(): static patterns (no :params) compile without named capture groups, so m.groups is undefined and `if (m?.groups)` failed → EVERY static route 404'd. Fixed to `if (m) return {route, params: m.groups ?? {}}`. Root cause of "home renders NotFoundState" found via agent-browser.
+   578→- E2E verification (agent-browser, via Caddy gateway :81):
+   579→  · Home renders: hero + micro-label + H1 keyword + tagline + CTAs + stats + services + marquee + ad slot.
+   580→  · Blog list: search/sort/category filters + affiliate ad strip + PostCards. Post detail: DB seoTitle, Quick Answer AEO box, TL;DR blockquote, question H2s, inline affiliate ad after 3rd paragraph, view counter "1.9k views".
+   581→  · Store grid: filters + disclosure. Product detail: price ₹29,990 + compareAt + Save 14% + rating + clicks + specs + pros/cons + "View on Amazon" + affiliate disclosure + share.
+   582→  · Contact form submitted → inquiry landed in DB → visible in admin inbox with copy email/phone + mailto/tel + WhatsApp deep link (prefilled greeting "Hi Rahul, this is Nihad from MN.KP — thanks for your message about ...") → deleted via UI (AlertDialog) → DB verified restored.
+   583→  · Admin login (obsidian+gold) → straight to Overview (no session-expired loop); KPIs, charts, live activity card. All 11 admin routes swept [OK] incl. posts/new editor.
+   584→  · Notification bell: "2 unread" → dropdown with mark-all-read. ⌘K command palette: nav + suggestions.
+   585→  · Live visitor badge: "1 online" through the gateway (socket → presence service roundtrip verified; direct :3000 bypasses gateway → REST fallback shows service count — expected).
+   586→  · View counter accuracy: 940 → 941 on first visit; reload does NOT double-count (sessionStorage dedupe).
+   587→  · Auth themes distinct: login emerald-950/900, register amber-950/900, admin obsidian+gold.
+   588→  · Mobile 390px: hamburger, stacked sections, bottom tab bar present, footer pushes naturally (flex min-h-screen + flex-1 main verified in DOM).
+   589→  · All 16 swept routes [OK] titles correct; zero console/page errors via gateway.
+   590→- Screenshots: screenshots/{desktop-home,mobile-home,admin-dashboard}.png.
+   591→- Final: bun run lint CLEAN · dev.log healthy · /api/health OK · presence :3003 alive.
+   592→
+   593→Stage Summary:
+   594→- PLATFORM COMPLETE & BROWSER-VERIFIED. 34 routes, 20 API route files, 30+ views, 12 tables seeded, realtime presence, 18 legal docs, sitemap/robots/llms.txt live.
+   595→- Known sandbox nuance: socket live-counter requires the gateway path (preview panel URL) — direct localhost:3000 gracefully degrades to REST polling.
+   596→- Production deploy notes: swap Prisma→Neon/Supabase via supabase/schema.sql, auth adapter→Supabase Auth, hash routes→file routes (views liftable 1:1), set SITE.url + JWT_SECRET env.
+   597→
+   598→---
+   599→Task ID: 9-a/9-b/9-c
+   600→Agent: Z.ai Code (orchestrator)
+   601→Task: Update wave — rebrand (URL/email), Ads system backend, Audit undo/redo backend, settings expansion (features + seo), import API, new admin route wiring.
+   602→
+   603→Work Log:
+   604→- REBRAND: SITE.url → https://mohdnihadkp.vercel.app, SITE.email + all legal/faq/support/legal-view literals → intobusyness@gmail.com; sitemap.ts + robots.ts + public/llms.txt origins updated; admin account email in DB + seed.ts + DEMO_CREDENTIALS + admin-login placeholder → intobusyness@gmail.com (password unchanged: Nihad@Admin2025). scripts/rebrand.ts updated live DB (admin email, 6 post canonicalUrls, brand settings email).
+   605→- PRISMA: new models Ad + AuditLog (see prisma/schema.prisma); db:push applied; mirrored as `ads` + `audit_log` tables (+RLS staff-write policies, features/seo seed rows) appended to supabase/schema.sql.
+   606→- VALIDATION: adCreateSchema/adUpdateSchema (types image|gif|sticker|text|marquee; placements header-banner|blog-inline|blog-sidebar|between-cards|home-strip|store-side|footer-banner|product-inline|marquee|sticker; linkUrl accepts https:// OR in-app "#/..." routes), auditIdSchema, importPostsSchema/importProductsSchema.
+   607→- TYPES: AdDTO/AdStatsDTO/AuditLogDTO/FeaturesSettings/SeoSettings added; PublicSettings + AdminSettings now include features + seo groups.
+   608→- SETTINGS: SETTING_KEYS now 7 (brand|footer|media|ads|features|seo|maintenance); defaults+resolvers in api/settings/_lib.ts (defaultFeatures/defaultSeo/resolveFeatures/resolveSeo); public GET /api/settings returns all 7 resolved groups. features toggles: newsletter, shareButtons, presenceBadge, cookieConsent, registration, trendingBadge, viewCounts, readingTime, affiliateSlots (all default true). seo: titleSuffix, defaultDescription, keywords[], googleVerification, bingVerification.
+   609→- ADS API (all live + curl-verified): GET /api/ads?placement=X (public: active+in-schedule, priority desc) · GET /api/ads?all=1[&stats=1] (staff: everything + {totalAds,activeAds,impressions,clicks,ctr}) · POST /api/ads (staff, 201) · GET/PATCH/DELETE /api/ads/:id (staff; body of only {active} logs action "toggle") · POST /api/ads/:id/click (public → {id,url}) · POST /api/ads/:id/impression (public → {id,counted}).
+   610→- AUDIT API: GET /api/audit?limit&page (staff → {items:AuditLogDTO[], total, page, limit, lastRestorableId}) · POST /api/audit/undo {id} (replays BEFORE snapshot; 409 when already undone) · POST /api/audit/redo {id} (replays AFTER snapshot; 409 when not undone). RESTORABLE entities: setting, ad, post, product. Audit writes wired into: settings/[key] PATCH, ads routes, posts/[idOrSlug] PATCH+DELETE, products/[idOrSlug] PATCH+DELETE. E2E verified: toggle→undo→redo→undo roundtrip clean.
+   611→- IMPORT API: POST /api/import (staff) {posts?:[...], products?:[...]} — slug-collision-safe (skip/rename), reading time computed, author = importing staff; returns {posts:{received,created,skipped}, products:{...}, createdPosts[], createdProducts[], errors[]}. Verified with a create+delete smoke post.
+   612→- SEED: scripts/seed-ads.ts (idempotent) created 6 demo ads — header-banner text ad, marquee (6 store images), blog-inline Pro promo, between-cards newsletter promo, sticker (WhatsApp + portrait image), footer-banner store promo.
+   613→- ROUTES: routes.ts + view-registry.ts extended with admin-ads (#/admin/ads), admin-marketing (#/admin/marketing), admin-activity (#/admin/activity), admin-import (#/admin/import) — STUB views created in src/components/views/admin/{ads,activity,marketing,import}-view.tsx for Task 9-d to fill.
+   614→
+   615→Stage Summary:
+   616→- BACKEND COMPLETE & VERIFIED for the update wave. Frontend tasks remaining: 9-d (admin views), 9-e (public ad rendering + mobile sweep), 9-g (migration docs), 9-h (E2E).
+   617→- BINDING CONTRACTS for frontend agents:
+   618→  · AdDTO = {id,name,type,placement,title,body,imageUrl,imageAlt,images[],linkUrl,linkLabel,active,priority,startAt,endAt,impressions,clicks,createdAt,updatedAt}
+   619→  · AuditLogDTO = {id,userName,action,entity,entityId,label,undoneAt,redoneAt,createdAt,restorable}; canUndo = restorable && !undoneAt; canRedo = restorable && !!undoneAt.
+   620→  · Click flow: POST /api/ads/:id/click → data.url — if it starts with "#/" navigate in-app (router push), else window.open(url, "_blank", "noopener").
+   621→  · Impression flow: POST /api/ads/:id/impression once per ad per mount (useEffect guard).
+   622→  · Query keys: ["ads", placement] public; ["admin-ads"] (?all=1); ["admin-ads-stats"]; ["audit", page]; settings PATCH key group "features"/"seo" via existing PATCH /api/settings/:key {value:{...}}.
+   623→  · AdminShell nav: add GROWTH group (Ad Manager #/admin/ads, Marketing #/admin/marketing), SYSTEM additions (Activity & Undo #/admin/activity, Import #/admin/import).
+   624→
+   625→---
+   626→Task ID: 9-e
+   627→Agent: Z.ai Code (build agent)
+   628→Task: Task 9-e — DB-driven public ad rendering (all 10 placements, click/impression tracking, site-wide units) + mobile responsiveness sweep (blog list fix, compact store/home/shell).
+   629→
+   630→Work Log:
+   631→- Read worklog 9-a/9-b/9-c binding contracts (AdDTO, click/impression flows, query keys), the current AffiliateAdSlot, app-shell, site-stickers, all public views, use-settings/use-router, ads API routes. Probed /api/ads for every seeded placement (6 live: header-banner text, marquee 6-image, sticker, footer-banner text, between-cards text, blog-inline text).
+   632→- REWROTE src/components/shared/affiliate-ad-slot.tsx (same export name/props — all consumers unbroken):
+   633→  · useAdsForPlacement(placement) → {ads, isResolved} — GET /api/ads?placement=X, queryKey ["ads", placement], staleTime 60s, enabled: adsEnabled(settings).
+   634→  · Renderers by type: TextAdCard (gold-dashed compact promo card, "Sponsored" micro-label + font-semibold title + line-clamp-2 body + linkLabel CTA, ~py-3), ImageAdBanner (aspect-[7/2] object-cover lazy img in gold-dashed frame + label row, alt = imageAlt||title), MarqueeAdStrip (auto-scrolling strip of ad.images duplicated for seamless loop — per-item mx-1.5 margins so translate3d(-50%) loops exactly — h-16 sm:h-20 rounded-lg, pause on hover/focus-within, prefers-reduced-motion off, caption title). sticker type never renders in slots.
+   635→  · useAdInteraction(ad): impression POST /api/ads/:id/impression once per mount per id (useRef guard, .catch(()=>{})); handleClick → POST /api/ads/:id/click → data.url: "#/…" → navigate() in-app hash route, else window.open(url,"_blank","noopener,noreferrer"); tracking failure still honors ad.linkUrl. Anchors carry rel="sponsored noopener noreferrer" + target=_blank (external only); runAdAnchorClick keeps cmd/ctrl/shift/alt-clicks native.
+   636→  · Fallback: featured-products legacy behavior (GET /api/products?featured=1&limit=3, hash-rotated per placement, tooltip disclosure) — its query is enabled ONLY after the ads query resolves empty (isResolved && ads.length===0), so DB ads never double-fetch.
+   637→- NEW src/components/shared/ad-banner.tsx (site-wide units; app-shell stays clean):
+   638→  · AdHeaderBanner() — placement "header-banner": text → slim one-line gold-dashed band (label + truncate title + hidden lg body + CTA) below the header; image/gif → ImageAdBanner in max-w-6xl pt-3 wrapper. Null when no ad → zero layout shift.
+   639→  · AdMarqueeStrip() — placement "marquee": full-width strip below the header banner, gold-dashed bottom border, "Fresh in the store" title chip (ad.title override) + auto-scrolling images h-16 sm:h-20 (pauses on hover).
+   640→  · AdFooterBanner() — placement "footer-banner": compact TextAdBand above the footer (border-t) / centered ImageAdBanner.
+   641→  · AdSticker() — placement "sticker": floating circular size-14 sm:size-16 bottom-right (fixed bottom-40 right-4 md:bottom-24 — deliberately stacked ABOVE the decorative site-stickers which occupy bottom-24 right-4 md:bottom-8, since they use BOTH bl+br corners), gold ring-2 + animate-pulse ring, portrait img or gold title text fallback, X dismiss → sessionStorage "mnkp_sticker_dismissed_<adid>", same tracked click flow.
+   642→- app-shell.tsx: mounted <AdHeaderBanner/> + <AdMarqueeStrip/> between SiteHeader and main, <AdFooterBanner/> between main and SiteFooter, <AdSticker/> alongside SiteStickers. Sticky-footer flex semantics untouched (min-h-screen flex-col + mt-auto footer intact).
+   643→- product-view.tsx: <AffiliateAdSlot placement="product-inline" className="mt-6"/> directly below the price/"View on Amazon" CTA card (DB ad first → featured-products fallback since no seeded product-inline ad). post-view.tsx blog-inline after 3rd paragraph CONFIRMED existing — now serves the seeded "Pro Plan — In-article" DB ad through the upgraded component (no move needed).
+   644→- between-cards wiring: blog-view PostGrid — mobile <sm single-column LIST (<ul class space-y-3 sm:hidden>) of new PostCard size="row" cards with the ad as a natural <li> after the 6th post; sm+ grid unchanged (1/2/3 cols) with the ad as a full-row item (self-start md:col-span-2 lg:col-span-3). store-view ProductGrid — mobile tight 2-col grid (gap-2.5) with ad col-span-2 after the 6th product; sm+ full-row span (sm:col-span-2 lg:col-span-3 xl:col-span-4).
+   645→- MOBILE SWEEP:
+   646→  · post-card.tsx: new size="row" horizontal list card — size-20 sm:size-24 shrink-0 thumbnail LEFT + min-w-0 text RIGHT, title line-clamp-2, excerpt line-clamp-1/2, category/minutes/views meta row. Directly fixes the "blog grid contents overflow" complaint.
+   647→  · product-card.tsx compact: p-3→p-2, price text-sm→text-xs (name already line-clamp-2 text-xs, aspect-square image).
+   648→  · blog-view/store-view: container py-6 sm:py-10 md:py-14; category chips full-bleed scroll (-mx-4 px-4 sm:mx-0 sm:px-0) + py-2 sm:py-1.5 chips (≥44px touch targets on mobile).
+   649→  · home-view: hero py-10 sm:py-16 md:py-28, h1 text-3xl sm:text-4xl md:text-5xl + subhead text-xl sm:text-2xl md:text-3xl, tagline/CTA/badge mt-4/6 sm:mt-6/8; stats row → 2×2 grid (grid-cols-2 md:grid-cols-4, StatChip compact px-3 py-2.5 size-8 icon text-base value at mobile); hero marquee images h-14 sm:h-24 md:h-36; all section paddings py-8/pb-8 sm:py-14; newsletter p-4 sm:p-6; final CTA px-4 py-8 sm:py-12.
+   650→  · site-header: h-14 md:h-16, logo h-7 md:h-8, brand text-base md:text-lg, hamburger size-10 (44px).
+   651→  · site-footer: 2-col compact grid on mobile (brand col-span-2), link lists text-xs sm:text-sm space-y-2, py-8 sm:py-12, root pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0 so the fixed MobileNav tab bar NEVER overlaps footer content; mobile-nav already had safe-area + 56px targets (no change needed).
+   652→  · post-view/product-view: compact container paddings py-6 sm:py-10; cover/grid margins mt-6 sm:mt-8.
+   653→  · Swept about/services/contact/support/legal/auth: all grids already 1-col at mobile, support TabsList + markdown pre/table already overflow-x-auto, headings already text-2xl/3xl mobile — no changes needed beyond the above.
+   654→- VERIFICATION (all green):
+   655→  · bunx eslint on all 13 touched files → 0 problems 0 warnings.
+   656→  · curl / → 200; /api/ads?placement=header-banner|marquee|sticker|footer-banner|between-cards|blog-inline → 200 with seeded ads.
+   657→  · agent-browser (isolated --session 9e; the DEFAULT session was hijacked mid-test by concurrent agent 9-d navigating to admin — see deviations): 390px sweep across 12 routes (home, blog, store, post detail, product detail, about, services, contact, support, legal index, legal detail, login) → document.documentElement.scrollWidth == window.innerWidth (390/390) on EVERY route, zero page/console errors.
+   658→  · DOM checks @390px: header band + marquee strip (6 store imgs) + footer band + sticker + dismiss all present; blog list = 6 row cards + between-cards ad as 7th li; store mobile grid = compact cards + col-span-2 ad; product-inline fallback renders featured-products card below CTA; desktop 1280px: blog 3-col grid with full-row ad, store 4-col grid with full-row ad, home-strip featured fallback.
+   659→  · Click flow: header ad click → location.hash became #/store (in-app navigation) + DB clicks incremented.
+   660→  · Sticker dismiss → sessionStorage mnkp_sticker_dismissed_f0400872… set + sticker unmounted.
+   661→  · DB after session: impressions on ALL 6 seeded ads (between-cards 6, blog-inline 2, header 2, marquee 1, sticker 1, footer 1), header clicks 2 — once-per-mount semantics confirmed.
+   662→  · Screenshots: screenshots/9e-mobile-{home,blog,store}.png. tail dev.log → clean 200s, no compile errors (only prisma query noise + concurrent 9-d admin traffic).
+   663→- Work record: /agent-ctx/9-e-zai-code.md.
+   664→
+   665→Stage Summary:
+   666→- COMPONENT CONTRACTS (binding):
+   667→  · AffiliateAdSlot({placement: AdPlacement (FULL @/types union incl. header-banner/footer-banner/between-cards/product-inline/marquee/sticker), className?}) — DB-first, featured-products fallback, null when disabled/loading/empty.
+   668→  · affiliate-ad-slot.tsx exports for reuse: useAdsForPlacement(placement)→{ads,isResolved} · useAdInteraction(ad)→{handleClick} · isRenderableAd(ad) · runAdAnchorClick(event,handler) · adHref/adRel/adTarget(ad) · SponsoredLabel · TextAdCard/ImageAdBanner/MarqueeAdStrip({ad,className?}) · AD_MARQUEE_CSS.
+   669→  · ad-banner.tsx (all zero-prop, all null-render when disabled/empty/dismissed): AdHeaderBanner() · AdMarqueeStrip() · AdFooterBanner() · AdSticker() (dismiss key "mnkp_sticker_dismissed_<adid>", sessionStorage).
+   670→  · PostCard size: "default" | "compact" | "row" (row = mobile list card).
+   671→  · Query keys: ["ads", placement] public (60s stale), ["ads","featured"] fallback — unchanged from contract.
+   672→- PLACEMENTS WIRED: header-banner/marquee/footer-banner/sticker (app-shell site-wide) · blog-inline (blog list above grid + post article after 3rd paragraph — DB ad now served) · between-cards (blog + store grids after 6th item) · product-inline (product page below CTA card) · blog-sidebar/home-strip/store-side (existing consumers, DB-first + featured fallback).
+   673→- DEVIATIONS (deliberate):
+   674→  1. AdMarqueeStrip placed BELOW the header banner (task allowed above-footer alternative) — keeps the footer exit sequence to one compact band and gives a "ticker" feel under the header.
+   675→  2. AdSticker at bottom-right STACKED ABOVE the decorative site-stickers (bottom-40 right-4 md:bottom-24) because site-stickers seed uses BOTH bl and br corners — bottom-left would collide equally.
+   676→  3. between-cards renders as a FULL-ROW grid item (col-span all columns) rather than a single cell — a compact text promo reads better as an interstitial band; in the mobile blog list it is a plain list item.
+   677→  4. Click handling is anchor-based (href + preventDefault only for plain left clicks) so cmd/ctrl/shift-clicks keep native new-tab behavior and external links get real rel="sponsored" semantics.
+   678→  5. useAdsForPlacement exposes isResolved so the featured fallback query never fires when DB ads exist (avoids double fetch per slot).
+   679→  6. agent-browser DEFAULT session is shared across concurrent agents — 9-d's admin testing hijacked it mid-verification; all my browser checks were redone in an isolated `--session 9e`. Future agents: ALWAYS pass --session.
+   680→- HANDOFF NOTES:
+   681→  → 9-d (Ad Manager): preview cards can import TextAdCard/ImageAdBanner/MarqueeAdStrip from affiliate-ad-slot.tsx for pixel-accurate public rendering of each ad type.
+   682→  → 9-h (E2E): seeded ads drive every public placement today; toggle ads via PATCH /api/settings/ads {"value":{"enabled":false}} to verify null-render sweep; sticker dismiss key = mnkp_sticker_dismissed_<adid> in sessionStorage.
+   683→  → ORCHESTRATOR: header band hides ad.body below lg (one-line band); marquee images honor prefers-reduced-motion. Footer clearance for the mobile tab bar now lives on the footer root (pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0) — keep it if restyling the footer.
+   684→
+   685→---
+   686→Task ID: 9-d
+   687→Agent: Z.ai Code (build agent)
+   688→Task: Task 9-d — Admin & Developer console update wave: fill the 4 stub views (Ad Manager / Activity & Undo / Marketing Hub / Import), extend settings-view with Features + SEO groups, extend AdminShell nav with GROWTH + SYSTEM items.
+   689→
+   690→Work Log:
+   691→- Read worklog 9-a/9-b/9-c BINDING CONTRACTS + the 6 pattern files (_shell, _shared, posts/plans/settings views, types, validation) before writing code; stubs replaced with full default-export views wired to the existing viewRegistry keys (admin-ads/admin-marketing/admin-activity/admin-import — routes.ts already carried titles/descriptions).
+   692→- ads-view (Ad Manager): KPI chip row (Total/Active/Impressions/Clicks/CTR from GET /api/ads?all=1&stats=1, key ["admin-ads-stats"]); placement filter Tabs (All + 10 AD_PLACEMENTS client-side); compact Table (name+type ToneBadge+placement badge, inline on/off Switch → PATCH {active} instant, priority, impressions, clicks, CTR 1-dec "—" at 0 impressions, schedule chip Scheduled/Live/Ended/—, Edit dialog prefilled + Delete ConfirmAction). New/Edit Dialog (controlled state, plans-view style): name; type Select + one-line hint; PLACEMENT PICKER — 10-card radiogroup grid, lucide icon + label + tiny hint, selected = gold border/icon (the "where should this ad be placed" answer); type-conditional fields (image/gif/sticker → imageUrl+imageAlt, text → title+body, marquee → URL chip input max 16); linkUrl (https:// OR #/route, helper text) + linkLabel; priority 0-100; startAt/endAt datetime-local → ISO on send, empty → null; active Switch default on. Mutations invalidate ["admin-ads"], ["admin-ads-stats"], ["ads"]. EmptyState CTA "Create your first ad".
+   693→- activity-view (Activity & Undo): gold explainer card; feed (["audit", page], limit 30) in max-h-[640px] scroll Card; row = ActionBadge (create=emerald, update=gold, delete=red, toggle=amber, import=violet, undo/redo=muted) + entity chip + label + userName + timeAgo; Undo (restorable && !undoneAt) / Redo (restorable && !!undoneAt) → POST /api/audit/undo|redo {id} → toast with response message → queryClient.invalidateQueries() with NO filter (any entity may have changed). Undone rows muted + amber "Undone" chip + line-through + "Redo to re-apply". AdminPager pagination.
+   694→- marketing-view (Marketing Hub): 5 KpiCards (ad impressions/clicks+CTR/subscribers confirmed-of-total/affiliate clicks/MRR formatINR) from ["admin-ads-stats"] + ["admin-stats"]; Affiliate funnel card (views → clicks → CTR + top-3 clicked products with proportional bars from stats series); Top content card (top-3 posts by views); Ad performance table (clicks desc, active status dot); Quick actions → #/admin/ads | #/admin/import | #/admin/subscribers. No recharts import (compact cards only — chart lib stays out of the bundle).
+   695→- import-view (Import Content): Tabs Posts/Products; per-tab mono Textarea (min-h-[320px]) + Validate (JSON.parse/array/count/max-200 → emerald or red badge) + "Import N posts/products" → POST /api/import → summary Card (green created / amber skipped-renamed / red errors, each max-h-40 scroll) → invalidate ["admin-posts"], ["admin-products"], ["admin-stats"]; collapsible Format guide per type (field table + copyable example snippet); duplicate-slug safety note card.
+   696→- settings-view EXTENDED (existing group-card pattern exactly): Features tab (9 Switch rows + one-line hints: newsletter, shareButtons, presenceBadge, cookieConsent, registration, trendingBadge, viewCounts, readingTime, affiliateSlots — parsed from data.features w/ all-true fallbacks) + SEO tab (titleSuffix + hint, defaultDescription textarea /180 counter, keywords chip input like post tags max 16, googleVerification/bingVerification mono inputs). Both save via the existing PATCH /api/settings/:key {value} flow (SettingKey extended w/ features|seo); TabsList now Brand/Footer/Media&Decor/Ads/Features/SEO/Maintenance/System.
+   697→- _shell.tsx nav EXTENDED: new GROWTH group (Ad Manager Megaphone, Marketing TrendingUp) + SYSTEM additions (Activity & Undo History, Import Upload); navList shared → desktop sidebar AND mobile Sheet both updated; same micro-label/gold-active language.
+   698→- CRITICAL FIX 1 (validation.ts — Zod4 .partial() default bug): zod 4.3.5 fires .default() inside .partial(), so every update schema built as createSchema.partial() applied create-defaults to ABSENT keys. Proven with the real schemas: adUpdateSchema.parse({active:false}) → {images:[], linkLabel:"Learn more", priority:0}; postUpdateSchema.parse({status}) → {status, isFeatured:false, tags:[]}; productUpdateSchema.parse({isFeatured}) → wipes gallery/pros/cons/keySpecs/rating/reviewCount + resets status/currency; planUpdateSchema.parse({sortOrder}) → wipes prices/features/flags (root cause of 6-a-1's "plan drift"); categoryUpdateSchema.parse({name}) → resets scope/sortOrder. All five update schemas rewritten as EXPLICIT optional-only z.object shapes (create schemas untouched; routes' !== undefined guards now truly partial). After fix: minimal PATCH {active} preserves linkLabel/priority/images AND logs audit action "toggle" again per the 9-a contract; verified undo→redo roundtrip byte-for-byte.
+   699→- CRITICAL FIX 2 (api/settings/all/route.ts): 6-a's defaultForKey never got 9-a's new keys — "features"/"seo" fell into the maintenance-default branch (staff /all returned maintenance blobs for both). Added features/seo cases (defaultFeatures/defaultSeo) — Features/SEO forms now load effective values.
+   700→- VERIFICATION: bunx eslint on all 8 touched files → 0 problems. curl (admin cookie /tmp/adm.txt): GET /api/ads?all=1&stats=1 → 200 stats intact; GET /api/audit → 200; GET /api/settings/all → 200 features all-true + seo defaults; GET /api/settings → 200; GET / → 200. Browser (agent-browser, admin UI login): all 4 new routes render + work — ads KPI chips/11 tabs/6 rows/inline Switch toggles w/ toast, New-ad dialog 10 placement cards w/ gold selection; activity Undo/Redo clicked live (toast + Undone chip + restore); marketing all cards + funnel + ad table; import Validate → "Valid — 1 posts ready" → Import → summary 1 created; settings Features (9 switches on) + SEO ("| MN.KP", 91/180 desc, 4 keyword chips) load; mobile 390px no overflow + Sheet nav carries new items. dev.log clean 200s, no compile errors. Screenshots: screenshots/{admin-ads,admin-ads-dialog,admin-ads-mobile,admin-activity,admin-marketing,admin-import}.png.
+   701→- DATA HYGIENE: smoke ads + imported smoke post deleted; features/seo rows created by my undo tests removed (canonical = no rows; defaults resolve at read time); plans/posts/products verified at canonical seed (mrr 1648, 6 posts, 8 products); 6 seeded ads intact (linkLabels/priorities preserved).
+   702→- Work record: /agent-ctx/9-d-zai-code.md.
+   703→
+   704→Stage Summary:
+   705→- FILES: REPLACED STUBS src/components/views/admin/{ads,activity,marketing,import}-view.tsx · EXTENDED src/components/views/admin/settings-view.tsx (Features+SEO groups) + src/components/views/admin/_shell.tsx (GROWTH + SYSTEM nav) · FIXED src/lib/validation.ts (5 update schemas explicit optional-only — Zod4 partial default bug) + src/app/api/settings/all/route.ts (defaultForKey features/seo).
+   706→- QUERY KEYS in use/invalidated: ["admin-ads"] (?all=1), ["admin-ads-stats"], ["ads"] (public delivery), ["audit", page] (limit 30), plus invalidations of ["settings"], ["admin-settings"], ["admin-posts"], ["admin-products"], ["admin-stats"]; activity undo/redo invalidates the WHOLE cache (no filter) by design.
+   707→- API CONTRACTS consumed (all verified live): GET /api/ads?all=1[&stats=1] {items,stats{totalAds,activeAds,impressions,clicks,ctr}} · POST /api/ads 201 · PATCH /api/ads/:id (minimal {active} now SAFE post-fix, logs "toggle") · DELETE /api/ads/:id · GET /api/audit?limit&page {items,total,page,limit,lastRestorableId} · POST /api/audit/undo|redo {id} → {entry,restored,message,by} · POST /api/import {posts|products} → {posts:{received,created,skipped},products:{…},createdPosts[],createdProducts[],errors[]} · GET /api/stats (StatsResponse) · PATCH /api/settings/features|seo {value}.
+   708→- DEVIATIONS (deliberate): (1) validation.ts + settings/all route fixes are backend files outside 9-d's nominal scope — required because the inline ad toggle contract (PATCH {active} logs "toggle", instant) was data-destructive under Zod4 partial defaults and the Features/SEO forms loaded maintenance blobs; fixes are surgical, create schemas untouched, all 5 PATCH routes' guards unchanged. (2) Marketing subscriber total reads /api/stats kpis (identical numbers to /api/newsletter/admin total) — one fewer request. (3) import action badge uses violet (dispatch-specified accent; the only violet in the admin console). (4) Placement filter + ad list are client-side over the single all=1 fetch (demo scale, matches posts-view precedent).
+   709→- HANDOFF NOTES:
+   710→  → ORCHESTRATOR (Task 9-h E2E): all 4 new admin routes + settings Features/SEO tabs are browser-verified; nav shows GROWTH + Activity & Undo + Import on desktop AND mobile Sheet. Undo/Redo invalidates the whole cache — any E2E flow after an undo re-fetches cleanly.
+   711→  → 9-a/9-b/9-c owner: (a) the Zod4 partial-default fix means ALL existing quick toggles (posts publish, products feature, plans partial) are now safe — previously they silently wiped defaulted fields; (b) optional hardening: audit applySnapshot("setting") upserts a `{}` row when the FIRST save of a key is undone (before.value=null → "{}" instead of row-delete) — public resolvers treat {} as defaults (harmless) but staff /all shows raw {} (blank form); I cleaned my test rows, but the behavior remains.
+   712→  → 9-e: public ad rendering can rely on PATCH {active} being non-destructive now; query key ["ads", placement] invalidation from Ad Manager mutations already in place.
+   713→
+   714→---
+   715→Task ID: 9-g/9-h (update wave close-out)
+   716→Agent: Z.ai Code (orchestrator)
+   717→Task: Migration guide + final E2E verification of the entire update wave (rebrand, ads system, undo/redo, settings expansion, mobile sweep).
+   718→
+   719→Work Log:
+   720→- MIGRATION.md created at project root — the user's exact journey in 9 steps: download → Neon keys → one-line Prisma provider switch (sqlite→postgresql) → GitHub push (backup repo first, then the old mohdnihadkp.vercel.app repo / Vercel repo-swap) → Vercel env vars (DATABASE_URL + JWT_SECRET) + build command fix ("prisma generate && next build") → seed via bun prisma/seed.ts → old-content export with copy-paste ANTIGRAVITY prompts producing old-posts.json / old-products.json in the exact Import API shapes → #/admin/import paste-and-import → post-launch checklist (password change, Search Console, sitemap) → presence-service note (badge hides gracefully on serverless; Railway/Render or Supabase-Realtime swap paths) → optional Phase 2 file-route lifting prompt (routes.ts is the 1:1 map).
+   721→- ORCHESTRATOR E2E (agent-browser session "final", via Caddy gateway :81, desktop 1280×800 + mobile 390×844):
+   722→  · Home: header-banner (SPONSORED · Creator Gear Deals) + marquee ("FRESH IN THE STORE", 12 seamless-loop images) + footer-banner ("Shop the MN.KP picks") + floating sticker + live badge "2 online" through the gateway socket. Zero console/page errors.
+   723→  · Mobile blog: single-column list, 12 posts, between-cards newsletter ad, scrollWidth 390 == innerWidth 390 (overflow FIXED). Mobile store: compact grid, no overflow.
+   724→  · Admin login intobusyness@gmail.com / Nihad@Admin2025 → straight to Overview, no session-expired loop.
+   725→  · Ad Manager: 6 ad rows, inline on/off switches, KPI chips, 11 placement tabs, New-ad dialog with the 10-card placement picker.
+   726→  · Shell nav: GROWTH (Ad Manager, Marketing) + SYSTEM (Activity & Undo, Import) present on desktop + mobile Sheet.
+   727→  · Activity: toggle "Ad — WhatsApp sticker" logged live → UI Undo clicked → sticker ad verified active again via API. Feed also shows earlier import/delete smoke entries.
+   728→  · Settings: 8 tabs (Brand/Footer/Media & Decor/Ads/Features/SEO/Maintenance/System); Features tab = 9 working switches (newsletter/share/presence/cookie/registration/trending/viewCounts/readingTime/affiliateSlots); SEO tab = titleSuffix/keywords/Google+Bing verification.
+   729→  · Marketing Hub (funnel/ad performance/quick actions) + Import tool (tabs + Validate) render.
+   730→  · Sticky footer verified on short page (footerAtBottom true); ad click flow: header ad CTA → navigated in-app to #/store + clicks counter incremented (3) in DB.
+   731→  · Screenshots: screenshots/9h-{mobile-blog,mobile-store,admin-ads,admin-features,login-shortpage,desktop-home}.png.
+   732→- bun run lint → exit 0. dev.log healthy (all 200s). Next.js :3000 + presence :3003 both listening.
+   733→
+   734→Stage Summary:
+   735→- UPDATE WAVE COMPLETE & BROWSER-VERIFIED: brand/URL/email switch to mohdnihadkp.vercel.app + intobusyness@gmail.com everywhere (source + live DB); full Ad system (10 placements × 5 ad types, create from admin, on/off switches, schedule, priority, impression+click tracking, CTR analytics); Audit-based Undo/Redo (settings/ads/posts/products snapshots — deletes restore, creates revert); settings expanded to 7 groups (+features toggles +SEO defaults); Marketing Hub; bulk Import tool + MIGRATION.md; mobile sweep (blog list layout, compact grids, slim header/footer, zero horizontal overflow on all swept routes).
+   736→- Admin credentials: intobusyness@gmail.com / Nihad@Admin2025 (change via #/account/settings).
+   737→- 9-d fixed a latent critical bug: Zod 4 .partial() fires .default() → all partial PATCH schemas were destructive (now explicit optional-only; explains the historical plan drift).
+   738→- Known nuance (documented by 9-d): undoing the FIRST save of a settings group leaves an empty {} row (resolvers fall back to defaults — harmless).
+   739→
+   740→---
+   741→Task ID: 10
+   742→Agent: Z.ai Code (orchestrator)
+   743→Task: User feedback — "I don't like the design work you've done on the home page, and I don't like the color either. Please make the change professional." → Full professional re-skin of the site's color system + complete home page redesign + brand asset rework.
+   744→
+   745→Work Log:
+   746→- Read worklog tail (update wave 9-a…9-h complete & browser-verified) and inspected the current design: emerald+gold "luxury" tokens (globals.css), image-backed hero with heavy emerald overlay, gold-gradient headline, gold-washed panels; logo/favicon/og assets in emerald+gold; auth "emerald" theme.
+   747→- DECISION — new system "Graphite & Copper": warm stone neutrals (bg oklch 0.988/0.003/85), graphite ink primary (light: near-black buttons/links, dark: inverted off-white — Linear-style), ONE restrained copper accent. NO blue/indigo. Retired emerald entirely.
+   748→- globals.css REWRITTEN (token names preserved so every component re-skins automatically):
+   749→  · --primary light = graphite ink oklch(0.255 0.02 55) / dark = off-white oklch(0.938 0.005 80) (inverted).
+   750→  · Legacy --gold token now carries COPPER: light oklch(0.558 0.115 47) (#A05A38, 4.9:1 on white), dark oklch(0.74 0.105 55); --gold-soft = light copper; --gold-foreground = near-white on copper. Added aliases --color-copper* alongside gold* (same tokens).
+   751→  · --accent = warm sand hover wash; --ring = copper; charts = graphite/copper/taupe/terracotta/sand; sidebar vars synced; radius 0.75→0.625rem (crisper); ::selection copper; utilities (gold-rule, glass, scrollbar-slim, text-gold-gradient) auto-re-skin to copper.
+   752→- BRAND ASSETS reworked: logo.svg + favicon.svg rewritten as font-independent MONOLINE vector monograms (MN + divider + KP as stroked paths — librsvg cannot render <text>, learned via VLM pixel-verification loop). Graphite bg + copper gradient strokes. All PNG icons re-rasterized with sharp (favicon-32, icon-192, icon-512, apple-touch-icon) and VLM-verified ("MN above smaller KP, copper/bronze gradient on black, clean and professional").
+   753→- home-view.tsx COMPLETE REDESIGN (professional editorial):
+   754→  · Hero: dropped og-cover.png background image + emerald overlay → clean bg with subtle copper radial glow; availability pill (pulsing copper dot + "Calicut · Kerala"); display-type name lockup with muted role subline; tagline; CTAs (dark "Start a project", outline "Explore services", WhatsApp icon); LiveVisitorBadge neutral. Faster LCP (no hero image).
+   755→  · StatBand: hairline-divided dl (2×2 mobile / 4-up desktop, divide-x) replacing icon chips.
+   756→  · Services: refined cards (neutral hover border-foreground/25, copper price, quote link hover copper); solid-border fill card replacing gold-dashed one.
+   757→  · Brands band, about teaser (portrait: plain border+shadow, no gold ring), projects chips: restyled to neutral/copper.
+   758→  · Newsletter: clean card with 2px copper top border, neutral success state.
+   759→  · Final CTA: solid bg-primary band (graphite in light / off-white in dark = inverted), copper micro-label, secondary+outline buttons.
+   760→  · Kept intact: SEOHead, queries (useHomePosts/useHomeProducts), HeroMarquee (ad system), AffiliateAdSlot home-strip, DataState grids, PostCard/ProductCard rendering, mobile responsive paddings.
+   761→- AUTH THEME SWEEP: AuthTheme key "emerald" → "graphite" (professional stone-950 gradient + copper submit/micro/accents); swept all hardcoded emerald-* classes in login/verify-email/reset-password/forgot-password to stone/gold equivalents (footer notes, icon medallions, spinner, primary buttons). Register keeps amber theme (distinct by design); admin keeps obsidian; password-strength bar keeps conventional green; LiveVisitorBadge keeps conventional green status dot; success/error tones unchanged.
+   762→- Auto re-skinned via tokens (untouched): site-header/footer, mobile-nav, stickers, ad components, states, admin console, account views — verified visually.
+   763→- VERIFIED: bunx eslint on 6 touched files → 0 problems; bun run lint → clean. agent-browser (isolated sessions): home desktop 1280 (VLM: "high-quality, professional design… warm neutral palette, charcoal buttons, copper accents"), dark mode ✓ ("sophisticated, excellent contrast, no broken colors"), mobile 390 full-page (scrollWidth 390 == innerWidth 390, VLM: "well-optimized, no cut-off content"), Services nav click → #/services, login page graphite (VLM: "polished, trustworthy"), full admin login flow → #/admin no session-expired, store+blog VLM ("professional and cohesive, no color clashes"), mobile blog 390/390 no overflow. Fresh-load consoles clean (earlier hydration warning isolated to devtools-injected session, not reproducible).
+   764→- Screenshots: screenshots/redesign-{home-desktop,home-dark,home-mobile-full,login-graphite,admin,store,blog}.png.
+   765→
+   766→Stage Summary:
+   767→- SITE-WIDE COLOR SYSTEM: "Graphite & Copper" professional (replaces emerald+gold). All existing gold-* classes/tokens now render copper — future agents should treat `--gold` as the COPPER accent (aliases: text-copper/border-copper/bg-copper-soft valid).
+   768→- primary is NEUTRAL INK (near-black light / off-white dark). Status colors (success green, warning amber, destructive red) intentionally kept conventional.
+   769→- Brand assets: monoline path-based logo.svg/favicon.svg (NO <text> — librsvg-safe) + re-rasterized PNG icons in graphite/copper.
+   770→- Auth themes: graphite (user) · amber (register) · obsidian (admin) — all copper-accented.
+   771→- KNOWN REMAINING: /images/brand/og-cover.png still emerald/gold art (social-share og:image only — not visible on site; regenerate at will). Portrait photo unchanged (a photo, palette-neutral).
+   772→- LESSON (tooling): parallel Write+Bash on the SAME file races (logo.svg/favicon.svg incident) — always verify file content after concurrent tool calls; agent-browser always use isolated --session.
+   773→
+   774→---
+   775→Task ID: 11-0 (wave 11 phase 1 — orchestrator)
+   776→Agent: Z.ai Code (orchestrator)
+   777→Task: User wave-11 items 1/2/7 — remove billing & subscription COMPLETELY; fix mobile admin hamburger; compact services page on mobile. (Items 3/4/5/6 delegated to 11-a/11-b/11-c/11-d.)
+   778→
+   779→Work Log:
+   780→- BILLING REMOVED (user: "Remove the billing and subscription feature completely"):
+   781→  · DELETED: src/app/api/plans/**, src/app/api/subscriptions/**, account/billing-view.tsx, admin/plans-view.tsx.
+   782→  · prisma/schema.prisma: Plan/Subscription/SubscriptionEvent models + User relations removed; db:push applied (tables dropped — remaining: Ad, AffiliateClick, AuditLog, Category, Inquiry, NewsletterSubscriber, Post, Product, SiteSetting, User, VisitorSession). prisma/seed.ts: PLANS const + plan upserts + subscriptions/events seeding + summary counts removed (blog content mentions of 3rd-party subscriptions in reviews kept — legit).
+   783→  · supabase/schema.sql: plans/subscriptions/subscription_events tables + RLS lines + policies + indexes + seed block removed; section 7 banner renumbered to NEWSLETTER SUBSCRIBERS.
+   784→  · routes.ts: admin-plans + account-billing routes REMOVED (file-route parity kept); login/register/support descriptions de-subscriptioned. view-registry.ts: 2 entries removed.
+   785→  · types/index.ts: billing section (PlanDTO/SubscriptionDTO/events/SubscriptionsResponse) + StatsResponse.{activeSubscriptions,mrr,planDist} + NotificationType "billing" removed. validation.ts: planCreate/planUpdate/subscriptionManageSchema removed. serialize.ts: serializePlan/PlanRow removed.
+   786→  · api/auth/me: subscription payload removed ({user, devVerifyUrl} only). hooks/use-session: SessionSubscription removed. api/notifications: reader billing-events branch removed (verify-email remains). stats route rewritten without MRR/planDist.
+   787→  · Frontend sweep: overview MRR KPI → Newsletter KPI; _charts planDist pie removed (3 charts, grid xl:grid-cols-3); marketing MRR card removed (11-d rebuilds view); dashboard-view subscription card → "Newsletter & communication" card; account/_shared sub helpers removed; site-header Billing menu item removed; mobile-nav Billing link removed; admin _shell Plans nav removed; admin settings-view System stats Subscriptions → Confirmed subscribers; notification-bell billing type/icon removed; http-states PaymentState copy de-subscriptioned.
+   788→  · Copy sweep: faq.ts billing category → payments (2 new FAQs), legal.ts privacy/terms/refund/cancellation rewritten without subscriptions, onboarding/login/register/support copy fixed.
+   789→- MOBILE ADMIN HAMBURGER FIXED (user: "admin & developer page does not open properly by clicking the three line button"): root cause MobileNav returned null on /admin so the site-header hamburger had NO mounted sheet. Fix: ui-store gains adminNavOpen/setAdminNavOpen; AdminShell mobile Sheet is store-controlled (both the slim-bar PanelLeft button AND the site header hamburger open it); admin mobile bar sticky top-16 → top-14 (matches h-14 mobile header); MobileNav now hides only the bottom tab bar on /admin|/auth — the More sheet stays mounted (auth pages fixed too).
+   790→- SERVICES MOBILE COMPACTED (user: "grids and layout columns a little big — make everything smaller"): root py-10→py-6 md:py-14; sections space-y-12→8/12/16; grid gap-8→5/8/12; icon size-12→10/12; h2 2xl→xl/2xl/3xl; body text-sm→13px/sm/base; price lg→base/lg; buttons h-9 md:h-10; checklist card p-6→p-4/5/8 rounded-xl/2xl; checklist rows size-5→4/5 + 13px; process strip p-5→p-4 md:5, gaps 3/4; CTA band p-6→5/10 + smaller heading/copy; related-links 13px.
+   791→- VERIFIED: bunx eslint full src → 0 problems. Dev server RESTARTED (stale Prisma client after generate caused 500s): /api/settings /api/posts /  → all 200.
+   792→
+   793→Stage Summary:
+   794→- Billing/subscription is FULLY gone from schema, API, routes, UI, copy, seed and production DDL. StatsResponse shape: kpis{totalUsers,totalPosts,publishedPosts,totalViews,totalProducts,activeProducts,totalClicks,totalInquiries,newInquiries,subscribers,confirmedSubscribers} series{viewsByPost,clicksByProduct,inquiriesByDay}.
+   795→- Admin nav state pattern: useUiStore.adminNavOpen — site header hamburger routes to admin sheet on /admin paths.
+   796→- NEXT (parallel wave): 11-a Ventures feature · 11-b CSV import/export · 11-c settings expansion · 11-d marketing polish. Ownership map in dispatch payloads.
+   797→

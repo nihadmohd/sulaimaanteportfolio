@@ -15,6 +15,7 @@ export const viewRegistry: Record<string, React.LazyExoticComponent<ComponentTyp
   "blog-post": lazy(() => import("@/components/views/blog/post-view")),
   store: lazy(() => import("@/components/views/store/store-view")),
   "store-product": lazy(() => import("@/components/views/store/product-view")),
+  ventures: lazy(() => import("@/components/views/ventures/ventures-view")),
   support: lazy(() => import("@/components/views/support/support-view")),
   legal: lazy(() => import("@/components/views/legal/legal-view")),
   "legal-doc": lazy(() => import("@/components/views/legal/legal-view")),
@@ -30,7 +31,6 @@ export const viewRegistry: Record<string, React.LazyExoticComponent<ComponentTyp
 
   // account
   account: lazy(() => import("@/components/views/account/dashboard-view")),
-  "account-billing": lazy(() => import("@/components/views/account/billing-view")),
   "account-settings": lazy(() => import("@/components/views/account/settings-view")),
 
   // admin & developer
@@ -39,11 +39,11 @@ export const viewRegistry: Record<string, React.LazyExoticComponent<ComponentTyp
   "admin-post-edit": lazy(() => import("@/components/views/admin/post-edit-view")),
   "admin-products": lazy(() => import("@/components/views/admin/products-view")),
   "admin-product-edit": lazy(() => import("@/components/views/admin/product-edit-view")),
+  "admin-ventures": lazy(() => import("@/components/views/admin/ventures-view")),
   "admin-categories": lazy(() => import("@/components/views/admin/categories-view")),
   "admin-inquiries": lazy(() => import("@/components/views/admin/inquiries-view")),
   "admin-users": lazy(() => import("@/components/views/admin/users-view")),
   "admin-subscribers": lazy(() => import("@/components/views/admin/subscribers-view")),
-  "admin-plans": lazy(() => import("@/components/views/admin/plans-view")),
   "admin-settings": lazy(() => import("@/components/views/admin/settings-view")),
   "admin-ads": lazy(() => import("@/components/views/admin/ads-view")),
   "admin-marketing": lazy(() => import("@/components/views/admin/marketing-view")),

@@ -74,6 +74,13 @@ export const ROUTES: RouteEntry[] = [
       "A curated affiliate product from the MN.KP store — honestly reviewed tech and creator gear.",
   },
   {
+    key: "ventures",
+    pattern: "/ventures",
+    title: "Ventures & Business Ideas — Calicut Store, Chaliyam Connect & More | MN.KP",
+    description:
+      "Every MN.KP business idea and venture in one place — the Calicut Store, Chaliyam Connect, digital products and long-horizon startup ideas from Calicut, Kerala. Got a startup idea? Join me and build it together.",
+  },
+  {
     key: "contact",
     pattern: "/contact",
     title: "Contact & Inquiries — Hire an AI Developer in Calicut | MN.KP",
@@ -85,7 +92,7 @@ export const ROUTES: RouteEntry[] = [
     pattern: "/support",
     title: "Support & Help Center — FAQ & Guides | MN.KP",
     description:
-      "Answers about MN.KP services, affiliate orders, subscriptions, privacy and more — plus fast ways to get help.",
+      "Answers about MN.KP services, affiliate orders, ventures, privacy and more — plus fast ways to get help.",
   },
   {
     key: "legal",
@@ -106,14 +113,14 @@ export const ROUTES: RouteEntry[] = [
     key: "auth-login",
     pattern: "/auth/login",
     title: "Sign In | MN.KP",
-    description: "Sign in to your MN.KP account to manage subscriptions, inquiries and content.",
+    description: "Sign in to your MN.KP account to manage inquiries, newsletters and content.",
     noindex: true,
   },
   {
     key: "auth-register",
     pattern: "/auth/register",
     title: "Create Account | MN.KP",
-    description: "Create a free MN.KP account — newsletters, subscriptions and premium content.",
+    description: "Create a free MN.KP account — newsletters, inquiries and premium content.",
     noindex: true,
   },
   {
@@ -186,6 +193,14 @@ export const ROUTES: RouteEntry[] = [
     guard: "staff",
   },
   {
+    key: "admin-ventures",
+    pattern: "/admin/ventures",
+    title: "Ventures | MN.KP Admin",
+    description: "Create, edit and manage business ideas and ventures.",
+    noindex: true,
+    guard: "staff",
+  },
+  {
     key: "admin-categories",
     pattern: "/admin/categories",
     title: "Categories | MN.KP Admin",
@@ -214,14 +229,6 @@ export const ROUTES: RouteEntry[] = [
     pattern: "/admin/subscribers",
     title: "Subscribers | MN.KP Admin",
     description: "Manage the MN.KP newsletter list.",
-    noindex: true,
-    guard: "staff",
-  },
-  {
-    key: "admin-plans",
-    pattern: "/admin/plans",
-    title: "Plans | MN.KP Admin",
-    description: "Manage subscription plans and pricing.",
     noindex: true,
     guard: "staff",
   },
@@ -278,15 +285,7 @@ export const ROUTES: RouteEntry[] = [
     key: "account",
     pattern: "/account",
     title: "Your Account | MN.KP",
-    description: "Your MN.KP profile, activity and subscription overview.",
-    noindex: true,
-    guard: "auth",
-  },
-  {
-    key: "account-billing",
-    pattern: "/account/billing",
-    title: "Billing & Subscription | MN.KP",
-    description: "Manage your MN.KP subscription, plan and billing history.",
+    description: "Your MN.KP profile, activity and newsletter preferences.",
     noindex: true,
     guard: "auth",
   },

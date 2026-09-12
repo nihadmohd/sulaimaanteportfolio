@@ -49,16 +49,16 @@ export const LEGAL_DOCS: LegalDoc[] = [
         bullets: [
           "Account data — your name, email address and a bcrypt-hashed password when you create an account.",
           "Inquiry data — the name, email, phone number and message you submit through the contact and inquiry forms.",
-          "Newsletter data — your email address and subscription preferences.",
+          "Newsletter data — your email address and delivery preferences.",
           "Usage data — anonymised page views, device type and approximate location, used in aggregate to understand traffic.",
           "Affiliate click data — the product links you follow, logged without tying them to your identity, to measure merchant performance.",
-          "Payment data — processed by the payment provider; MN.KP never receives or stores full card numbers.",
+          "Order data — for first-party digital products (templates, presets), the payment is processed by the provider; MN.KP never receives or stores full card numbers.",
         ],
       },
       {
         heading: "How we use, share and protect your data",
         paragraphs: [
-          "Your data is used only to operate and improve the platform: answering inquiries within 24 hours, sending the newsletter you subscribed to, delivering subscription features such as premium content and member downloads, producing aggregate analytics, and complying with legal and tax obligations in India, including GST record-keeping where applicable.",
+          "Your data is used only to operate and improve the platform: answering inquiries within 24 hours, sending the newsletter you subscribed to, delivering first-party digital products such as templates and presets, producing aggregate analytics, and complying with legal and tax obligations in India, including GST record-keeping where applicable.",
           "We never sell personal data. Data is shared only with the processors that keep MN.KP running — hosting, email delivery, analytics and payments — each bound by contractual restrictions. When you follow an affiliate link to Amazon.in, Flipkart or another merchant, the click is logged by that merchant's affiliate program and their own privacy policy applies from that point on.",
           "Technically, data is protected with TLS encryption in transit, hashed passwords, least-privilege database access and monitored APIs. Account data is retained while your account is active and for up to 30 days after deletion, except for records Indian tax law requires us to keep longer.",
         ],
@@ -90,18 +90,18 @@ export const LEGAL_DOCS: LegalDoc[] = [
       {
         heading: "The agreement between you and MN.KP",
         paragraphs: [
-          "These Terms of Service govern your access to and use of mnkp.dev, including the blog, the affiliate store, first-party digital products, subscription plans and the services offered by MOHAMMED NIHAD KP (\"MN.KP\", \"we\"). By browsing, registering an account or purchasing anything through the platform, you accept these terms.",
+          "These Terms of Service govern your access to and use of mnkp.dev, including the blog, the affiliate store, first-party digital products and the services offered by MOHAMMED NIHAD KP (\"MN.KP\", \"we\"). By browsing, registering an account or purchasing anything through the platform, you accept these terms.",
           "MN.KP is a solo-operated business based in Calicut (Kozhikode), Kerala, India. Where these terms reference \"services\", they mean the professional engagements described on the Services page — web and app development, AI training, photography, videography and marketing — each governed by these terms plus the agreed written scope.",
         ],
       },
       {
-        heading: "Accounts, orders and subscriptions",
+        heading: "Accounts and orders",
         paragraphs: [
           "You agree to provide accurate information, keep your credentials confidential, and use the platform lawfully. Accounts are open to anyone aged 13 or above; making payments requires you to be of legal age in your jurisdiction.",
           "A few specifics:",
         ],
         bullets: [
-          "Subscription plans are billed in Indian Rupees — Free at no cost, Pro at ₹399 per month (₹3,990 yearly) and Business at ₹1,499 per month (₹14,990 yearly) — and can be cancelled anytime as described in the Cancellation Policy.",
+          "First-party digital products are one-time purchases billed in Indian Rupees through the payment provider; licences and refunds follow the Refund Policy.",
           "First-party digital products (templates, presets and similar) are licensed, not sold; the licence terms accompany each product.",
           "Products reached through affiliate links are sold by the merchant (Amazon.in, Flipkart or others). The merchant's terms, pricing and consumer protections apply to those purchases — MN.KP is not the seller of record.",
         ],
@@ -186,9 +186,9 @@ export const LEGAL_DOCS: LegalDoc[] = [
         ],
       },
       {
-        heading: "Services and subscriptions",
+        heading: "Services and digital products",
         paragraphs: [
-          "For service engagements, refunds follow the Cancellation Policy: advances are returned minus invoiced, completed milestones. For subscriptions, monthly plans simply run to the end of the paid period, while yearly plans can be refunded pro-rata within 14 days of a renewal.",
+          "For service engagements, refunds follow the Cancellation Policy: advances are returned minus invoiced, completed milestones. Digital products are refunded within 14 days if the file is faulty or the delivery link never arrives.",
           "Approved refunds are returned to the original payment method — typically within 5–7 working days for digital products and within 7 working days for engagement balances — with GST adjustments made per applicable law. If a refund is ever refused and you disagree, escalate it to intobusyness@gmail.com for a direct review by the owner.",
         ],
       },
@@ -200,19 +200,18 @@ export const LEGAL_DOCS: LegalDoc[] = [
     slug: "cancellation-policy",
     title: "Cancellation Policy",
     description:
-      "How to cancel MN.KP subscriptions, service engagements and orders — notice periods, what happens to access, and merchant order cancellation.",
+      "How to cancel MN.KP service engagements and orders — notice periods, what happens to access, and merchant order cancellation.",
     updated: "2025-05-20",
     sections: [
       {
-        heading: "Subscriptions",
+        heading: "Newsletter and account",
         paragraphs: [
-          "MN.KP subscriptions — Free, Pro (₹399 per month) and Business (₹1,499 per month) — can be cancelled at any time from Account → Billing. No cancellation fee, no retention phone calls:",
+          "The MN.KP newsletter and your account can be cancelled at any time — no fees, no retention phone calls:",
         ],
         bullets: [
-          "Access and benefits continue until the end of the paid period; no partial-month refunds apply.",
-          "Yearly plans can instead be refunded pro-rata within 14 days of a renewal, as described in the Refund Policy.",
-          "After cancellation, account data is retained for 30 days in case you change your mind, then deleted.",
-          "A cancelled plan can be resumed anytime from the billing page at the then-current price.",
+          "Unsubscribe from the newsletter with the one-click link in the footer of every email, or from Account → Settings.",
+          "After account deletion, data is retained for 30 days in case you change your mind, then deleted.",
+          "A deleted account can be re-registered anytime with the same email.",
         ],
       },
       {

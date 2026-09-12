@@ -221,7 +221,7 @@ export default function OnboardingView() {
             <div aria-hidden="true" className="gold-rule-center mx-auto mt-4 w-24" />
             <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-muted-foreground">
               Your account is ready — blog, store and services are a tap away, and your
-              plan lives in Billing whenever you need it.
+              profile lives in Account whenever you need it.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button

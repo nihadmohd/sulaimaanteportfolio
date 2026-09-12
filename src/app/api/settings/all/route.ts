@@ -6,9 +6,12 @@ import {
   SETTING_KEYS,
   asJsonRecord,
   defaultAds,
+  defaultAnalytics,
   defaultBrand,
+  defaultContact,
   defaultFeatures,
   defaultFooter,
+  defaultLocalization,
   defaultMaintenance,
   defaultMedia,
   defaultSeo,
@@ -36,6 +39,12 @@ function defaultForKey(key: string): Record<string, unknown> {
       return defaultFeatures() as unknown as Record<string, unknown>;
     case "seo":
       return defaultSeo() as unknown as Record<string, unknown>;
+    case "contact":
+      return defaultContact() as unknown as Record<string, unknown>;
+    case "localization":
+      return defaultLocalization() as unknown as Record<string, unknown>;
+    case "analytics":
+      return defaultAnalytics() as unknown as Record<string, unknown>;
     default:
       return defaultMaintenance() as unknown as Record<string, unknown>;
   }

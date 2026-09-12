@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useTheme } from "next-themes";
 import {
-  CreditCard,
   LogOut,
   Menu,
   Moon,
@@ -25,7 +24,7 @@ import {
 import { ALink } from "@/components/router/link";
 import { LiveVisitorBadge } from "@/components/shared/live-visitor-badge";
 import { NotificationBell } from "@/components/shared/notification-bell";
-import { navigate } from "@/hooks/use-router";
+import { navigate, useRouter } from "@/hooks/use-router";
 import { isStaff, useSession } from "@/hooks/use-session";
 import { useToast } from "@/hooks/use-toast";
 import { useUiStore } from "@/stores/ui-store";
@@ -123,9 +122,6 @@ function AuthArea() {
         <DropdownMenuItem onClick={() => navigate("/account")} className="gap-2">
           <User className="size-4" aria-hidden="true" /> Account
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate("/account/billing")} className="gap-2">
-          <CreditCard className="size-4" aria-hidden="true" /> Billing
-        </DropdownMenuItem>
         {isStaff(user) ? (
           <DropdownMenuItem onClick={() => navigate("/admin")} className="gap-2 text-gold">
             <Shield className="size-4" aria-hidden="true" /> Admin & Developer
@@ -142,8 +138,22 @@ function AuthArea() {
 
 export function SiteHeader() {
   const setMobileNavOpen = useUiStore((s) => s.setMobileNavOpen);
-  const mobileNavOpen = useUiStore((s) => s.mobileNavOpen);
+  const setAdminNavOpen = useUiStore((s) => s.setAdminNavOpen);
   const setCommandOpen = useUiStore((s) => s.setCommandOpen);
+  const mobileNavOpen = useUiStore((s) => s.mobileNavOpen);
+  const adminNavOpen = useUiStore((s) => s.adminNavOpen);
+  const { path } = useRouter();
+
+  // On Admin & Developer routes the hamburger must open the ADMIN nav sheet
+  // (the public MobileNav sheet is not mounted there) — otherwise the button
+  // would do nothing, which is exactly the mobile bug we are fixing.
+  const onMenuClick = () => {
+    if (path.startsWith("/admin")) {
+      setAdminNavOpen(true);
+    } else {
+      setMobileNavOpen(true);
+    }
+  };
 
   return (
     <>
@@ -212,9 +222,8 @@ export function SiteHeader() {
               size="icon"
               className="size-10 md:hidden"
               aria-label="Open navigation menu"
-              aria-expanded={mobileNavOpen}
-              aria-controls="mobile-nav-sheet"
-              onClick={() => setMobileNavOpen(true)}
+              aria-expanded={mobileNavOpen || adminNavOpen}
+              onClick={onMenuClick}
             >
               <Menu className="size-5" aria-hidden="true" />
             </Button>

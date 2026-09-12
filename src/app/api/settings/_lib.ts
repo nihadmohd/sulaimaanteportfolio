@@ -1,10 +1,13 @@
 import { FOOTER_DEFAULT, SITE, SOCIALS } from "@/lib/constants";
 import type {
   AdsSettings,
+  AnalyticsSettings,
   BrandSettings,
+  ContactSettings,
   FeaturesSettings,
   FooterSettings,
   JsonRecord,
+  LocalizationSettings,
   MaintenanceSettings,
   MediaSettings,
   SeoSettings,
@@ -20,7 +23,18 @@ import type {
  * JSON.parse + shape-guarded merge over the constants defaults.
  */
 
-export const SETTING_KEYS = ["brand", "footer", "media", "ads", "features", "seo", "maintenance"] as const;
+export const SETTING_KEYS = [
+  "brand",
+  "footer",
+  "media",
+  "ads",
+  "features",
+  "seo",
+  "contact",
+  "localization",
+  "analytics",
+  "maintenance",
+] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 
 /** Safe JSON.parse of a settings row → plain object ({} on any failure). */
@@ -120,6 +134,54 @@ export function defaultSeo(): SeoSettings {
   };
 }
 
+/**
+ * site_settings key "contact" (Task 11-c) — DEFAULT MODE: mirrors the live
+ * MN.KP contact details (constants.ts SITE). socials starts EMPTY by design:
+ * the brand tab owns the canonical social profile map; the contact group's
+ * map is a dedicated extension point (e.g. per-context links) so it ships {}.
+ */
+export function defaultContact(): ContactSettings {
+  return {
+    email: "intobusyness@gmail.com",
+    phone: "+91 98467 50898",
+    whatsappNumber: "+91 98467 50898",
+    whatsappUrl: "https://wa.me/919846750898",
+    address: "Calicut (Kozhikode), Kerala, India",
+    city: "Calicut",
+    responseTimeHours: 24,
+    socials: {},
+  };
+}
+
+/**
+ * site_settings key "localization" (Task 11-c) — DEFAULT MODE: India-first
+ * (₹ INR, Asia/Calicut timezone, "d MMM yyyy" dates, metric units).
+ */
+export function defaultLocalization(): LocalizationSettings {
+  return {
+    currency: "INR",
+    currencySymbol: "₹",
+    timezone: "Asia/Calcutta",
+    dateFormat: "d MMM yyyy",
+    measurement: "metric",
+  };
+}
+
+/**
+ * site_settings key "analytics" (Task 11-c) — DEFAULT MODE: privacy-first —
+ * tracking stays OFF until the owner opts in; both integration IDs start
+ * empty (= nothing loaded); outbound-click tracking is ON so it activates
+ * the moment analytics is switched on.
+ */
+export function defaultAnalytics(): AnalyticsSettings {
+  return {
+    enabled: false,
+    googleAnalyticsId: "",
+    plausibleDomain: "",
+    trackOutboundClicks: true,
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /* shape guards                                                        */
 /* ------------------------------------------------------------------ */
@@ -130,6 +192,22 @@ function str(v: unknown, fallback: string): string {
 
 function bool(v: unknown, fallback: boolean): boolean {
   return typeof v === "boolean" ? v : fallback;
+}
+
+/** Numeric coercion with Number.isFinite fallback to the default. */
+function num(v: unknown, fallback: number): number {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return fallback;
+}
+
+/** Enum-style guard: only whitelisted strings pass, else the default. */
+function pick<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
+  const s = typeof v === "string" ? v : "";
+  return (allowed as readonly string[]).includes(s) ? (s as T) : fallback;
 }
 
 function strArray(v: unknown, fallback: string[]): string[] {
@@ -286,6 +364,45 @@ export function resolveSeo(raw: Record<string, unknown>): SeoSettings {
     keywords: strArray(raw.keywords, d.keywords).slice(0, 20),
     googleVerification: str(raw.googleVerification, d.googleVerification),
     bingVerification: str(raw.bingVerification, d.bingVerification),
+  };
+}
+
+const DATE_FORMATS = ["d MMM yyyy", "dd/MM/yyyy", "MM/dd/yyyy"] as const;
+const MEASUREMENTS = ["metric", "imperial"] as const;
+
+export function resolveContact(raw: Record<string, unknown>): ContactSettings {
+  const d = defaultContact();
+  return {
+    email: str(raw.email, d.email).trim(),
+    phone: str(raw.phone, d.phone).trim(),
+    whatsappNumber: str(raw.whatsappNumber, d.whatsappNumber).trim(),
+    whatsappUrl: str(raw.whatsappUrl, d.whatsappUrl).trim(),
+    address: str(raw.address, d.address),
+    city: str(raw.city, d.city).trim(),
+    // clamp to 0–168h (a week) so "replies within X hours" copy stays sane
+    responseTimeHours: Math.max(0, Math.min(168, Math.round(num(raw.responseTimeHours, d.responseTimeHours)))),
+    socials: record(raw.socials, d.socials),
+  };
+}
+
+export function resolveLocalization(raw: Record<string, unknown>): LocalizationSettings {
+  const d = defaultLocalization();
+  return {
+    currency: str(raw.currency, d.currency).trim().toUpperCase().slice(0, 6) || d.currency,
+    currencySymbol: str(raw.currencySymbol, d.currencySymbol).trim().slice(0, 4) || d.currencySymbol,
+    timezone: str(raw.timezone, d.timezone).trim() || d.timezone,
+    dateFormat: pick(raw.dateFormat, DATE_FORMATS, d.dateFormat),
+    measurement: pick(raw.measurement, MEASUREMENTS, d.measurement),
+  };
+}
+
+export function resolveAnalytics(raw: Record<string, unknown>): AnalyticsSettings {
+  const d = defaultAnalytics();
+  return {
+    enabled: bool(raw.enabled, d.enabled),
+    googleAnalyticsId: str(raw.googleAnalyticsId, d.googleAnalyticsId).trim(),
+    plausibleDomain: str(raw.plausibleDomain, d.plausibleDomain).trim(),
+    trackOutboundClicks: bool(raw.trackOutboundClicks, d.trackOutboundClicks),
   };
 }
 

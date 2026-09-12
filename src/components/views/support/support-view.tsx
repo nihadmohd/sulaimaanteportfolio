@@ -45,7 +45,7 @@ import { getLegalDoc } from "@/lib/legal";
 /* -------------------------------- constants ------------------------------- */
 
 const SUPPORT_DESCRIPTION =
-  "Answers about MN.KP services, affiliate orders, subscriptions, privacy and more — plus fast ways to get help.";
+  "Answers about MN.KP services, affiliate orders, payments, privacy and more — plus fast ways to get help.";
 
 type SupportTab = FaqCategory | "all";
 
@@ -145,7 +145,7 @@ export default function SupportView() {
         <SectionHeading
           microLabel="HELP CENTER"
           title="Support & Help Center"
-          description="Fast answers about services, affiliate orders, billing, privacy and accounts — plus the fastest ways to reach a human in Calicut when the answer you need is not here."
+          description="Fast answers about services, affiliate orders, payments, privacy and accounts — plus the fastest ways to reach a human in Calicut when the answer you need is not here."
         />
       </header>
 

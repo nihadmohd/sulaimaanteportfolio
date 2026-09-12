@@ -119,8 +119,8 @@ export default function RegisterView() {
             </h2>
             <div aria-hidden="true" className="gold-rule-center mx-auto mt-4 w-24" />
             <p className="mt-4 text-sm leading-relaxed text-amber-100/70">
-              We sent a verification link to your inbox. Verifying unlocks account recovery,
-              billing receipts and important notices.
+              We sent a verification link to your inbox. Verifying unlocks account recovery
+              and important notices.
             </p>
             <div className="mt-7 space-y-3">
               <Button

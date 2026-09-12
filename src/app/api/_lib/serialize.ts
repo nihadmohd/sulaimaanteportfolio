@@ -5,7 +5,6 @@ import {
   parseJsonRecord,
   type CategoryDTO,
   type InquiryDTO,
-  type PlanDTO,
   type PostDTO,
   type ProductDTO,
 } from "@/types";
@@ -40,7 +39,6 @@ export type ProductFull = Prisma.ProductGetPayload<{ include: typeof productIncl
 export type CategoryWithCount = Prisma.CategoryGetPayload<{
   include: { _count: { select: { posts: true; products: true } } };
 }>;
-export type PlanRow = Prisma.PlanGetPayload<Record<string, never>>;
 export type InquiryRow = Prisma.InquiryGetPayload<Record<string, never>>;
 
 export { postInclude, productInclude };
@@ -128,25 +126,6 @@ export function serializeCategory(cat: CategoryWithCount): CategoryDTO & {
     createdAt: cat.createdAt.toISOString(),
     postCount: cat._count.posts,
     productCount: cat._count.products,
-  };
-}
-
-export function serializePlan(plan: PlanRow): PlanDTO {
-  return {
-    id: plan.id,
-    code: plan.code,
-    name: plan.name,
-    description: plan.description,
-    priceMonthly: plan.priceMonthly,
-    priceYearly: plan.priceYearly,
-    currency: plan.currency,
-    features: parseJsonArray(plan.features),
-    limits: parseJsonRecord(plan.limits),
-    isActive: plan.isActive,
-    isDefault: plan.isDefault,
-    sortOrder: plan.sortOrder,
-    createdAt: plan.createdAt.toISOString(),
-    updatedAt: plan.updatedAt.toISOString(),
   };
 }
 

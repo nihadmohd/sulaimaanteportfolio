@@ -314,7 +314,7 @@ export function PaymentState({ status, message, onRetry, action, className }: Pa
     return (
       <SuccessState
         title="Payment successful"
-        description={message ?? "Your subscription is active. A receipt is on its way to your inbox."}
+        description={message ?? "Your purchase is complete. A receipt is on its way to your inbox."}
         action={action}
         className={className}
       />
@@ -327,7 +327,7 @@ export function PaymentState({ status, message, onRetry, action, className }: Pa
         tone="amber"
         microLabel="PAYMENT PENDING"
         title="Payment is processing"
-        description={message ?? "Your payment is still being confirmed. This usually takes a few moments — refresh or check billing later."}
+        description={message ?? "Your request is still being confirmed. This usually takes a few moments — refresh and try again."}
         className={className}
         actions={action}
       />

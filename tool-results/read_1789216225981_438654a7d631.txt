@@ -1,0 +1,834 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import * as React from "react";
+     4→     4→import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+     5→     5→import {
+     6→     6→  Eye,
+     7→     7→  FileText,
+     8→     8→  GalleryHorizontal,
+     9→     9→  House,
+    10→    10→  Layers,
+    11→    11→  MousePointerClick,
+    12→    12→  Package,
+    13→    13→  PanelBottom,
+    14→    14→  PanelRight,
+    15→    15→  PanelTop,
+    16→    16→  Percent,
+    17→    17→  Pencil,
+    18→    18→  Plus,
+    19→    19→  Power,
+    20→    20→  Rows3,
+    21→    21→  ShoppingBag,
+    22→    22→  Sticker,
+    23→    23→  Trash2,
+    24→    24→  X,
+    25→    25→  type LucideIcon,
+    26→    26→} from "lucide-react";
+    27→    27→import { Badge } from "@/components/ui/badge";
+    28→    28→import { Button } from "@/components/ui/button";
+    29→    29→import {
+    30→    30→  Dialog,
+    31→    31→  DialogContent,
+    32→    32→  DialogDescription,
+    33→    33→  DialogFooter,
+    34→    34→  DialogHeader,
+    35→    35→  DialogTitle,
+    36→    36→} from "@/components/ui/dialog";
+    37→    37→import { Input } from "@/components/ui/input";
+    38→    38→import { Label } from "@/components/ui/label";
+    39→    39→import {
+    40→    40→  Select,
+    41→    41→  SelectContent,
+    42→    42→  SelectItem,
+    43→    43→  SelectTrigger,
+    44→    44→  SelectValue,
+    45→    45→} from "@/components/ui/select";
+    46→    46→import { Switch } from "@/components/ui/switch";
+    47→    47→import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+    48→    48→import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    49→    49→import { Textarea } from "@/components/ui/textarea";
+    50→    50→import { DataState, ForbiddenState, LoadingState } from "@/components/states";
+    51→    51→import { EmptyState } from "@/components/states/empty";
+    52→    52→import { SEOHead } from "@/components/shared/seo-head";
+    53→    53→import { toast } from "@/hooks/use-toast";
+    54→    54→import { AD_PLACEMENTS } from "@/lib/validation";
+    55→    55→import { cn } from "@/lib/utils";
+    56→    56→import type { AdDTO, AdPlacement, AdStatsDTO, AdType } from "@/types";
+    57→    57→import { AdminShell } from "./_shell";
+    58→    58→import { apiFetch, ConfirmAction, formatCompact, ToneBadge, useAdminGuard } from "./_shared";
+    59→    59→
+    60→    60→/**
+    61→    61→ * Ad Manager (#/admin/ads — route key "admin-ads").
+    62→    62→ * Create ads, pick placements, schedule them and switch on/off inline.
+    63→    63→ * KPI chips read GET /api/ads?all=1&stats=1; rows PATCH {active} instantly.
+    64→    64→ */
+    65→    65→
+    66→    66→/* ------------------------------------------------------------------ */
+    67→    67→/* placement + type metadata                                           */
+    68→    68→/* ------------------------------------------------------------------ */
+    69→    69→
+    70→    70→const PLACEMENT_META: Record<AdPlacement, { label: string; hint: string; icon: LucideIcon }> = {
+    71→    71→  "header-banner": { label: "Header banner", hint: "Slim strip under the site header", icon: PanelTop },
+    72→    72→  "blog-inline": { label: "Blog inline", hint: "Mid-article promo block", icon: FileText },
+    73→    73→  "blog-sidebar": { label: "Blog sidebar", hint: "Sticky rail beside articles", icon: PanelRight },
+    74→    74→  "between-cards": { label: "Between cards", hint: "Inside list grids between cards", icon: Rows3 },
+    75→    75→  "home-strip": { label: "Home strip", hint: "Full-width strip on the home hero", icon: House },
+    76→    76→  "store-side": { label: "Store side", hint: "Side panel in the store grid", icon: ShoppingBag },
+    77→    77→  "footer-banner": { label: "Footer banner", hint: "Above the site footer", icon: PanelBottom },
+    78→    78→  "product-inline": { label: "Product inline", hint: "Inside product detail pages", icon: Package },
+    79→    79→  marquee: { label: "Marquee", hint: "Scrolling image strip", icon: GalleryHorizontal },
+    80→    80→  sticker: { label: "Sticker", hint: "Floating corner sticker", icon: Sticker },
+    81→    81→};
+    82→    82→
+    83→    83→const TYPE_OPTIONS: Array<{ value: AdType; label: string; hint: string }> = [
+    84→    84→  { value: "image", label: "Image", hint: "Static banner image with a link" },
+    85→    85→  { value: "gif", label: "GIF", hint: "Animated GIF banner with a link" },
+    86→    86→  { value: "sticker", label: "Sticker", hint: "Floating sticker — image or short text" },
+    87→    87→  { value: "text", label: "Text", hint: "Compact text promo card (title + body)" },
+    88→    88→  { value: "marquee", label: "Marquee", hint: "Auto-scrolling strip of images" },
+    89→    89→];
+    90→    90→
+    91→    91→type Tone = "emerald" | "gold" | "amber" | "red" | "muted" | "teal";
+    92→    92→
+    93→    93→const TYPE_TONE: Record<AdType, Tone> = {
+    94→    94→  image: "gold",
+    95→    95→  gif: "amber",
+    96→    96→  sticker: "teal",
+    97→    97→  text: "emerald",
+    98→    98→  marquee: "gold",
+    99→    99→};
+   100→   100→
+   101→   101→/* ------------------------------------------------------------------ */
+   102→   102→/* form state                                                          */
+   103→   103→/* ------------------------------------------------------------------ */
+   104→   104→
+   105→   105→interface AdFormState {
+   106→   106→  name: string;
+   107→   107→  type: AdType;
+   108→   108→  placement: AdPlacement;
+   109→   109→  title: string;
+   110→   110→  body: string;
+   111→   111→  imageUrl: string;
+   112→   112→  imageAlt: string;
+   113→   113→  images: string[];
+   114→   114→  linkUrl: string;
+   115→   115→  linkLabel: string;
+   116→   116→  priority: string;
+   117→   117→  startAt: string;
+   118→   118→  endAt: string;
+   119→   119→  active: boolean;
+   120→   120→}
+   121→   121→
+   122→   122→const BLANK_FORM: AdFormState = {
+   123→   123→  name: "",
+   124→   124→  type: "image",
+   125→   125→  placement: "home-strip",
+   126→   126→  title: "",
+   127→   127→  body: "",
+   128→   128→  imageUrl: "",
+   129→   129→  imageAlt: "",
+   130→   130→  images: [],
+   131→   131→  linkUrl: "",
+   132→   132→  linkLabel: "Learn more",
+   133→   133→  priority: "0",
+   134→   134→  startAt: "",
+   135→   135→  endAt: "",
+   136→   136→  active: true,
+   137→   137→};
+   138→   138→
+   139→   139→function formFromAd(ad: AdDTO): AdFormState {
+   140→   140→  return {
+   141→   141→    name: ad.name,
+   142→   142→    type: ad.type,
+   143→   143→    placement: ad.placement,
+   144→   144→    title: ad.title ?? "",
+   145→   145→    body: ad.body ?? "",
+   146→   146→    imageUrl: ad.imageUrl ?? "",
+   147→   147→    imageAlt: ad.imageAlt ?? "",
+   148→   148→    images: ad.images,
+   149→   149→    linkUrl: ad.linkUrl ?? "",
+   150→   150→    linkLabel: ad.linkLabel || "Learn more",
+   151→   151→    priority: String(ad.priority),
+   152→   152→    startAt: isoToLocalInput(ad.startAt),
+   153→   153→    endAt: isoToLocalInput(ad.endAt),
+   154→   154→    active: ad.active,
+   155→   155→  };
+   156→   156→}
+   157→   157→
+   158→   158→/** ISO string → datetime-local input value ("YYYY-MM-DDTHH:mm"), local tz. */
+   159→   159→function isoToLocalInput(iso: string | null): string {
+   160→   160→  if (!iso) return "";
+   161→   161→  try {
+   162→   162→    const d = new Date(iso);
+   163→   163→    if (Number.isNaN(d.getTime())) return "";
+   164→   164→    const pad = (n: number) => String(n).padStart(2, "0");
+   165→   165→    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+   166→   166→  } catch {
+   167→   167→    return "";
+   168→   168→  }
+   169→   169→}
+   170→   170→
+   171→   171→/** datetime-local input value → ISO string, or null when empty. */
+   172→   172→function localInputToIso(v: string): string | null {
+   173→   173→  if (!v) return null;
+   174→   174→  const t = new Date(v).getTime();
+   175→   175→  return Number.isNaN(t) ? null : new Date(t).toISOString();
+   176→   176→}
+   177→   177→
+   178→   178→/** Schedule chip: Scheduled (future start) · Live (in window) · Ended (past end). */
+   179→   179→function scheduleChip(ad: AdDTO): { label: string; tone: Tone } {
+   180→   180→  const now = Date.now();
+   181→   181→  const start = ad.startAt ? new Date(ad.startAt).getTime() : null;
+   182→   182→  const end = ad.endAt ? new Date(ad.endAt).getTime() : null;
+   183→   183→  if (start != null && start > now) return { label: "Scheduled", tone: "amber" };
+   184→   184→  if (end != null && end < now) return { label: "Ended", tone: "muted" };
+   185→   185→  if (start != null || end != null) return { label: "Live", tone: "emerald" };
+   186→   186→  return { label: "—", tone: "muted" };
+   187→   187→}
+   188→   188→
+   189→   189→function ctrText(ad: AdDTO): string {
+   190→   190→  if (!ad.impressions) return "—";
+   191→   191→  return `${((ad.clicks / ad.impressions) * 100).toFixed(1)}%`;
+   192→   192→}
+   193→   193→
+   194→   194→function buildAdBody(form: AdFormState): Record<string, unknown> {
+   195→   195→  return {
+   196→   196→    name: form.name.trim(),
+   197→   197→    type: form.type,
+   198→   198→    placement: form.placement,
+   199→   199→    title: form.title.trim(),
+   200→   200→    body: form.body.trim(),
+   201→   201→    imageUrl: form.imageUrl.trim(),
+   202→   202→    imageAlt: form.imageAlt.trim(),
+   203→   203→    images: form.type === "marquee" ? form.images.slice(0, 16) : [],
+   204→   204→    linkUrl: form.linkUrl.trim(),
+   205→   205→    linkLabel: form.linkLabel.trim() || "Learn more",
+   206→   206→    priority: Math.min(100, Math.max(0, Math.round(Number(form.priority) || 0))),
+   207→   207→    startAt: localInputToIso(form.startAt),
+   208→   208→    endAt: localInputToIso(form.endAt),
+   209→   209→    active: form.active,
+   210→   210→  };
+   211→   211→}
+   212→   212→
+   213→   213→/* ------------------------------------------------------------------ */
+   214→   214→/* view                                                                */
+   215→   215→/* ------------------------------------------------------------------ */
+   216→   216→
+   217→   217→interface AdsAllResponse {
+   218→   218→  items: AdDTO[];
+   219→   219→  stats?: AdStatsDTO;
+   220→   220→}
+   221→   221→
+   222→   222→export default function AdsView() {
+   223→   223→  const { isLoading, allowed } = useAdminGuard();
+   224→   224→  const queryClient = useQueryClient();
+   225→   225→
+   226→   226→  const [placementFilter, setPlacementFilter] = React.useState<"all" | AdPlacement>("all");
+   227→   227→  const [dialogOpen, setDialogOpen] = React.useState(false);
+   228→   228→  const [editing, setEditing] = React.useState<AdDTO | null>(null);
+   229→   229→  const [form, setForm] = React.useState<AdFormState>(BLANK_FORM);
+   230→   230→  const [marqueeInput, setMarqueeInput] = React.useState("");
+   231→   231→  const [saving, setSaving] = React.useState(false);
+   232→   232→
+   233→   233→  const statsQuery = useQuery({
+   234→   234→    queryKey: ["admin-ads-stats"],
+   235→   235→    queryFn: () => apiFetch<AdsAllResponse>("/api/ads?all=1&stats=1"),
+   236→   236→    enabled: allowed,
+   237→   237→    staleTime: 15_000,
+   238→   238→    retry: 1,
+   239→   239→  });
+   240→   240→
+   241→   241→  const adsQuery = useQuery({
+   242→   242→    queryKey: ["admin-ads"],
+   243→   243→    queryFn: () => apiFetch<AdsAllResponse>("/api/ads?all=1"),
+   244→   244→    enabled: allowed,
+   245→   245→    staleTime: 15_000,
+   246→   246→    retry: 1,
+   247→   247→  });
+   248→   248→
+   249→   249→  const ads = React.useMemo(() => {
+   250→   250→    const items = adsQuery.data?.items ?? [];
+   251→   251→    return placementFilter === "all" ? items : items.filter((a) => a.placement === placementFilter);
+   252→   252→  }, [adsQuery.data, placementFilter]);
+   253→   253→
+   254→   254→  const invalidateAll = () => {
+   255→   255→    void queryClient.invalidateQueries({ queryKey: ["admin-ads"] });
+   256→   256→    void queryClient.invalidateQueries({ queryKey: ["admin-ads-stats"] });
+   257→   257→    void queryClient.invalidateQueries({ queryKey: ["ads"] });
+   258→   258→  };
+   259→   259→
+   260→   260→  const createMutation = useMutation({
+   261→   261→    mutationFn: (state: AdFormState) =>
+   262→   262→      apiFetch<AdDTO>("/api/ads", { method: "POST", body: JSON.stringify(buildAdBody(state)) }),
+   263→   263→    onSuccess: (ad) => {
+   264→   264→      toast({ title: "Ad created", description: `${ad.name} is live in the ${PLACEMENT_META[ad.placement].label.toLowerCase()} slot.` });
+   265→   265→      closeDialog();
+   266→   266→      invalidateAll();
+   267→   267→    },
+   268→   268→    onError: (e: Error) =>
+   269→   269→      toast({ title: "Create failed", description: e.message, variant: "destructive" }),
+   270→   270→  });
+   271→   271→
+   272→   272→  const updateMutation = useMutation({
+   273→   273→    mutationFn: ({ id, state }: { id: string; state: AdFormState }) =>
+   274→   274→      apiFetch<AdDTO>(`/api/ads/${id}`, {
+   275→   275→        method: "PATCH",
+   276→   276→        body: JSON.stringify(buildAdBody(state)),
+   277→   277→      }),
+   278→   278→    onSuccess: (ad) => {
+   279→   279→      toast({ title: "Ad saved", description: `${ad.name} updated.` });
+   280→   280→      closeDialog();
+   281→   281→      invalidateAll();
+   282→   282→    },
+   283→   283→    onError: (e: Error) =>
+   284→   284→      toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+   285→   285→  });
+   286→   286→
+   287→   287→  const toggleMutation = useMutation({
+   288→   288→    mutationFn: (ad: AdDTO) =>
+   289→   289→      apiFetch<AdDTO>(`/api/ads/${ad.id}`, {
+   290→   290→        method: "PATCH",
+   291→   291→        body: JSON.stringify({ active: !ad.active }),
+   292→   292→      }),
+   293→   293→    onSuccess: (ad) => {
+   294→   294→      toast({
+   295→   295→        title: ad.active ? "Ad switched on" : "Ad switched off",
+   296→   296→        description: ad.name,
+   297→   297→      });
+   298→   298→      invalidateAll();
+   299→   299→    },
+   300→   300→    onError: (e: Error) =>
+   301→   301→      toast({ title: "Toggle failed", description: e.message, variant: "destructive" }),
+   302→   302→  });
+   303→   303→
+   304→   304→  const deleteMutation = useMutation({
+   305→   305→    mutationFn: (ad: AdDTO) => apiFetch(`/api/ads/${ad.id}`, { method: "DELETE" }),
+   306→   306→    onSuccess: (_data, ad) => {
+   307→   307→      toast({
+   308→   308→        title: "Ad deleted",
+   309→   309→        description: `${ad.name} removed — recover it from Activity & Undo if needed.`,
+   310→   310→      });
+   311→   311→      invalidateAll();
+   312→   312→    },
+   313→   313→    onError: (e: Error) =>
+   314→   314→      toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+   315→   315→  });
+   316→   316→
+   317→   317→  if (isLoading) return <LoadingState variant="spinner" label="Loading ad manager" />;
+   318→   318→  if (!allowed) return <ForbiddenState />;
+   319→   319→
+   320→   320→  const openCreate = () => {
+   321→   321→    setEditing(null);
+   322→   322→    setForm(BLANK_FORM);
+   323→   323→    setMarqueeInput("");
+   324→   324→    setDialogOpen(true);
+   325→   325→  };
+   326→   326→
+   327→   327→  const openEdit = (ad: AdDTO) => {
+   328→   328→    setEditing(ad);
+   329→   329→    setForm(formFromAd(ad));
+   330→   330→    setMarqueeInput("");
+   331→   331→    setDialogOpen(true);
+   332→   332→  };
+   333→   333→
+   334→   334→  const closeDialog = () => {
+   335→   335→    setDialogOpen(false);
+   336→   336→    setEditing(null);
+   337→   337→    setForm(BLANK_FORM);
+   338→   338→    setMarqueeInput("");
+   339→   339→  };
+   340→   340→
+   341→   341→  const addMarqueeImage = () => {
+   342→   342→    const url = marqueeInput.trim();
+   343→   343→    if (!url || form.images.includes(url) || form.images.length >= 16) return;
+   344→   344→    setForm({ ...form, images: [...form.images, url] });
+   345→   345→    setMarqueeInput("");
+   346→   346→  };
+   347→   347→
+   348→   348→  const submit = async (e: React.FormEvent) => {
+   349→   349→    e.preventDefault();
+   350→   350→    if (form.name.trim().length < 2) {
+   351→   351→      toast({ title: "Name required", description: "Give the ad a name (2+ characters).", variant: "destructive" });
+   352→   352→      return;
+   353→   353→    }
+   354→   354→    const link = form.linkUrl.trim();
+   355→   355→    if (link && !link.startsWith("#/") && !/^https?:\/\//.test(link)) {
+   356→   356→      toast({
+   357→   357→        title: "Invalid link URL",
+   358→   358→        description: "Use a full https:// URL or an in-app route like #/store.",
+   359→   359→        variant: "destructive",
+   360→   360→      });
+   361→   361→      return;
+   362→   362→    }
+   363→   363→    if (form.startAt && form.endAt && new Date(form.startAt) >= new Date(form.endAt)) {
+   364→   364→      toast({ title: "Invalid schedule", description: "The start must come before the end.", variant: "destructive" });
+   365→   365→      return;
+   366→   366→    }
+   367→   367→    setSaving(true);
+   368→   368→    try {
+   369→   369→      if (editing) await updateMutation.mutateAsync({ id: editing.id, state: form });
+   370→   370→      else await createMutation.mutateAsync(form);
+   371→   371→    } finally {
+   372→   372→      setSaving(false);
+   373→   373→    }
+   374→   374→  };
+   375→   375→
+   376→   376→  const stats = statsQuery.data?.stats;
+   377→   377→
+   378→   378→  return (
+   379→   379→    <AdminShell
+   380→   380→      title="Ad Manager"
+   381→   381→      description="Create ads, pick placements, schedule and switch them on or off."
+   382→   382→      actions={
+   383→   383→        <Button size="sm" className="h-9 gap-2" onClick={openCreate}>
+   384→   384→          <Plus className="size-4" aria-hidden="true" />
+   385→   385→          New ad
+   386→   386→        </Button>
+   387→   387→      }
+   388→   388→    >
+   389→   389→      <SEOHead title="Ad Manager — Admin & Developer | MN.KP" noindex />
+   390→   390→
+   391→   391→      {/* KPI chips */}
+   392→   392→      <div className="mb-4 flex flex-wrap gap-2" aria-label="Ad performance summary">
+   393→   393→        {[
+   394→   394→          { label: "Total", value: stats ? String(stats.totalAds) : "—", icon: Layers },
+   395→   395→          { label: "Active", value: stats ? String(stats.activeAds) : "—", icon: Power },
+   396→   396→          { label: "Impressions", value: stats ? formatCompact(stats.impressions) : "—", icon: Eye },
+   397→   397→          { label: "Clicks", value: stats ? formatCompact(stats.clicks) : "—", icon: MousePointerClick },
+   398→   398→          { label: "CTR", value: stats ? `${stats.ctr.toFixed(2)}%` : "—", icon: Percent },
+   399→   399→        ].map((chip) => (
+   400→   400→          <div
+   401→   401→            key={chip.label}
+   402→   402→            className="flex min-h-11 flex-1 items-center gap-2.5 rounded-lg border bg-card px-3 py-2 shadow-xs sm:flex-none"
+   403→   403→          >
+   404→   404→            <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-gold/10 text-gold">
+   405→   405→              <chip.icon className="size-3.5" aria-hidden="true" />
+   406→   406→            </span>
+   407→   407→            <div className="min-w-0 leading-tight">
+   408→   408→              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+   409→   409→                {chip.label}
+   410→   410→              </p>
+   411→   411→              <p className="text-sm font-semibold tabular-nums">{chip.value}</p>
+   412→   412→            </div>
+   413→   413→          </div>
+   414→   414→        ))}
+   415→   415→      </div>
+   416→   416→
+   417→   417→      {/* placement filter tabs */}
+   418→   418→      <div className="mb-4">
+   419→   419→        <Tabs
+   420→   420→          value={placementFilter}
+   421→   421→          onValueChange={(v) => setPlacementFilter(v as "all" | AdPlacement)}
+   422→   422→          aria-label="Filter by placement"
+   423→   423→        >
+   424→   424→          <TabsList className="h-10 w-full justify-start overflow-x-auto sm:w-auto">
+   425→   425→            <TabsTrigger value="all" className="h-8">All</TabsTrigger>
+   426→   426→            {AD_PLACEMENTS.map((p) => (
+   427→   427→              <TabsTrigger key={p} value={p} className="h-8 whitespace-nowrap">
+   428→   428→                {PLACEMENT_META[p].label}
+   429→   429→              </TabsTrigger>
+   430→   430→            ))}
+   431→   431→          </TabsList>
+   432→   432→        </Tabs>
+   433→   433→      </div>
+   434→   434→
+   435→   435→      <DataState query={adsQuery} empty={false} skeletonRows={6}>
+   436→   436→        {(data) =>
+   437→   437→          data.items.length === 0 ? (
+   438→   438→            <EmptyState
+   439→   439→              title="No ads yet"
+   440→   440→              description="Create your first ad — pick a type, choose exactly where it appears, and flip it on when you're ready."
+   441→   441→              action={
+   442→   442→                <Button onClick={openCreate} className="gap-2">
+   443→   443→                  <Plus className="size-4" aria-hidden="true" />
+   444→   444→                  Create your first ad
+   445→   445→                </Button>
+   446→   446→              }
+   447→   447→            />
+   448→   448→          ) : (
+   449→   449→            <div className="space-y-4">
+   450→   450→              {ads.length === 0 ? (
+   451→   451→                <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+   452→   452→                  No ads in this placement yet — switch the filter back to All.
+   453→   453→                </p>
+   454→   454→              ) : (
+   455→   455→                <div className="overflow-hidden rounded-xl border">
+   456→   456→                  <Table>
+   457→   457→                    <TableHeader>
+   458→   458→                      <TableRow>
+   459→   459→                        <TableHead className="w-[30%] min-w-[220px]">Ad</TableHead>
+   460→   460→                        <TableHead className="text-center">On</TableHead>
+   461→   461→                        <TableHead className="text-right">Priority</TableHead>
+   462→   462→                        <TableHead className="text-right">Impr.</TableHead>
+   463→   463→                        <TableHead className="text-right">Clicks</TableHead>
+   464→   464→                        <TableHead className="text-right">CTR</TableHead>
+   465→   465→                        <TableHead>Schedule</TableHead>
+   466→   466→                        <TableHead className="text-right">Actions</TableHead>
+   467→   467→                      </TableRow>
+   468→   468→                    </TableHeader>
+   469→   469→                    <TableBody>
+   470→   470→                      {ads.map((ad) => {
+   471→   471→                        const sched = scheduleChip(ad);
+   472→   472→                        return (
+   473→   473→                          <TableRow key={ad.id}>
+   474→   474→                            <TableCell>
+   475→   475→                              <div className="flex min-w-0 items-center gap-2.5">
+   476→   476→                                <span
+   477→   477→                                  aria-hidden="true"
+   478→   478→                                  className="flex size-9 shrink-0 items-center justify-center rounded-md bg-gold/10 text-gold"
+   479→   479→                                >
+   480→   480→                                  {React.createElement(PLACEMENT_META[ad.placement].icon, { className: "size-4" })}
+   481→   481→                                </span>
+   482→   482→                                <div className="min-w-0">
+   483→   483→                                  <p className="truncate font-medium">{ad.name}</p>
+   484→   484→                                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+   485→   485→                                    <ToneBadge tone={TYPE_TONE[ad.type]} className="px-1.5 py-0 text-[10px]">
+   486→   486→                                      {ad.type}
+   487→   487→                                    </ToneBadge>
+   488→   488→                                    <Badge variant="outline" className="px-1.5 py-0 text-[10px] text-muted-foreground">
+   489→   489→                                      {PLACEMENT_META[ad.placement].label}
+   490→   490→                                    </Badge>
+   491→   491→                                  </div>
+   492→   492→                                </div>
+   493→   493→                              </div>
+   494→   494→                            </TableCell>
+   495→   495→                            <TableCell className="text-center">
+   496→   496→                              <div className="flex min-h-11 items-center justify-center">
+   497→   497→                                <Switch
+   498→   498→                                  checked={ad.active}
+   499→   499→                                  disabled={toggleMutation.isPending && toggleMutation.variables?.id === ad.id}
+   500→   500→                                  onCheckedChange={() => toggleMutation.mutate(ad)}
+   501→   501→                                  aria-label={`${ad.active ? "Switch off" : "Switch on"} ${ad.name}`}
+   502→   502→                                />
+   503→   503→                              </div>
+   504→   504→                            </TableCell>
+   505→   505→                            <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+   506→   506→                              {ad.priority}
+   507→   507→                            </TableCell>
+   508→   508→                            <TableCell className="text-right text-sm tabular-nums">
+   509→   509→                              {formatCompact(ad.impressions)}
+   510→   510→                            </TableCell>
+   511→   511→                            <TableCell className="text-right text-sm tabular-nums">
+   512→   512→                              {formatCompact(ad.clicks)}
+   513→   513→                            </TableCell>
+   514→   514→                            <TableCell className="text-right text-sm tabular-nums">{ctrText(ad)}</TableCell>
+   515→   515→                            <TableCell>
+   516→   516→                              {sched.label === "—" ? (
+   517→   517→                                <span className="text-sm text-muted-foreground">—</span>
+   518→   518→                              ) : (
+   519→   519→                                <ToneBadge tone={sched.tone} className="px-1.5 py-0 text-[10px]">
+   520→   520→                                  {sched.label}
+   521→   521→                                </ToneBadge>
+   522→   522→                              )}
+   523→   523→                            </TableCell>
+   524→   524→                            <TableCell>
+   525→   525→                              <div className="flex items-center justify-end gap-1">
+   526→   526→                                <Button
+   527→   527→                                  variant="ghost"
+   528→   528→                                  size="icon"
+   529→   529→                                  className="size-9"
+   530→   530→                                  onClick={() => openEdit(ad)}
+   531→   531→                                  aria-label={`Edit ${ad.name}`}
+   532→   532→                                >
+   533→   533→                                  <Pencil className="size-4" aria-hidden="true" />
+   534→   534→                                </Button>
+   535→   535→                                <ConfirmAction
+   536→   536→                                  trigger={
+   537→   537→                                    <Button
+   538→   538→                                      variant="ghost"
+   539→   539→                                      size="icon"
+   540→   540→                                      className="size-9 text-muted-foreground hover:text-destructive"
+   541→   541→                                      aria-label={`Delete ${ad.name}`}
+   542→   542→                                    >
+   543→   543→                                      <Trash2 className="size-4" aria-hidden="true" />
+   544→   544→                                    </Button>
+   545→   545→                                  }
+   546→   546→                                  title="Delete this ad?"
+   547→   547→                                  description={`"${ad.name}" will stop serving immediately. You can bring it back from Activity & Undo.`}
+   548→   548→                                  onConfirm={() => deleteMutation.mutateAsync(ad)}
+   549→   549→                                />
+   550→   550→                              </div>
+   551→   551→                            </TableCell>
+   552→   552→                          </TableRow>
+   553→   553→                        );
+   554→   554→                      })}
+   555→   555→                    </TableBody>
+   556→   556→                  </Table>
+   557→   557→                </div>
+   558→   558→              )}
+   559→   559→              <p className="text-xs text-muted-foreground">
+   560→   560→                Priority 0–100 — higher shows first · links accept https:// URLs or in-app routes like #/store
+   561→   561→              </p>
+   562→   562→            </div>
+   563→   563→          )
+   564→   564→        }
+   565→   565→      </DataState>
+   566→   566→
+   567→   567→      {/* create / edit dialog */}
+   568→   568→      <Dialog open={dialogOpen} onOpenChange={(open) => (open ? null : closeDialog())}>
+   569→   569→        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
+   570→   570→          <DialogHeader>
+   571→   571→            <DialogTitle>{editing ? `Edit ad — ${editing.name}` : "New ad"}</DialogTitle>
+   572→   572→            <DialogDescription>
+   573→   573→              {editing ? "Update the creative, placement, link or schedule." : "Pick a type, choose exactly where it appears, and switch it on when ready."}
+   574→   574→            </DialogDescription>
+   575→   575→          </DialogHeader>
+   576→   576→          <form onSubmit={submit} className="space-y-4">
+   577→   577→            <div className="grid gap-4 sm:grid-cols-2">
+   578→   578→              <div className="space-y-2">
+   579→   579→                <Label htmlFor="ad-name">Name</Label>
+   580→   580→                <Input
+   581→   581→                  id="ad-name"
+   582→   582→                  value={form.name}
+   583→   583→                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+   584→   584→                  required
+   585→   585→                  minLength={2}
+   586→   586→                  maxLength={80}
+   587→   587→                  placeholder="Pro plan — hero push"
+   588→   588→                />
+   589→   589→              </div>
+   590→   590→              <div className="space-y-2">
+   591→   591→                <Label htmlFor="ad-type">Type</Label>
+   592→   592→                <Select
+   593→   593→                  value={form.type}
+   594→   594→                  onValueChange={(v) => setForm({ ...form, type: v as AdType })}
+   595→   595→                >
+   596→   596→                  <SelectTrigger id="ad-type" className="h-10 w-full" aria-label="Ad type">
+   597→   597→                    <SelectValue />
+   598→   598→                  </SelectTrigger>
+   599→   599→                  <SelectContent>
+   600→   600→                    {TYPE_OPTIONS.map((t) => (
+   601→   601→                      <SelectItem key={t.value} value={t.value}>
+   602→   602→                        {t.label}
+   603→   603→                      </SelectItem>
+   604→   604→                    ))}
+   605→   605→                  </SelectContent>
+   606→   606→                </Select>
+   607→   607→                <p className="text-xs text-muted-foreground">
+   608→   608→                  {TYPE_OPTIONS.find((t) => t.value === form.type)?.hint}
+   609→   609→                </p>
+   610→   610→              </div>
+   611→   611→            </div>
+   612→   612→
+   613→   613→            {/* placement picker — the crown jewel */}
+   614→   614→            <div className="space-y-2">
+   615→   615→              <Label>Placement — where should this ad appear?</Label>
+   616→   616→              <div
+   617→   617→                role="radiogroup"
+   618→   618→                aria-label="Ad placement"
+   619→   619→                className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+   620→   620→              >
+   621→   621→                {AD_PLACEMENTS.map((p) => {
+   622→   622→                  const meta = PLACEMENT_META[p];
+   623→   623→                  const selected = form.placement === p;
+   624→   624→                  return (
+   625→   625→                    <button
+   626→   626→                      key={p}
+   627→   627→                      type="button"
+   628→   628→                      role="radio"
+   629→   629→                      aria-checked={selected}
+   630→   630→                      onClick={() => setForm({ ...form, placement: p })}
+   631→   631→                      className={cn(
+   632→   632→                        "flex min-h-11 flex-col items-start gap-1 rounded-lg border p-2.5 text-left outline-none transition-colors",
+   633→   633→                        "hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring",
+   634→   634→                        selected ? "border-gold bg-gold/[0.06] shadow-xs" : "border-border"
+   635→   635→                      )}
+   636→   636→                    >
+   637→   637→                      <meta.icon
+   638→   638→                        className={cn("size-4 shrink-0", selected ? "text-gold" : "text-muted-foreground")}
+   639→   639→                        aria-hidden="true"
+   640→   640→                      />
+   641→   641→                      <span className={cn("text-xs font-medium leading-tight", selected && "text-gold")}>
+   642→   642→                        {meta.label}
+   643→   643→                      </span>
+   644→   644→                      <span className="text-[10px] leading-tight text-muted-foreground">{meta.hint}</span>
+   645→   645→                    </button>
+   646→   646→                  );
+   647→   647→                })}
+   648→   648→              </div>
+   649→   649→            </div>
+   650→   650→
+   651→   651→            {/* type-conditional fields */}
+   652→   652→            {form.type === "image" || form.type === "gif" || form.type === "sticker" ? (
+   653→   653→              <div className="grid gap-4 sm:grid-cols-2">
+   654→   654→                <div className="space-y-2">
+   655→   655→                  <Label htmlFor="ad-image">Image URL</Label>
+   656→   656→                  <Input
+   657→   657→                    id="ad-image"
+   658→   658→                    value={form.imageUrl}
+   659→   659→                    onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+   660→   660→                    placeholder="https://... or /images/ads/banner.png"
+   661→   661→                    className="font-mono text-xs"
+   662→   662→                  />
+   663→   663→                </div>
+   664→   664→                <div className="space-y-2">
+   665→   665→                  <Label htmlFor="ad-alt">Image alt text</Label>
+   666→   666→                  <Input
+   667→   667→                    id="ad-alt"
+   668→   668→                    value={form.imageAlt}
+   669→   669→                    onChange={(e) => setForm({ ...form, imageAlt: e.target.value })}
+   670→   670→                    maxLength={160}
+   671→   671→                    placeholder="Describe the image for screen readers"
+   672→   672→                  />
+   673→   673→                </div>
+   674→   674→              </div>
+   675→   675→            ) : null}
+   676→   676→
+   677→   677→            {form.type === "text" ? (
+   678→   678→              <div className="grid gap-4 sm:grid-cols-2">
+   679→   679→                <div className="space-y-2">
+   680→   680→                  <Label htmlFor="ad-title">Title</Label>
+   681→   681→                  <Input
+   682→   682→                    id="ad-title"
+   683→   683→                    value={form.title}
+   684→   684→                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+   685→   685→                    maxLength={120}
+   686→   686→                    placeholder="Upgrade to Pro"
+   687→   687→                  />
+   688→   688→                </div>
+   689→   689→                <div className="space-y-2">
+   690→   690→                  <Label htmlFor="ad-body">Body</Label>
+   691→   691→                  <Textarea
+   692→   692→                    id="ad-body"
+   693→   693→                    value={form.body}
+   694→   694→                    onChange={(e) => setForm({ ...form, body: e.target.value })}
+   695→   695→                    maxLength={600}
+   696→   696→                    rows={2}
+   697→   697→                    placeholder="One or two punchy lines of copy"
+   698→   698→                  />
+   699→   699→                </div>
+   700→   700→              </div>
+   701→   701→            ) : null}
+   702→   702→
+   703→   703→            {form.type === "marquee" ? (
+   704→   704→              <div className="space-y-2">
+   705→   705→                <Label htmlFor="ad-marquee">Marquee images (max 16)</Label>
+   706→   706→                <div className="flex gap-2">
+   707→   707→                  <Input
+   708→   708→                    id="ad-marquee"
+   709→   709→                    value={marqueeInput}
+   710→   710→                    onChange={(e) => setMarqueeInput(e.target.value)}
+   711→   711→                    onKeyDown={(e) => {
+   712→   712→                      if (e.key === "Enter" || e.key === ",") {
+   713→   713→                        e.preventDefault();
+   714→   714→                        addMarqueeImage();
+   715→   715→                      }
+   716→   716→                    }}
+   717→   717→                    placeholder="Paste an image URL, press Enter"
+   718→   718→                    className="h-10 font-mono text-xs"
+   719→   719→                  />
+   720→   720→                  <Button type="button" variant="outline" className="h-10" onClick={addMarqueeImage}>
+   721→   721→                    Add
+   722→   722→                  </Button>
+   723→   723→                </div>
+   724→   724→                {form.images.length > 0 ? (
+   725→   725→                  <div className="flex flex-wrap gap-1.5 pt-1">
+   726→   726→                    {form.images.map((url) => (
+   727→   727→                      <Badge key={url} variant="secondary" className="max-w-full gap-1 truncate pr-1.5 font-mono text-[10px]">
+   728→   728→                        <span className="truncate">{url}</span>
+   729→   729→                        <button
+   730→   730→                          type="button"
+   731→   731→                          onClick={() =>
+   732→   732→                            setForm({ ...form, images: form.images.filter((u) => u !== url) })
+   733→   733→                          }
+   734→   734→                          aria-label={`Remove image ${url}`}
+   735→   735→                          className="flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-muted"
+   736→   736→                        >
+   737→   737→                          <X className="size-3" aria-hidden="true" />
+   738→   738→                        </button>
+   739→   739→                      </Badge>
+   740→   740→                    ))}
+   741→   741→                  </div>
+   742→   742→                ) : (
+   743→   743→                  <p className="text-xs text-muted-foreground">No images yet — they scroll across the strip.</p>
+   744→   744→                )}
+   745→   745→              </div>
+   746→   746→            ) : null}
+   747→   747→
+   748→   748→            {/* link */}
+   749→   749→            <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
+   750→   750→              <div className="space-y-2">
+   751→   751→                <Label htmlFor="ad-link">Link URL</Label>
+   752→   752→                <Input
+   753→   753→                  id="ad-link"
+   754→   754→                  value={form.linkUrl}
+   755→   755→                  onChange={(e) => setForm({ ...form, linkUrl: e.target.value })}
+   756→   756→                  placeholder="https://... or #/store"
+   757→   757→                  className="font-mono text-xs"
+   758→   758→                />
+   759→   759→                <p className="text-xs text-muted-foreground">
+   760→   760→                  Full URL or in-app route like #/store
+   761→   761→                </p>
+   762→   762→              </div>
+   763→   763→              <div className="space-y-2">
+   764→   764→                <Label htmlFor="ad-link-label">Link label</Label>
+   765→   765→                <Input
+   766→   766→                  id="ad-link-label"
+   767→   767→                  value={form.linkLabel}
+   768→   768→                  onChange={(e) => setForm({ ...form, linkLabel: e.target.value })}
+   769→   769→                  maxLength={40}
+   770→   770→                  placeholder="Learn more"
+   771→   771→                />
+   772→   772→              </div>
+   773→   773→            </div>
+   774→   774→
+   775→   775→            {/* priority + schedule + active */}
+   776→   776→            <div className="grid gap-4 sm:grid-cols-3">
+   777→   777→              <div className="space-y-2">
+   778→   778→                <Label htmlFor="ad-priority">Priority (0–100)</Label>
+   779→   779→                <Input
+   780→   780→                  id="ad-priority"
+   781→   781→                  value={form.priority}
+   782→   782→                  onChange={(e) => setForm({ ...form, priority: e.target.value })}
+   783→   783→                  inputMode="numeric"
+   784→   784→                  placeholder="0"
+   785→   785→                />
+   786→   786→                <p className="text-xs text-muted-foreground">Higher shows first</p>
+   787→   787→              </div>
+   788→   788→              <div className="space-y-2">
+   789→   789→                <Label htmlFor="ad-start">Starts (optional)</Label>
+   790→   790→                <Input
+   791→   791→                  id="ad-start"
+   792→   792→                  type="datetime-local"
+   793→   793→                  value={form.startAt}
+   794→   794→                  onChange={(e) => setForm({ ...form, startAt: e.target.value })}
+   795→   795→                />
+   796→   796→              </div>
+   797→   797→              <div className="space-y-2">
+   798→   798→                <Label htmlFor="ad-end">Ends (optional)</Label>
+   799→   799→                <Input
+   800→   800→                  id="ad-end"
+   801→   801→                  type="datetime-local"
+   802→   802→                  value={form.endAt}
+   803→   803→                  onChange={(e) => setForm({ ...form, endAt: e.target.value })}
+   804→   804→                />
+   805→   805→              </div>
+   806→   806→            </div>
+   807→   807→
+   808→   808→            <div className="flex items-center justify-between rounded-lg border p-3">
+   809→   809→              <div>
+   810→   810→                <p className="text-sm font-medium">Active</p>
+   811→   811→                <p className="text-xs text-muted-foreground">Serves immediately when inside its schedule</p>
+   812→   812→              </div>
+   813→   813→              <Switch
+   814→   814→                checked={form.active}
+   815→   815→                onCheckedChange={(v) => setForm({ ...form, active: v })}
+   816→   816→                aria-label="Toggle ad active"
+   817→   817→              />
+   818→   818→            </div>
+   819→   819→
+   820→   820→            <DialogFooter>
+   821→   821→              <Button type="button" variant="outline" onClick={closeDialog}>
+   822→   822→                Cancel
+   823→   823→              </Button>
+   824→   824→              <Button type="submit" disabled={saving}>
+   825→   825→                {saving ? "Saving..." : editing ? "Save ad" : "Create ad"}
+   826→   826→              </Button>
+   827→   827→            </DialogFooter>
+   828→   828→          </form>
+   829→   829→        </DialogContent>
+   830→   830→      </Dialog>
+   831→   831→    </AdminShell>
+   832→   832→  );
+   833→   833→}
+   834→   834→

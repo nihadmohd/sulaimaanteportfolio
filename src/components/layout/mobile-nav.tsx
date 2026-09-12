@@ -23,11 +23,16 @@ import { cn } from "@/lib/utils";
 /**
  * MobileNav — fixed bottom tab bar (Home / Blog / Store / Services + More)
  * with 56px touch targets and safe-area padding, plus the "More" bottom
- * sheet carrying the full navigation. Hidden on /admin and /auth routes
- * (those flows keep the full viewport).
+ * sheet carrying the full navigation.
+ *
+ * On /admin and /auth routes the bottom tab bar is hidden (those flows keep
+ * the full viewport) but the "More" sheet stays MOUNTED so the site header's
+ * hamburger always has a working menu — on /admin it opens the dedicated
+ * admin-nav Sheet instead (see SiteHeader + AdminShell).
  */
 
 const MORE_LINKS = [
+  { label: "Ventures & Ideas", href: "#/ventures", icon: "rocket" },
   { label: "About", href: "#/about", icon: "user" },
   { label: "Contact", href: "#/contact", icon: "mail" },
   { label: "Support & Help", href: "#/support", icon: "sparkles" },
@@ -59,12 +64,13 @@ export function MobileNav() {
     setMobileNavOpen(false);
   }, [path, setMobileNavOpen]);
 
-  // Hide the tab bar inside admin/auth flows.
-  if (path.startsWith("/admin") || path.startsWith("/auth")) return null;
+  // Hide the tab bar inside admin/auth flows (the More sheet stays mounted).
+  const showTabBar = !path.startsWith("/admin") && !path.startsWith("/auth");
 
   return (
     <>
       {/* Bottom tab bar */}
+      {showTabBar ? (
       <nav
         aria-label="Mobile navigation"
         className="fixed inset-x-0 bottom-0 z-40 border-t border-gold/20 bg-background/90 backdrop-blur-md supports-[backdrop-filter]:bg-background/75 md:hidden"
@@ -109,6 +115,7 @@ export function MobileNav() {
         </ul>
         <div className="h-[env(safe-area-inset-bottom)]" aria-hidden="true" />
       </nav>
+      ) : null}
 
       {/* More sheet — full navigation */}
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
@@ -149,20 +156,12 @@ export function MobileNav() {
               {user ? "Your account" : "Join MN.KP"}
             </p>
             {user ? (
-              <>
-                <ALink
-                  href="#/account"
-                  className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-                >
-                  <Icon name="user" className="size-4 text-gold" /> Account
-                </ALink>
-                <ALink
-                  href="#/account/billing"
-                  className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-                >
-                  <Icon name="sparkles" className="size-4 text-gold" /> Billing & subscription
-                </ALink>
-              </>
+              <ALink
+                href="#/account"
+                className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <Icon name="user" className="size-4 text-gold" /> Account
+              </ALink>
             ) : (
               <div className="flex gap-2 px-1 pt-1">
                 <ALink href="#/auth/login" className="flex-1">

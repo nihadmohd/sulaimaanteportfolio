@@ -1,0 +1,1491 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+     5→import {
+     6→  Activity,
+     7→  AlertTriangle,
+     8→  ArrowDown,
+     9→  ArrowUp,
+    10→  Check,
+    11→  Plus,
+    12→  Save,
+    13→  Sparkles,
+    14→  Wrench,
+    15→  X,
+    16→} from "lucide-react";
+    17→import { Badge } from "@/components/ui/badge";
+    18→import { Button } from "@/components/ui/button";
+    19→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+    20→import { Checkbox } from "@/components/ui/checkbox";
+    21→import { Input } from "@/components/ui/input";
+    22→import { Label } from "@/components/ui/label";
+    23→import {
+    24→  Select,
+    25→  SelectContent,
+    26→  SelectItem,
+    27→  SelectTrigger,
+    28→  SelectValue,
+    29→} from "@/components/ui/select";
+    30→import { Separator } from "@/components/ui/separator";
+    31→import { Switch } from "@/components/ui/switch";
+    32→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    33→import { Textarea } from "@/components/ui/textarea";
+    34→import {
+    35→  AlertDialog,
+    36→  AlertDialogAction,
+    37→  AlertDialogCancel,
+    38→  AlertDialogContent,
+    39→  AlertDialogDescription,
+    40→  AlertDialogFooter,
+    41→  AlertDialogHeader,
+    42→  AlertDialogTitle,
+    43→} from "@/components/ui/alert-dialog";
+    44→import { DataState, ForbiddenState, LoadingState } from "@/components/states";
+    45→import { SEOHead } from "@/components/shared/seo-head";
+    46→import { toast } from "@/hooks/use-toast";
+    47→import type { JsonRecord, StatsResponse } from "@/types";
+    48→import { cn } from "@/lib/utils";
+    49→import { AdminShell } from "./_shell";
+    50→import { apiFetch, formatUptime, useAdminGuard } from "./_shared";
+    51→
+    52→/**
+    53→ * Settings (#/admin/settings — route key "admin-settings").
+    54→ * Tabs: Brand / Footer / Media & Decor / Ads / Features / SEO / Maintenance / System.
+    55→ * Loads /api/settings/all; per-tab Save → PATCH /api/settings/:key, then
+    56→ * invalidates the PUBLIC settings query (queryKey ["settings"] — shared
+    57→ * with the whole shell via use-settings) so header/footer/ads/maintenance
+    58→ * react instantly.
+    59→ */
+    60→
+    61→/* ------------------------------------------------------------------ */
+    62→/* draft shapes                                                        */
+    63→/* ------------------------------------------------------------------ */
+    64→
+    65→interface SocialRow {
+    66→  key: string;
+    67→  url: string;
+    68→}
+    69→interface LinkRow {
+    70→  label: string;
+    71→  href: string;
+    72→}
+    73→interface ColumnDraft {
+    74→  title: string;
+    75→  links: LinkRow[];
+    76→}
+    77→interface StickerDraft {
+    78→  type: string;
+    79→  value: string;
+    80→  corner: string;
+    81→}
+    82→
+    83→interface BrandDraft {
+    84→  siteName: string;
+    85→  ownerName: string;
+    86→  roleLine: string;
+    87→  tagline: string;
+    88→  email: string;
+    89→  phone: string;
+    90→  whatsappUrl: string;
+    91→  address: string;
+    92→  cvUrl: string;
+    93→  socials: SocialRow[];
+    94→}
+    95→
+    96→interface FooterDraft {
+    97→  tagline: string;
+    98→  copyright: string;
+    99→  socialsEnabled: boolean;
+   100→  columns: ColumnDraft[];
+   101→}
+   102→
+   103→interface MediaDraft {
+   104→  heroEnabled: boolean;
+   105→  heroImages: string[];
+   106→  stickersEnabled: boolean;
+   107→  stickerItems: StickerDraft[];
+   108→  gifsEnabled: boolean;
+   109→  gifs: string[];
+   110→}
+   111→
+   112→interface AdsDraft {
+   113→  enabled: boolean;
+   114→  placements: string[];
+   115→}
+   116→
+   117→interface MaintenanceDraft {
+   118→  enabled: boolean;
+   119→  message: string;
+   120→  estimatedEnd: string;
+   121→}
+   122→
+   123→interface FeaturesDraft {
+   124→  newsletter: boolean;
+   125→  shareButtons: boolean;
+   126→  presenceBadge: boolean;
+   127→  cookieConsent: boolean;
+   128→  registration: boolean;
+   129→  trendingBadge: boolean;
+   130→  viewCounts: boolean;
+   131→  readingTime: boolean;
+   132→  affiliateSlots: boolean;
+   133→}
+   134→
+   135→interface SeoDraft {
+   136→  titleSuffix: string;
+   137→  defaultDescription: string;
+   138→  keywords: string[];
+   139→  googleVerification: string;
+   140→  bingVerification: string;
+   141→}
+   142→
+   143→/* ------------------------------------------------------------------ */
+   144→/* JSON readers                                                        */
+   145→/* ------------------------------------------------------------------ */
+   146→
+   147→function asString(v: unknown, fallback = ""): string {
+   148→  return typeof v === "string" ? v : fallback;
+   149→}
+   150→function asBool(v: unknown, fallback = false): boolean {
+   151→  return typeof v === "boolean" ? v : fallback;
+   152→}
+   153→function asStrArr(v: unknown): string[] {
+   154→  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+   155→}
+   156→function asRecord(v: unknown): Record<string, string> {
+   157→  if (typeof v !== "object" || v === null || Array.isArray(v)) return {};
+   158→  const out: Record<string, string> = {};
+   159→  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+   160→    if (typeof val === "string") out[k] = val;
+   161→  }
+   162→  return out;
+   163→}
+   164→
+   165→/* Sticker emoji palette — these ARE sticker admin-data values (the single
+   166→ * sanctioned exception to the no-emoji-in-source rule per BUILD CONTRACT
+   167→ * §0 + task spec). */
+   168→const STICKER_PALETTE = ["🚀", "✨", "⭐", "🔥", "💡", "🎯", "🏆", "💎", "🌟", "⚡"];
+   169→
+   170→const AD_PLACEMENTS = [
+   171→  { value: "blog-inline", label: "Blog — inline (mid-article)" },
+   172→  { value: "blog-sidebar", label: "Blog — sidebar rail" },
+   173→  { value: "home-strip", label: "Home — strip" },
+   174→  { value: "store-side", label: "Store — side panel" },
+   175→];
+   176→
+   177→const SOCIAL_KEYS = [
+   178→  "WhatsApp",
+   179→  "Instagram",
+   180→  "LinkedIn",
+   181→  "X",
+   182→  "Facebook",
+   183→  "Threads",
+   184→  "Pinterest",
+   185→  "Google Business",
+   186→];
+   187→
+   188→/** One row per features toggle — label + one-line hint. */
+   189→const FEATURE_ROWS: Array<{ key: keyof FeaturesDraft; label: string; hint: string }> = [
+   190→  { key: "newsletter", label: "Newsletter", hint: "Newsletter capture forms" },
+   191→  { key: "shareButtons", label: "Share buttons", hint: "Social share buttons on posts/products" },
+   192→  { key: "presenceBadge", label: "Presence badge", hint: "Live visitor counter" },
+   193→  { key: "cookieConsent", label: "Cookie consent", hint: "Cookie consent banner" },
+   194→  { key: "registration", label: "Registration", hint: "New account sign-ups" },
+   195→  { key: "trendingBadge", label: "Trending badges", hint: "Trending badges on posts" },
+   196→  { key: "viewCounts", label: "View counts", hint: "Public view counters" },
+   197→  { key: "readingTime", label: "Reading time", hint: "Reading time labels" },
+   198→  { key: "affiliateSlots", label: "Affiliate slots", hint: "Affiliate product ad slots" },
+   199→];
+   200→
+   201→type SettingKey = "brand" | "footer" | "media" | "ads" | "features" | "seo" | "maintenance";
+   202→
+   203→export default function SettingsView() {
+   204→  const { isLoading, allowed } = useAdminGuard();
+   205→  const queryClient = useQueryClient();
+   206→
+   207→  const settingsQuery = useQuery({
+   208→    queryKey: ["admin-settings"],
+   209→    queryFn: () => apiFetch<Record<string, JsonRecord>>("/api/settings/all"),
+   210→    enabled: allowed,
+   211→    staleTime: 30_000,
+   212→    retry: 1,
+   213→  });
+   214→
+   215→  const healthQuery = useQuery({
+   216→    queryKey: ["admin-health"],
+   217→    queryFn: async () => {
+   218→      try {
+   219→        const res = await fetch("/api/health");
+   220→        const json = (await res.json()) as { ok: boolean; data?: { uptime?: number; time?: string } };
+   221→        return json.data ?? null;
+   222→      } catch {
+   223→        return null;
+   224→      }
+   225→    },
+   226→    enabled: allowed,
+   227→    refetchInterval: 30_000,
+   228→    retry: 0,
+   229→  });
+   230→
+   231→  const statsQuery = useQuery({
+   232→    queryKey: ["admin-stats"],
+   233→    queryFn: () => apiFetch<StatsResponse>("/api/stats"),
+   234→    enabled: allowed,
+   235→    staleTime: 30_000,
+   236→    retry: 1,
+   237→  });
+   238→
+   239→  /* drafts */
+   240→  const [brand, setBrand] = React.useState<BrandDraft | null>(null);
+   241→  const [footer, setFooter] = React.useState<FooterDraft | null>(null);
+   242→  const [media, setMedia] = React.useState<MediaDraft | null>(null);
+   243→  const [ads, setAds] = React.useState<AdsDraft | null>(null);
+   244→  const [features, setFeatures] = React.useState<FeaturesDraft | null>(null);
+   245→  const [seo, setSeo] = React.useState<SeoDraft | null>(null);
+   246→  const [maintenance, setMaintenance] = React.useState<MaintenanceDraft | null>(null);
+   247→  const [dirty, setDirty] = React.useState<Record<string, boolean>>({});
+   248→  const [maintenanceConfirm, setMaintenanceConfirm] = React.useState(false);
+   249→  const [newImage, setNewImage] = React.useState("");
+   250→  const [newGif, setNewGif] = React.useState("");
+   251→  const [newKeyword, setNewKeyword] = React.useState("");
+   252→
+   253→  React.useEffect(() => {
+   254→    const data = settingsQuery.data;
+   255→    if (!data) return;
+   256→    const b = data.brand ?? {};
+   257→    const f = data.footer ?? {};
+   258→    const m = data.media ?? {};
+   259→    const a = data.ads ?? {};
+   260→    const ft = data.features ?? {};
+   261→    const se = data.seo ?? {};
+   262→    const mt = data.maintenance ?? {};
+   263→
+   264→    const hero = (m.heroMarquee ?? {}) as Record<string, unknown>;
+   265→    const stickers = (m.stickers ?? {}) as Record<string, unknown>;
+   266→    const gifBlock = (m.blogGifs ?? {}) as Record<string, unknown>;
+   267→
+   268→    setBrand({
+   269→      siteName: asString(b.siteName),
+   270→      ownerName: asString(b.ownerName),
+   271→      roleLine: asString(b.roleLine),
+   272→      tagline: asString(b.tagline),
+   273→      email: asString(b.email),
+   274→      phone: asString(b.phone),
+   275→      whatsappUrl: asString(b.whatsappUrl),
+   276→      address: asString(b.address),
+   277→      cvUrl: asString(b.cvUrl),
+   278→      socials: Object.entries(asRecord(b.socials)).map(([key, url]) => ({ key, url })),
+   279→    });
+   280→    setFooter({
+   281→      tagline: asString(f.tagline),
+   282→      copyright: asString(f.copyright),
+   283→      socialsEnabled: asBool(f.socialsEnabled, true),
+   284→      columns: Array.isArray(f.columns)
+   285→        ? (f.columns as unknown[]).map((c) => {
+   286→            const col = (c ?? {}) as { title?: unknown; links?: unknown };
+   287→            return {
+   288→              title: asString(col.title, "Column"),
+   289→              links: Array.isArray(col.links)
+   290→                ? (col.links as unknown[]).map((l) => {
+   291→                    const link = (l ?? {}) as { label?: unknown; href?: unknown };
+   292→                    return { label: asString(link.label), href: asString(link.href) };
+   293→                  })
+   294→                : [],
+   295→            };
+   296→          })
+   297→        : [],
+   298→    });
+   299→    setMedia({
+   300→      heroEnabled: asBool(hero.enabled),
+   301→      heroImages: asStrArr(hero.images),
+   302→      stickersEnabled: asBool(stickers.enabled),
+   303→      stickerItems: Array.isArray(stickers.items)
+   304→        ? (stickers.items as unknown[]).map((s) => {
+   305→            const item = (s ?? {}) as { type?: unknown; value?: unknown; corner?: unknown };
+   306→            return {
+   307→              type: asString(item.type, "emoji"),
+   308→              value: asString(item.value),
+   309→              corner: asString(item.corner, "br"),
+   310→            };
+   311→          })
+   312→        : [],
+   313→      gifsEnabled: asBool(gifBlock.enabled),
+   314→      gifs: asStrArr(gifBlock.gifs),
+   315→    });
+   316→    setAds({ enabled: asBool(a.enabled, true), placements: asStrArr(a.placements) });
+   317→    setFeatures({
+   318→      newsletter: asBool(ft.newsletter, true),
+   319→      shareButtons: asBool(ft.shareButtons, true),
+   320→      presenceBadge: asBool(ft.presenceBadge, true),
+   321→      cookieConsent: asBool(ft.cookieConsent, true),
+   322→      registration: asBool(ft.registration, true),
+   323→      trendingBadge: asBool(ft.trendingBadge, true),
+   324→      viewCounts: asBool(ft.viewCounts, true),
+   325→      readingTime: asBool(ft.readingTime, true),
+   326→      affiliateSlots: asBool(ft.affiliateSlots, true),
+   327→    });
+   328→    setSeo({
+   329→      titleSuffix: asString(se.titleSuffix),
+   330→      defaultDescription: asString(se.defaultDescription),
+   331→      keywords: asStrArr(se.keywords),
+   332→      googleVerification: asString(se.googleVerification),
+   333→      bingVerification: asString(se.bingVerification),
+   334→    });
+   335→    setMaintenance({
+   336→      enabled: asBool(mt.enabled),
+   337→      message: asString(mt.message),
+   338→      estimatedEnd: asString(mt.estimatedEnd),
+   339→    });
+   340→    setDirty({});
+   341→  }, [settingsQuery.data]);
+   342→
+   343→  const touch = (key: string) => setDirty((d) => ({ ...d, [key]: true }));
+   344→
+   345→  const saveMutation = useMutation({
+   346→    mutationFn: ({ key, value }: { key: SettingKey; value: Record<string, unknown> }) =>
+   347→      apiFetch(`/api/settings/${key}`, { method: "PATCH", body: JSON.stringify({ value }) }),
+   348→    onSuccess: (_data, variables) => {
+   349→      toast({
+   350→        title: "Settings saved",
+   351→        description: `${variables.key.charAt(0).toUpperCase() + variables.key.slice(1)} updated — the live site picked it up.`,
+   352→      });
+   353→      setDirty((d) => ({ ...d, [variables.key]: false }));
+   354→      // CRITICAL: the PUBLIC settings query the whole shell reads
+   355→      void queryClient.invalidateQueries({ queryKey: ["settings"] });
+   356→      void queryClient.invalidateQueries({ queryKey: ["admin-settings"] });
+   357→    },
+   358→    onError: (e: Error) =>
+   359→      toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+   360→  });
+   361→
+   362→  if (isLoading) return <LoadingState variant="spinner" label="Loading settings" />;
+   363→  if (!allowed) return <ForbiddenState />;
+   364→
+   365→  const buildBrandValue = (): Record<string, unknown> => ({
+   366→    siteName: brand?.siteName ?? "",
+   367→    ownerName: brand?.ownerName ?? "",
+   368→    roleLine: brand?.roleLine ?? "",
+   369→    tagline: brand?.tagline ?? "",
+   370→    email: brand?.email ?? "",
+   371→    phone: brand?.phone ?? "",
+   372→    whatsappUrl: brand?.whatsappUrl ?? "",
+   373→    address: brand?.address ?? "",
+   374→    cvUrl: brand?.cvUrl ?? "",
+   375→    socials: Object.fromEntries(
+   376→      (brand?.socials ?? [])
+   377→        .filter((s) => s.key.trim())
+   378→        .map((s) => [s.key.trim(), s.url.trim()])
+   379→    ),
+   380→  });
+   381→
+   382→  const buildFooterValue = (): Record<string, unknown> => ({
+   383→    tagline: footer?.tagline ?? "",
+   384→    copyright: footer?.copyright ?? "",
+   385→    socialsEnabled: footer?.socialsEnabled ?? true,
+   386→    columns: (footer?.columns ?? []).map((c) => ({
+   387→      title: c.title,
+   388→      links: c.links.filter((l) => l.label.trim()),
+   389→    })),
+   390→  });
+   391→
+   392→  const buildMediaValue = (): Record<string, unknown> => ({
+   393→    heroMarquee: { enabled: media?.heroEnabled ?? false, images: media?.heroImages ?? [] },
+   394→    stickers: { enabled: media?.stickersEnabled ?? false, items: media?.stickerItems ?? [] },
+   395→    blogGifs: { enabled: media?.gifsEnabled ?? false, gifs: media?.gifs ?? [] },
+   396→  });
+   397→
+   398→  const buildAdsValue = (): Record<string, unknown> => ({
+   399→    enabled: ads?.enabled ?? true,
+   400→    placements: ads?.placements ?? [],
+   401→  });
+   402→
+   403→  const buildFeaturesValue = (): Record<string, unknown> => ({
+   404→    newsletter: features?.newsletter ?? true,
+   405→    shareButtons: features?.shareButtons ?? true,
+   406→    presenceBadge: features?.presenceBadge ?? true,
+   407→    cookieConsent: features?.cookieConsent ?? true,
+   408→    registration: features?.registration ?? true,
+   409→    trendingBadge: features?.trendingBadge ?? true,
+   410→    viewCounts: features?.viewCounts ?? true,
+   411→    readingTime: features?.readingTime ?? true,
+   412→    affiliateSlots: features?.affiliateSlots ?? true,
+   413→  });
+   414→
+   415→  const buildSeoValue = (): Record<string, unknown> => ({
+   416→    titleSuffix: seo?.titleSuffix ?? "",
+   417→    defaultDescription: seo?.defaultDescription ?? "",
+   418→    keywords: seo?.keywords ?? [],
+   419→    googleVerification: seo?.googleVerification ?? "",
+   420→    bingVerification: seo?.bingVerification ?? "",
+   421→  });
+   422→
+   423→  const buildMaintenanceValue = (): Record<string, unknown> => ({
+   424→    enabled: maintenance?.enabled ?? false,
+   425→    message: maintenance?.message ?? "",
+   426→    estimatedEnd: maintenance?.estimatedEnd?.trim() || null,
+   427→  });
+   428→
+   429→  const saveTab = (key: SettingKey, value: Record<string, unknown>) =>
+   430→    saveMutation.mutate({ key, value });
+   431→
+   432→  const SaveButton = ({ tab, build }: { tab: SettingKey; build: () => Record<string, unknown> }) => (
+   433→    <Button
+   434→      size="sm"
+   435→      className="h-9 gap-2"
+   436→      disabled={!dirty[tab] || saveMutation.isPending}
+   437→      onClick={() => saveTab(tab, build())}
+   438→    >
+   439→      <Save className="size-4" aria-hidden="true" />
+   440→      {saveMutation.isPending ? "Saving..." : dirty[tab] ? "Save changes" : "Saved"}
+   441→    </Button>
+   442→  );
+   443→
+   444→  const dirtyChip = (tab: string) =>
+   445→    dirty[tab] ? (
+   446→      <Badge variant="outline" className="border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+   447→        Unsaved
+   448→      </Badge>
+   449→    ) : null;
+   450→
+   451→  const addKeyword = () => {
+   452→    const kw = newKeyword.trim().slice(0, 40);
+   453→    if (!kw || !seo || seo.keywords.includes(kw) || seo.keywords.length >= 16) return;
+   454→    setSeo({ ...seo, keywords: [...seo.keywords, kw] });
+   455→    setNewKeyword("");
+   456→    touch("seo");
+   457→  };
+   458→
+   459→  return (
+   460→    <AdminShell title="Settings" description="Total control — brand, footer, decor, ads, features, SEO and maintenance.">
+   461→      <SEOHead title="Settings — Admin & Developer | MN.KP" noindex />
+   462→
+   463→      <DataState query={settingsQuery} skeletonRows={6} empty={false}>
+   464→        {() => (
+   465→          <Tabs defaultValue="brand" className="space-y-6">
+   466→            <TabsList className="h-11 w-full justify-start overflow-x-auto sm:w-auto">
+   467→              <TabsTrigger value="brand" className="h-9">Brand</TabsTrigger>
+   468→              <TabsTrigger value="footer" className="h-9">Footer</TabsTrigger>
+   469→              <TabsTrigger value="media" className="h-9">Media &amp; Decor</TabsTrigger>
+   470→              <TabsTrigger value="ads" className="h-9">Ads</TabsTrigger>
+   471→              <TabsTrigger value="features" className="h-9">Features</TabsTrigger>
+   472→              <TabsTrigger value="seo" className="h-9">SEO</TabsTrigger>
+   473→              <TabsTrigger value="maintenance" className="h-9">Maintenance</TabsTrigger>
+   474→              <TabsTrigger value="system" className="h-9">System</TabsTrigger>
+   475→            </TabsList>
+   476→
+   477→            {/* ------------------------- BRAND ------------------------- */}
+   478→            <TabsContent value="brand" className="space-y-4">
+   479→              <div className="flex items-center justify-between">
+   480→                <h2 className="text-base font-semibold">Brand identity</h2>
+   481→                <div className="flex items-center gap-2">
+   482→                  {dirtyChip("brand")}
+   483→                  <SaveButton tab="brand" build={buildBrandValue} />
+   484→                </div>
+   485→              </div>
+   486→              {brand ? (
+   487→                <Card>
+   488→                  <CardContent className="grid gap-5 pt-6 md:grid-cols-2">
+   489→                    <div className="space-y-2">
+   490→                      <Label htmlFor="b-site">Site name</Label>
+   491→                      <Input id="b-site" value={brand.siteName} onChange={(e) => { setBrand({ ...brand, siteName: e.target.value }); touch("brand"); }} />
+   492→                    </div>
+   493→                    <div className="space-y-2">
+   494→                      <Label htmlFor="b-owner">Owner name</Label>
+   495→                      <Input id="b-owner" value={brand.ownerName} onChange={(e) => { setBrand({ ...brand, ownerName: e.target.value }); touch("brand"); }} />
+   496→                    </div>
+   497→                    <div className="space-y-2">
+   498→                      <Label htmlFor="b-role">Role line</Label>
+   499→                      <Input id="b-role" value={brand.roleLine} onChange={(e) => { setBrand({ ...brand, roleLine: e.target.value }); touch("brand"); }} placeholder="Freelancer · Businessman · AI-First Developer" />
+   500→                    </div>
+   501→                    <div className="space-y-2">
+   502→                      <Label htmlFor="b-email">Email</Label>
+   503→                      <Input id="b-email" type="email" value={brand.email} onChange={(e) => { setBrand({ ...brand, email: e.target.value }); touch("brand"); }} />
+   504→                    </div>
+   505→                    <div className="space-y-2">
+   506→                      <Label htmlFor="b-phone">Phone</Label>
+   507→                      <Input id="b-phone" value={brand.phone} onChange={(e) => { setBrand({ ...brand, phone: e.target.value }); touch("brand"); }} />
+   508→                    </div>
+   509→                    <div className="space-y-2">
+   510→                      <Label htmlFor="b-wa">WhatsApp URL</Label>
+   511→                      <Input id="b-wa" value={brand.whatsappUrl} onChange={(e) => { setBrand({ ...brand, whatsappUrl: e.target.value }); touch("brand"); }} />
+   512→                    </div>
+   513→                    <div className="space-y-2">
+   514→                      <Label htmlFor="b-address">Address</Label>
+   515→                      <Input id="b-address" value={brand.address} onChange={(e) => { setBrand({ ...brand, address: e.target.value }); touch("brand"); }} />
+   516→                    </div>
+   517→                    <div className="space-y-2">
+   518→                      <Label htmlFor="b-cv">CV URL</Label>
+   519→                      <Input id="b-cv" value={brand.cvUrl} onChange={(e) => { setBrand({ ...brand, cvUrl: e.target.value }); touch("brand"); }} />
+   520→                    </div>
+   521→                    <div className="space-y-2 md:col-span-2">
+   522→                      <Label htmlFor="b-tagline">Tagline</Label>
+   523→                      <Textarea id="b-tagline" value={brand.tagline} rows={2} onChange={(e) => { setBrand({ ...brand, tagline: e.target.value }); touch("brand"); }} />
+   524→                    </div>
+   525→
+   526→                    <div className="space-y-3 md:col-span-2">
+   527→                      <Label>Social profiles</Label>
+   528→                      {brand.socials.map((row, i) => (
+   529→                        <div key={`social-${i}`} className="flex flex-col gap-2 sm:flex-row">
+   530→                          <Input
+   531→                            value={row.key}
+   532→                            list="social-keys"
+   533→                            onChange={(e) => {
+   534→                              const next = [...brand.socials];
+   535→                              next[i] = { ...next[i], key: e.target.value };
+   536→                              setBrand({ ...brand, socials: next });
+   537→                              touch("brand");
+   538→                            }}
+   539→                            placeholder="Platform"
+   540→                            aria-label={`Social platform ${i + 1}`}
+   541→                            className="sm:max-w-[180px]"
+   542→                          />
+   543→                          <Input
+   544→                            value={row.url}
+   545→                            onChange={(e) => {
+   546→                              const next = [...brand.socials];
+   547→                              next[i] = { ...next[i], url: e.target.value };
+   548→                              setBrand({ ...brand, socials: next });
+   549→                              touch("brand");
+   550→                            }}
+   551→                            placeholder="https://..."
+   552→                            aria-label={`Social URL ${i + 1}`}
+   553→                            className="flex-1"
+   554→                          />
+   555→                          <Button
+   556→                            type="button"
+   557→                            variant="ghost"
+   558→                            size="icon"
+   559→                            className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
+   560→                            onClick={() => {
+   561→                              setBrand({ ...brand, socials: brand.socials.filter((_, idx) => idx !== i) });
+   562→                              touch("brand");
+   563→                            }}
+   564→                            aria-label={`Remove social ${i + 1}`}
+   565→                          >
+   566→                            <X className="size-4" aria-hidden="true" />
+   567→                          </Button>
+   568→                        </div>
+   569→                      ))}
+   570→                      <datalist id="social-keys">
+   571→                        {SOCIAL_KEYS.map((k) => (
+   572→                          <option key={k} value={k} />
+   573→                        ))}
+   574→                      </datalist>
+   575→                      <Button
+   576→                        type="button"
+   577→                        variant="outline"
+   578→                        size="sm"
+   579→                        className="h-9 gap-2"
+   580→                        onClick={() => {
+   581→                          setBrand({ ...brand, socials: [...brand.socials, { key: "", url: "" }] });
+   582→                          touch("brand");
+   583→                        }}
+   584→                      >
+   585→                        <Plus className="size-4" aria-hidden="true" />
+   586→                        Add social profile
+   587→                      </Button>
+   588→                    </div>
+   589→                  </CardContent>
+   590→                </Card>
+   591→              ) : null}
+   592→            </TabsContent>
+   593→
+   594→            {/* ------------------------- FOOTER ------------------------- */}
+   595→            <TabsContent value="footer" className="space-y-4">
+   596→              <div className="flex items-center justify-between">
+   597→                <h2 className="text-base font-semibold">Footer</h2>
+   598→                <div className="flex items-center gap-2">
+   599→                  {dirtyChip("footer")}
+   600→                  <SaveButton tab="footer" build={buildFooterValue} />
+   601→                </div>
+   602→              </div>
+   603→              {footer ? (
+   604→                <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+   605→                  <Card>
+   606→                    <CardContent className="space-y-5 pt-6">
+   607→                      <div className="space-y-2">
+   608→                        <Label htmlFor="f-tagline">Tagline</Label>
+   609→                        <Textarea id="f-tagline" value={footer.tagline} rows={2} onChange={(e) => { setFooter({ ...footer, tagline: e.target.value }); touch("footer"); }} />
+   610→                      </div>
+   611→                      <div className="space-y-2">
+   612→                        <Label htmlFor="f-copyright">Copyright line</Label>
+   613→                        <Input id="f-copyright" value={footer.copyright} onChange={(e) => { setFooter({ ...footer, copyright: e.target.value }); touch("footer"); }} />
+   614→                      </div>
+   615→                      <div className="flex items-center justify-between rounded-lg border p-3">
+   616→                        <div>
+   617→                          <p className="text-sm font-medium">Social icons row</p>
+   618→                          <p className="text-xs text-muted-foreground">Show the socials row under the columns</p>
+   619→                        </div>
+   620→                        <Switch
+   621→                          checked={footer.socialsEnabled}
+   622→                          onCheckedChange={(v) => { setFooter({ ...footer, socialsEnabled: v }); touch("footer"); }}
+   623→                          aria-label="Toggle socials row"
+   624→                        />
+   625→                      </div>
+   626→                      <Separator />
+   627→                      <div className="space-y-4">
+   628→                        <Label>Columns</Label>
+   629→                        {footer.columns.map((col, ci) => (
+   630→                          <div key={`col-${ci}`} className="space-y-2 rounded-lg border p-3">
+   631→                            <div className="flex gap-2">
+   632→                              <Input
+   633→                                value={col.title}
+   634→                                onChange={(e) => {
+   635→                                  const next = [...footer.columns];
+   636→                                  next[ci] = { ...col, title: e.target.value };
+   637→                                  setFooter({ ...footer, columns: next });
+   638→                                  touch("footer");
+   639→                                }}
+   640→                                placeholder="Column title"
+   641→                                aria-label={`Column ${ci + 1} title`}
+   642→                              />
+   643→                              <Button
+   644→                                type="button"
+   645→                                variant="ghost"
+   646→                                size="icon"
+   647→                                className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
+   648→                                onClick={() => {
+   649→                                  setFooter({ ...footer, columns: footer.columns.filter((_, idx) => idx !== ci) });
+   650→                                  touch("footer");
+   651→                                }}
+   652→                                aria-label={`Remove column ${ci + 1}`}
+   653→                              >
+   654→                                <X className="size-4" aria-hidden="true" />
+   655→                              </Button>
+   656→                            </div>
+   657→                            {col.links.map((link, li) => (
+   658→                              <div key={`link-${ci}-${li}`} className="flex flex-col gap-2 sm:flex-row">
+   659→                                <Input
+   660→                                  value={link.label}
+   661→                                  onChange={(e) => {
+   662→                                    const next = [...footer.columns];
+   663→                                    next[ci] = {
+   664→                                      ...col,
+   665→                                      links: col.links.map((l, idx) =>
+   666→                                        idx === li ? { ...l, label: e.target.value } : l
+   667→                                      ),
+   668→                                    };
+   669→                                    setFooter({ ...footer, columns: next });
+   670→                                    touch("footer");
+   671→                                  }}
+   672→                                  placeholder="Label"
+   673→                                  aria-label={`Column ${ci + 1} link ${li + 1} label`}
+   674→                                  className="sm:max-w-[200px]"
+   675→                                />
+   676→                                <Input
+   677→                                  value={link.href}
+   678→                                  onChange={(e) => {
+   679→                                    const next = [...footer.columns];
+   680→                                    next[ci] = {
+   681→                                      ...col,
+   682→                                      links: col.links.map((l, idx) =>
+   683→                                        idx === li ? { ...l, href: e.target.value } : l
+   684→                                      ),
+   685→                                    };
+   686→                                    setFooter({ ...footer, columns: next });
+   687→                                    touch("footer");
+   688→                                  }}
+   689→                                  placeholder="#/blog or https://..."
+   690→                                  aria-label={`Column ${ci + 1} link ${li + 1} URL`}
+   691→                                  className="flex-1"
+   692→                                />
+   693→                                <Button
+   694→                                  type="button"
+   695→                                  variant="ghost"
+   696→                                  size="icon"
+   697→                                  className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
+   698→                                  onClick={() => {
+   699→                                    const next = [...footer.columns];
+   700→                                    next[ci] = { ...col, links: col.links.filter((_, idx) => idx !== li) };
+   701→                                    setFooter({ ...footer, columns: next });
+   702→                                    touch("footer");
+   703→                                  }}
+   704→                                  aria-label={`Remove link ${li + 1}`}
+   705→                                >
+   706→                                  <X className="size-4" aria-hidden="true" />
+   707→                                </Button>
+   708→                              </div>
+   709→                            ))}
+   710→                            <Button
+   711→                              type="button"
+   712→                              variant="outline"
+   713→                              size="sm"
+   714→                              className="h-8 gap-1.5"
+   715→                              onClick={() => {
+   716→                                const next = [...footer.columns];
+   717→                                next[ci] = { ...col, links: [...col.links, { label: "", href: "" }] };
+   718→                                setFooter({ ...footer, columns: next });
+   719→                                touch("footer");
+   720→                              }}
+   721→                            >
+   722→                              <Plus className="size-3.5" aria-hidden="true" />
+   723→                              Add link
+   724→                            </Button>
+   725→                          </div>
+   726→                        ))}
+   727→                        <Button
+   728→                          type="button"
+   729→                          variant="outline"
+   730→                          size="sm"
+   731→                          className="h-9 gap-2"
+   732→                          onClick={() => {
+   733→                            setFooter({ ...footer, columns: [...footer.columns, { title: "", links: [] }] });
+   734→                            touch("footer");
+   735→                          }}
+   736→                        >
+   737→                          <Plus className="size-4" aria-hidden="true" />
+   738→                          Add column
+   739→                        </Button>
+   740→                      </div>
+   741→                    </CardContent>
+   742→                  </Card>
+   743→
+   744→                  {/* live footer preview */}
+   745→                  <Card className="h-fit bg-muted/30">
+   746→                    <CardHeader className="pb-2">
+   747→                      <CardTitle className="text-sm">Live preview</CardTitle>
+   748→                      <CardDescription>Rough render of the saved footer</CardDescription>
+   749→                    </CardHeader>
+   750→                    <CardContent className="space-y-4 text-sm">
+   751→                      <div>
+   752→                        <p className="font-semibold">MN.KP</p>
+   753→                        <p className="mt-1 line-clamp-3 text-xs text-muted-foreground">
+   754→                          {footer.tagline || "Tagline goes here..."}
+   755→                        </p>
+   756→                      </div>
+   757→                      <div className="grid grid-cols-2 gap-4">
+   758→                        {footer.columns.map((col, i) => (
+   759→                          <div key={`preview-col-${i}`}>
+   760→                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+   761→                              {col.title || "Untitled"}
+   762→                            </p>
+   763→                            <ul className="mt-1.5 space-y-1">
+   764→                              {col.links.map((l, li) => (
+   765→                                <li key={`preview-link-${li}`} className="truncate text-xs text-foreground/70">
+   766→                                  {l.label || "Link"}
+   767→                                </li>
+   768→                              ))}
+   769→                            </ul>
+   770→                          </div>
+   771→                        ))}
+   772→                      </div>
+   773→                      {footer.socialsEnabled ? (
+   774→                        <p className="text-xs text-muted-foreground">+ social icons row</p>
+   775→                      ) : null}
+   776→                      <Separator />
+   777→                      <p className="text-[11px] text-muted-foreground">
+   778→                        {footer.copyright || "Copyright line"}
+   779→                      </p>
+   780→                    </CardContent>
+   781→                  </Card>
+   782→                </div>
+   783→              ) : null}
+   784→            </TabsContent>
+   785→
+   786→            {/* ------------------------- MEDIA & DECOR ------------------------- */}
+   787→            <TabsContent value="media" className="space-y-4">
+   788→              <div className="flex items-center justify-between">
+   789→                <h2 className="text-base font-semibold">Media &amp; decor</h2>
+   790→                <div className="flex items-center gap-2">
+   791→                  {dirtyChip("media")}
+   792→                  <SaveButton tab="media" build={buildMediaValue} />
+   793→                </div>
+   794→              </div>
+   795→              {media ? (
+   796→                <div className="grid gap-4 lg:grid-cols-2">
+   797→                  {/* hero marquee */}
+   798→                  <Card>
+   799→                    <CardHeader className="pb-3">
+   800→                      <div className="flex items-center justify-between">
+   801→                        <CardTitle className="text-base">Hero marquee</CardTitle>
+   802→                        <Switch
+   803→                          checked={media.heroEnabled}
+   804→                          onCheckedChange={(v) => { setMedia({ ...media, heroEnabled: v }); touch("media"); }}
+   805→                          aria-label="Toggle hero marquee"
+   806→                        />
+   807→                      </div>
+   808→                      <CardDescription>Image strip on the home hero</CardDescription>
+   809→                    </CardHeader>
+   810→                    <CardContent className="space-y-3">
+   811→                      {media.heroImages.map((img, i) => (
+   812→                        <div key={`hero-${i}`} className="flex items-center gap-2">
+   813→                          <img src={img} alt="" loading="lazy" decoding="async" className="size-10 shrink-0 rounded-md border object-cover" />
+   814→                          <Input
+   815→                            value={img}
+   816→                            onChange={(e) => {
+   817→                              const next = [...media.heroImages];
+   818→                              next[i] = e.target.value;
+   819→                              setMedia({ ...media, heroImages: next });
+   820→                              touch("media");
+   821→                            }}
+   822→                            aria-label={`Marquee image ${i + 1}`}
+   823→                            className="flex-1 font-mono text-xs"
+   824→                          />
+   825→                          <div className="flex shrink-0 gap-1">
+   826→                            <Button
+   827→                              type="button"
+   828→                              variant="outline"
+   829→                              size="icon"
+   830→                              className="size-9"
+   831→                              disabled={i === 0}
+   832→                              onClick={() => {
+   833→                                const next = [...media.heroImages];
+   834→                                [next[i - 1], next[i]] = [next[i], next[i - 1]];
+   835→                                setMedia({ ...media, heroImages: next });
+   836→                                touch("media");
+   837→                              }}
+   838→                              aria-label={`Move image ${i + 1} up`}
+   839→                            >
+   840→                              <ArrowUp className="size-4" aria-hidden="true" />
+   841→                            </Button>
+   842→                            <Button
+   843→                              type="button"
+   844→                              variant="outline"
+   845→                              size="icon"
+   846→                              className="size-9"
+   847→                              disabled={i === media.heroImages.length - 1}
+   848→                              onClick={() => {
+   849→                                const next = [...media.heroImages];
+   850→                                [next[i + 1], next[i]] = [next[i], next[i + 1]];
+   851→                                setMedia({ ...media, heroImages: next });
+   852→                                touch("media");
+   853→                              }}
+   854→                              aria-label={`Move image ${i + 1} down`}
+   855→                            >
+   856→                              <ArrowDown className="size-4" aria-hidden="true" />
+   857→                            </Button>
+   858→                            <Button
+   859→                              type="button"
+   860→                              variant="ghost"
+   861→                              size="icon"
+   862→                              className="size-9 text-muted-foreground hover:text-destructive"
+   863→                              onClick={() => {
+   864→                                setMedia({ ...media, heroImages: media.heroImages.filter((_, idx) => idx !== i) });
+   865→                                touch("media");
+   866→                              }}
+   867→                              aria-label={`Remove image ${i + 1}`}
+   868→                            >
+   869→                              <X className="size-4" aria-hidden="true" />
+   870→                            </Button>
+   871→                          </div>
+   872→                        </div>
+   873→                      ))}
+   874→                      <div className="flex gap-2">
+   875→                        <Input
+   876→                          value={newImage}
+   877→                          onChange={(e) => setNewImage(e.target.value)}
+   878→                          placeholder="/images/blog/... (add image URL)"
+   879→                          aria-label="New marquee image URL"
+   880→                          className="h-10"
+   881→                        />
+   882→                        <Button
+   883→                          type="button"
+   884→                          variant="outline"
+   885→                          className="h-10"
+   886→                          onClick={() => {
+   887→                            const url = newImage.trim();
+   888→                            if (!url || media.heroImages.includes(url)) return;
+   889→                            setMedia({ ...media, heroImages: [...media.heroImages, url] });
+   890→                            setNewImage("");
+   891→                            touch("media");
+   892→                          }}
+   893→                        >
+   894→                          Add
+   895→                        </Button>
+   896→                      </div>
+   897→                    </CardContent>
+   898→                  </Card>
+   899→
+   900→                  {/* stickers */}
+   901→                  <Card className="border-gold/40">
+   902→                    <CardHeader className="pb-3">
+   903→                      <div className="flex items-center justify-between">
+   904→                        <CardTitle className="flex items-center gap-2 text-base">
+   905→                          <Sparkles className="size-4 text-gold" aria-hidden="true" />
+   906→                          Corner stickers
+   907→                        </CardTitle>
+   908→                        <Switch
+   909→                          checked={media.stickersEnabled}
+   910→                          onCheckedChange={(v) => { setMedia({ ...media, stickersEnabled: v }); touch("media"); }}
+   911→                          aria-label="Toggle corner stickers"
+   912→                        />
+   913→                      </div>
+   914→                      <CardDescription>
+   915→                        Floating decor on every page — emoji characters or image/GIF URLs
+   916→                      </CardDescription>
+   917→                    </CardHeader>
+   918→                    <CardContent className="space-y-3">
+   919→                      {media.stickerItems.map((st, i) => (
+   920→                        <div key={`sticker-${i}`} className="flex flex-wrap items-center gap-2 rounded-lg border p-2">
+   921→                          <span className="flex size-10 items-center justify-center rounded-md bg-muted text-2xl leading-none">
+   922→                            {st.value.startsWith("http") || st.value.startsWith("/") ? (
+   923→                              <img src={st.value} alt="" className="h-8 w-auto" />
+   924→                            ) : (
+   925→                              st.value || "?"
+   926→                            )}
+   927→                          </span>
+   928→                          <Input
+   929→                            value={st.value}
+   930→                            onChange={(e) => {
+   931→                              const next = [...media.stickerItems];
+   932→                              next[i] = { ...st, value: e.target.value, type: e.target.value.startsWith("http") || e.target.value.startsWith("/") ? "image" : "emoji" };
+   933→                              setMedia({ ...media, stickerItems: next });
+   934→                              touch("media");
+   935→                            }}
+   936→                            placeholder="Emoji or image URL"
+   937→                            aria-label={`Sticker ${i + 1} value`}
+   938→                            className="h-9 min-w-0 flex-1 font-mono text-xs"
+   939→                          />
+   940→                          <Select
+   941→                            value={st.corner}
+   942→                            onValueChange={(v) => {
+   943→                              const next = [...media.stickerItems];
+   944→                              next[i] = { ...st, corner: v };
+   945→                              setMedia({ ...media, stickerItems: next });
+   946→                              touch("media");
+   947→                            }}
+   948→                          >
+   949→                            <SelectTrigger className="h-9 w-[90px] text-xs" aria-label={`Sticker ${i + 1} corner`}>
+   950→                              <SelectValue />
+   951→                            </SelectTrigger>
+   952→                            <SelectContent>
+   953→                              <SelectItem value="tl">top-left</SelectItem>
+   954→                              <SelectItem value="tr">top-right</SelectItem>
+   955→                              <SelectItem value="bl">bottom-left</SelectItem>
+   956→                              <SelectItem value="br">bottom-right</SelectItem>
+   957→                            </SelectContent>
+   958→                          </Select>
+   959→                          <Button
+   960→                            type="button"
+   961→                            variant="ghost"
+   962→                            size="icon"
+   963→                            className="size-9 shrink-0 text-muted-foreground hover:text-destructive"
+   964→                            onClick={() => {
+   965→                              setMedia({ ...media, stickerItems: media.stickerItems.filter((_, idx) => idx !== i) });
+   966→                              touch("media");
+   967→                            }}
+   968→                            aria-label={`Remove sticker ${i + 1}`}
+   969→                          >
+   970→                            <X className="size-4" aria-hidden="true" />
+   971→                          </Button>
+   972→                        </div>
+   973→                      ))}
+   974→                      <div className="flex flex-wrap items-center gap-1.5">
+   975→                        <span className="mr-1 text-xs text-muted-foreground">Quick emoji:</span>
+   976→                        {STICKER_PALETTE.map((emoji) => (
+   977→                          <button
+   978→                            key={emoji}
+   979→                            type="button"
+   980→                            onClick={() => {
+   981→                              setMedia({ ...media, stickerItems: [...media.stickerItems, { type: "emoji", value: emoji, corner: "br" }] });
+   982→                              touch("media");
+   983→                            }}
+   984→                            aria-label={`Add ${emoji} sticker`}
+   985→                            className="flex size-9 items-center justify-center rounded-md border bg-muted/50 text-xl transition-transform hover:scale-110"
+   986→                          >
+   987→                            {emoji}
+   988→                          </button>
+   989→                        ))}
+   990→                      </div>
+   991→                      <Button
+   992→                        type="button"
+   993→                        variant="outline"
+   994→                        size="sm"
+   995→                        className="h-9 gap-2"
+   996→                        onClick={() => {
+   997→                          setMedia({ ...media, stickerItems: [...media.stickerItems, { type: "emoji", value: "", corner: "br" }] });
+   998→                          touch("media");
+   999→                        }}
+  1000→                      >
+  1001→                        <Plus className="size-4" aria-hidden="true" />
+  1002→                        Add sticker
+  1003→                      </Button>
+  1004→                      <p className="text-xs text-muted-foreground">
+  1005→                        Corners sit clear of the header and mobile tab bar; staff see them on the live site too.
+  1006→                      </p>
+  1007→                    </CardContent>
+  1008→                  </Card>
+  1009→
+  1010→                  {/* blog gifs */}
+  1011→                  <Card className="lg:col-span-2">
+  1012→                    <CardHeader className="pb-3">
+  1013→                      <div className="flex items-center justify-between">
+  1014→                        <CardTitle className="text-base">Blog GIFs</CardTitle>
+  1015→                        <Switch
+  1016→                          checked={media.gifsEnabled}
+  1017→                          onCheckedChange={(v) => { setMedia({ ...media, gifsEnabled: v }); touch("media"); }}
+  1018→                          aria-label="Toggle blog gifs"
+  1019→                        />
+  1020→                      </div>
+  1021→                      <CardDescription>Animated accents dropped into blog articles</CardDescription>
+  1022→                    </CardHeader>
+  1023→                    <CardContent className="space-y-3">
+  1024→                      {media.gifs.map((gif, i) => (
+  1025→                        <div key={`gif-${i}`} className="flex items-center gap-2">
+  1026→                          <img src={gif} alt="" loading="lazy" decoding="async" className="h-10 w-auto shrink-0 rounded-md border" />
+  1027→                          <Input
+  1028→                            value={gif}
+  1029→                            onChange={(e) => {
+  1030→                              const next = [...media.gifs];
+  1031→                              next[i] = e.target.value;
+  1032→                              setMedia({ ...media, gifs: next });
+  1033→                              touch("media");
+  1034→                            }}
+  1035→                            aria-label={`GIF ${i + 1} URL`}
+  1036→                            className="flex-1 font-mono text-xs"
+  1037→                          />
+  1038→                          <Button
+  1039→                            type="button"
+  1040→                            variant="ghost"
+  1041→                            size="icon"
+  1042→                            className="size-9 shrink-0 text-muted-foreground hover:text-destructive"
+  1043→                            onClick={() => {
+  1044→                              setMedia({ ...media, gifs: media.gifs.filter((_, idx) => idx !== i) });
+  1045→                              touch("media");
+  1046→                            }}
+  1047→                            aria-label={`Remove GIF ${i + 1}`}
+  1048→                          >
+  1049→                            <X className="size-4" aria-hidden="true" />
+  1050→                          </Button>
+  1051→                        </div>
+  1052→                      ))}
+  1053→                      <div className="flex gap-2">
+  1054→                        <Input
+  1055→                          value={newGif}
+  1056→                          onChange={(e) => setNewGif(e.target.value)}
+  1057→                          placeholder="https://...gif (add GIF URL)"
+  1058→                          aria-label="New GIF URL"
+  1059→                          className="h-10"
+  1060→                        />
+  1061→                        <Button
+  1062→                          type="button"
+  1063→                          variant="outline"
+  1064→                          className="h-10"
+  1065→                          onClick={() => {
+  1066→                            const url = newGif.trim();
+  1067→                            if (!url || media.gifs.includes(url)) return;
+  1068→                            setMedia({ ...media, gifs: [...media.gifs, url] });
+  1069→                            setNewGif("");
+  1070→                            touch("media");
+  1071→                          }}
+  1072→                        >
+  1073→                          Add
+  1074→                        </Button>
+  1075→                      </div>
+  1076→                    </CardContent>
+  1077→                  </Card>
+  1078→                </div>
+  1079→              ) : null}
+  1080→            </TabsContent>
+  1081→
+  1082→            {/* ------------------------- ADS ------------------------- */}
+  1083→            <TabsContent value="ads" className="space-y-4">
+  1084→              <div className="flex items-center justify-between">
+  1085→                <h2 className="text-base font-semibold">Affiliate ads</h2>
+  1086→                <div className="flex items-center gap-2">
+  1087→                  {dirtyChip("ads")}
+  1088→                  <SaveButton tab="ads" build={buildAdsValue} />
+  1089→                </div>
+  1090→              </div>
+  1091→              {ads ? (
+  1092→                <Card>
+  1093→                  <CardContent className="space-y-5 pt-6">
+  1094→                    <div className="flex items-center justify-between rounded-lg border p-3">
+  1095→                      <div>
+  1096→                        <p className="text-sm font-medium">Sponsored ad slots</p>
+  1097→                        <p className="text-xs text-muted-foreground">
+  1098→                          Featured products rotate through enabled placements (gold dashed cards)
+  1099→                        </p>
+  1100→                      </div>
+  1101→                      <Switch
+  1102→                        checked={ads.enabled}
+  1103→                        onCheckedChange={(v) => { setAds({ ...ads, enabled: v }); touch("ads"); }}
+  1104→                        aria-label="Toggle affiliate ads"
+  1105→                      />
+  1106→                    </div>
+  1107→                    <div className="grid gap-3 sm:grid-cols-2">
+  1108→                      {AD_PLACEMENTS.map((p) => (
+  1109→                        <label
+  1110→                          key={p.value}
+  1111→                          className={cn(
+  1112→                            "flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50",
+  1113→                            ads.placements.includes(p.value) && "border-gold/40 bg-gold/[0.04]"
+  1114→                          )}
+  1115→                        >
+  1116→                          <Checkbox
+  1117→                            checked={ads.placements.includes(p.value)}
+  1118→                            onCheckedChange={(checked) => {
+  1119→                              setAds({
+  1120→                                ...ads,
+  1121→                                placements: checked
+  1122→                                  ? [...ads.placements, p.value]
+  1123→                                  : ads.placements.filter((x) => x !== p.value),
+  1124→                              });
+  1125→                              touch("ads");
+  1126→                            }}
+  1127→                            aria-label={`Enable ${p.label} placement`}
+  1128→                          />
+  1129→                          {p.label}
+  1130→                        </label>
+  1131→                      ))}
+  1132→                    </div>
+  1133→                    <p className="text-xs text-muted-foreground">
+  1134→                      At least one placement stays enabled — the resolver falls back to all four when the list is empty.
+  1135→                    </p>
+  1136→                  </CardContent>
+  1137→                </Card>
+  1138→              ) : null}
+  1139→            </TabsContent>
+  1140→
+  1141→            {/* ------------------------- FEATURES ------------------------- */}
+  1142→            <TabsContent value="features" className="space-y-4">
+  1143→              <div className="flex items-center justify-between">
+  1144→                <h2 className="text-base font-semibold">Features</h2>
+  1145→                <div className="flex items-center gap-2">
+  1146→                  {dirtyChip("features")}
+  1147→                  <SaveButton tab="features" build={buildFeaturesValue} />
+  1148→                </div>
+  1149→              </div>
+  1150→              {features ? (
+  1151→                <Card>
+  1152→                  <CardHeader className="pb-3">
+  1153→                    <CardTitle className="text-base">Feature switches</CardTitle>
+  1154→                    <CardDescription>Switch any part of the site on or off.</CardDescription>
+  1155→                  </CardHeader>
+  1156→                  <CardContent className="divide-y">
+  1157→                    {FEATURE_ROWS.map((row) => (
+  1158→                      <div
+  1159→                        key={row.key}
+  1160→                        className="flex min-h-11 items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+  1161→                      >
+  1162→                        <div className="min-w-0">
+  1163→                          <p className="text-sm font-medium">{row.label}</p>
+  1164→                          <p className="text-xs text-muted-foreground">{row.hint}</p>
+  1165→                        </div>
+  1166→                        <Switch
+  1167→                          checked={features[row.key]}
+  1168→                          onCheckedChange={(v) => {
+  1169→                            setFeatures({ ...features, [row.key]: v });
+  1170→                            touch("features");
+  1171→                          }}
+  1172→                          aria-label={`Toggle ${row.label}`}
+  1173→                        />
+  1174→                      </div>
+  1175→                    ))}
+  1176→                  </CardContent>
+  1177→                </Card>
+  1178→              ) : null}
+  1179→            </TabsContent>
+  1180→
+  1181→            {/* ------------------------- SEO ------------------------- */}
+  1182→            <TabsContent value="seo" className="space-y-4">
+  1183→              <div className="flex items-center justify-between">
+  1184→                <h2 className="text-base font-semibold">SEO defaults</h2>
+  1185→                <div className="flex items-center gap-2">
+  1186→                  {dirtyChip("seo")}
+  1187→                  <SaveButton tab="seo" build={buildSeoValue} />
+  1188→                </div>
+  1189→              </div>
+  1190→              {seo ? (
+  1191→                <Card>
+  1192→                  <CardContent className="grid gap-5 pt-6 md:grid-cols-2">
+  1193→                    <div className="space-y-2">
+  1194→                      <Label htmlFor="s-suffix">Title suffix</Label>
+  1195→                      <Input
+  1196→                        id="s-suffix"
+  1197→                        value={seo.titleSuffix}
+  1198→                        onChange={(e) => { setSeo({ ...seo, titleSuffix: e.target.value }); touch("seo"); }}
+  1199→                        placeholder=" | MN.KP"
+  1200→                      />
+  1201→                      <p className="text-xs text-muted-foreground">Appended to every page title</p>
+  1202→                    </div>
+  1203→                    <div className="space-y-2">
+  1204→                      <Label htmlFor="s-desc">Default description ({seo.defaultDescription.length}/180)</Label>
+  1205→                      <Textarea
+  1206→                        id="s-desc"
+  1207→                        value={seo.defaultDescription}
+  1208→                        rows={3}
+  1209→                        maxLength={180}
+  1210→                        onChange={(e) => { setSeo({ ...seo, defaultDescription: e.target.value }); touch("seo"); }}
+  1211→                        placeholder="Portfolio, blog and affiliate store of Mohammed Nihad KP..."
+  1212→                      />
+  1213→                    </div>
+  1214→
+  1215→                    <div className="space-y-2 md:col-span-2">
+  1216→                      <Label htmlFor="s-keyword">Keywords</Label>
+  1217→                      <div className="flex gap-2">
+  1218→                        <Input
+  1219→                          id="s-keyword"
+  1220→                          value={newKeyword}
+  1221→                          onChange={(e) => setNewKeyword(e.target.value)}
+  1222→                          onKeyDown={(e) => {
+  1223→                            if (e.key === "Enter" || e.key === ",") {
+  1224→                              e.preventDefault();
+  1225→                              addKeyword();
+  1226→                            }
+  1227→                          }}
+  1228→                          placeholder="Type a keyword, press Enter (max 16)"
+  1229→                          aria-label="Add keyword"
+  1230→                          className="h-10"
+  1231→                        />
+  1232→                        <Button type="button" variant="outline" className="h-10" onClick={addKeyword}>
+  1233→                          Add
+  1234→                        </Button>
+  1235→                      </div>
+  1236→                      {seo.keywords.length > 0 ? (
+  1237→                        <div className="mt-1 flex flex-wrap gap-2">
+  1238→                          {seo.keywords.map((kw) => (
+  1239→                            <Badge key={kw} variant="secondary" className="gap-1 pr-1.5">
+  1240→                              {kw}
+  1241→                              <button
+  1242→                                type="button"
+  1243→                                onClick={() => {
+  1244→                                  setSeo({ ...seo, keywords: seo.keywords.filter((k) => k !== kw) });
+  1245→                                  touch("seo");
+  1246→                                }}
+  1247→                                aria-label={`Remove keyword ${kw}`}
+  1248→                                className="flex size-5 items-center justify-center rounded-full hover:bg-muted"
+  1249→                              >
+  1250→                                <X className="size-3" aria-hidden="true" />
+  1251→                              </button>
+  1252→                            </Badge>
+  1253→                          ))}
+  1254→                        </div>
+  1255→                      ) : (
+  1256→                        <p className="mt-1 text-xs text-muted-foreground">
+  1257→                          No keywords yet — they feed the default meta keywords tag.
+  1258→                        </p>
+  1259→                      )}
+  1260→                    </div>
+  1261→
+  1262→                    <div className="space-y-2">
+  1263→                      <Label htmlFor="s-google">Google verification</Label>
+  1264→                      <Input
+  1265→                        id="s-google"
+  1266→                        value={seo.googleVerification}
+  1267→                        onChange={(e) => { setSeo({ ...seo, googleVerification: e.target.value }); touch("seo"); }}
+  1268→                        placeholder="google-site-verification token"
+  1269→                        className="font-mono text-xs"
+  1270→                      />
+  1271→                      <p className="text-xs text-muted-foreground">
+  1272→                        Search console verification token — leave empty if unused
+  1273→                      </p>
+  1274→                    </div>
+  1275→                    <div className="space-y-2">
+  1276→                      <Label htmlFor="s-bing">Bing verification</Label>
+  1277→                      <Input
+  1278→                        id="s-bing"
+  1279→                        value={seo.bingVerification}
+  1280→                        onChange={(e) => { setSeo({ ...seo, bingVerification: e.target.value }); touch("seo"); }}
+  1281→                        placeholder="msvalidate.01 token"
+  1282→                        className="font-mono text-xs"
+  1283→                      />
+  1284→                      <p className="text-xs text-muted-foreground">
+  1285→                        Search console verification token — leave empty if unused
+  1286→                      </p>
+  1287→                    </div>
+  1288→                  </CardContent>
+  1289→                </Card>
+  1290→              ) : null}
+  1291→            </TabsContent>
+  1292→
+  1293→            {/* ------------------------- MAINTENANCE ------------------------- */}
+  1294→            <TabsContent value="maintenance" className="space-y-4">
+  1295→              <div className="flex items-center justify-between">
+  1296→                <h2 className="text-base font-semibold">Maintenance mode</h2>
+  1297→                <div className="flex items-center gap-2">
+  1298→                  {dirtyChip("maintenance")}
+  1299→                  <SaveButton tab="maintenance" build={buildMaintenanceValue} />
+  1300→                </div>
+  1301→              </div>
+  1302→              {maintenance ? (
+  1303→                <div className="grid gap-4 lg:grid-cols-2">
+  1304→                  <Card className={maintenance.enabled ? "border-amber-500/50" : undefined}>
+  1305→                    <CardContent className="space-y-5 pt-6">
+  1306→                      <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/[0.06] p-3">
+  1307→                        <div>
+  1308→                          <p className="flex items-center gap-2 text-sm font-medium">
+  1309→                            <Wrench className="size-4 text-amber-500" aria-hidden="true" />
+  1310→                            Maintenance mode
+  1311→                          </p>
+  1312→                          <p className="text-xs text-muted-foreground">
+  1313→                            Guests see the maintenance page; staff bypass with a gold banner
+  1314→                          </p>
+  1315→                        </div>
+  1316→                        <Switch
+  1317→                          checked={maintenance.enabled}
+  1318→                          onCheckedChange={(v) => {
+  1319→                            if (v) setMaintenanceConfirm(true);
+  1320→                            else {
+  1321→                              setMaintenance({ ...maintenance, enabled: false });
+  1322→                              touch("maintenance");
+  1323→                            }
+  1324→                          }}
+  1325→                          aria-label="Toggle maintenance mode"
+  1326→                        />
+  1327→                      </div>
+  1328→                      <div className="space-y-2">
+  1329→                        <Label htmlFor="m-message">Message</Label>
+  1330→                        <Textarea
+  1331→                          id="m-message"
+  1332→                          value={maintenance.message}
+  1333→                          rows={3}
+  1334→                          onChange={(e) => { setMaintenance({ ...maintenance, message: e.target.value }); touch("maintenance"); }}
+  1335→                          placeholder="We are performing scheduled maintenance. Back shortly."
+  1336→                        />
+  1337→                      </div>
+  1338→                      <div className="space-y-2">
+  1339→                        <Label htmlFor="m-end">Estimated end (shown as a chip)</Label>
+  1340→                        <Input
+  1341→                          id="m-end"
+  1342→                          value={maintenance.estimatedEnd}
+  1343→                          onChange={(e) => { setMaintenance({ ...maintenance, estimatedEnd: e.target.value }); touch("maintenance"); }}
+  1344→                          placeholder="e.g. 11:30 PM IST tonight"
+  1345→                        />
+  1346→                      </div>
+  1347→                      <p className="flex items-start gap-2 rounded-lg border border-gold/30 bg-gold/[0.04] p-3 text-xs text-muted-foreground">
+  1348→                        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-gold" aria-hidden="true" />
+  1349→                        Staff bypass: signed-in editors and admins keep full access while maintenance is on —
+  1350→                        you can browse and test safely before flipping it off.
+  1351→                      </p>
+  1352→                    </CardContent>
+  1353→                  </Card>
+  1354→
+  1355→                  {/* preview */}
+  1356→                  <Card className="h-fit bg-muted/30">
+  1357→                    <CardHeader className="pb-2">
+  1358→                      <CardTitle className="text-sm">Guest preview</CardTitle>
+  1359→                      <CardDescription>What visitors will see</CardDescription>
+  1360→                    </CardHeader>
+  1361→                    <CardContent>
+  1362→                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.05] p-6 text-center">
+  1363→                        <span className="mx-auto flex size-12 items-center justify-center rounded-full border border-amber-500/40 bg-amber-500/10">
+  1364→                          <Wrench className="size-6 text-amber-500" aria-hidden="true" />
+  1365→                        </span>
+  1366→                        <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-600 dark:text-amber-400">
+  1367→                          MAINTENANCE
+  1368→                        </p>
+  1369→                        <p className="mt-2 text-lg font-semibold">MN.KP is being polished</p>
+  1370→                        <p className="mt-1 text-sm text-muted-foreground">
+  1371→                          {maintenance.message || "We are performing scheduled maintenance. Back shortly."}
+  1372→                        </p>
+  1373→                        {maintenance.estimatedEnd ? (
+  1374→                          <p className="mt-3 inline-block rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-medium text-gold">
+  1375→                            Estimated back by {maintenance.estimatedEnd}
+  1376→                          </p>
+  1377→                        ) : null}
+  1378→                      </div>
+  1379→                    </CardContent>
+  1380→                  </Card>
+  1381→                </div>
+  1382→              ) : null}
+  1383→            </TabsContent>
+  1384→
+  1385→            {/* ------------------------- SYSTEM ------------------------- */}
+  1386→            <TabsContent value="system" className="space-y-4">
+  1387→              <h2 className="text-base font-semibold">System</h2>
+  1388→              <div className="grid gap-4 md:grid-cols-2">
+  1389→                <Card>
+  1390→                  <CardHeader className="pb-3">
+  1391→                    <CardTitle className="flex items-center gap-2 text-base">
+  1392→                      <Activity className="size-4 text-primary" aria-hidden="true" />
+  1393→                      Service health
+  1394→                    </CardTitle>
+  1395→                    <CardDescription>GET /api/health · refreshes 30s</CardDescription>
+  1396→                  </CardHeader>
+  1397→                  <CardContent className="space-y-2 text-sm">
+  1398→                    <p className="flex items-center gap-2">
+  1399→                      <span className="flex size-2 rounded-full bg-primary" aria-hidden="true" />
+  1400→                      API responding
+  1401→                      {healthQuery.isPending ? " (checking...)" : ""}
+  1402→                    </p>
+  1403→                    <p className="text-muted-foreground">
+  1404→                      Uptime: {healthQuery.data ? formatUptime(healthQuery.data.uptime ?? 0) : "—"}
+  1405→                    </p>
+  1406→                    <p className="text-muted-foreground">
+  1407→                      Server time: {healthQuery.data?.time ? new Date(healthQuery.data.time).toLocaleString() : "—"}
+  1408→                    </p>
+  1409→                    <Separator className="my-3" />
+  1410→                    <p className="text-xs text-muted-foreground">
+  1411→                      Sandbox: Next.js dev server + Prisma SQLite (db/custom.db). Production target: Neon/Supabase
+  1412→                      Postgres + Supabase Auth/Realtime.
+  1413→                    </p>
+  1414→                  </CardContent>
+  1415→                </Card>
+  1416→
+  1417→                <Card>
+  1418→                  <CardHeader className="pb-3">
+  1419→                    <CardTitle className="text-base">Content counts</CardTitle>
+  1420→                    <CardDescription>GET /api/stats snapshot</CardDescription>
+  1421→                  </CardHeader>
+  1422→                  <CardContent>
+  1423→                    {statsQuery.data ? (
+  1424→                      <dl className="grid grid-cols-2 gap-3 text-sm">
+  1425→                        <div>
+  1426→                          <dt className="text-xs text-muted-foreground">Users</dt>
+  1427→                          <dd className="font-semibold tabular-nums">{statsQuery.data.kpis.totalUsers}</dd>
+  1428→                        </div>
+  1429→                        <div>
+  1430→                          <dt className="text-xs text-muted-foreground">Posts</dt>
+  1431→                          <dd className="font-semibold tabular-nums">{statsQuery.data.kpis.totalPosts}</dd>
+  1432→                        </div>
+  1433→                        <div>
+  1434→                          <dt className="text-xs text-muted-foreground">Products</dt>
+  1435→                          <dd className="font-semibold tabular-nums">{statsQuery.data.kpis.totalProducts}</dd>
+  1436→                        </div>
+  1437→                        <div>
+  1438→                          <dt className="text-xs text-muted-foreground">Inquiries</dt>
+  1439→                          <dd className="font-semibold tabular-nums">{statsQuery.data.kpis.totalInquiries}</dd>
+  1440→                        </div>
+  1441→                        <div>
+  1442→                          <dt className="text-xs text-muted-foreground">Subscribers</dt>
+  1443→                          <dd className="font-semibold tabular-nums">{statsQuery.data.kpis.subscribers}</dd>
+  1444→                        </div>
+  1445→                        <div>
+  1446→                          <dt className="text-xs text-muted-foreground">Confirmed</dt>
+  1447→                          <dd className="font-semibold tabular-nums">{statsQuery.data.kpis.confirmedSubscribers}</dd>
+  1448→                        </div>
+  1449→                      </dl>
+  1450→                    ) : (
+  1451→                      <p className="text-sm text-muted-foreground">Loading stats...</p>
+  1452→                    )}
+  1453→                  </CardContent>
+  1454→                </Card>
+  1455→              </div>
+  1456→            </TabsContent>
+  1457→          </Tabs>
+  1458→        )}
+  1459→      </DataState>
+  1460→
+  1461→      {/* maintenance-enable confirm */}
+  1462→      <AlertDialog open={maintenanceConfirm} onOpenChange={setMaintenanceConfirm}>
+  1463→        <AlertDialogContent>
+  1464→          <AlertDialogHeader>
+  1465→            <AlertDialogTitle>Turn maintenance mode ON?</AlertDialogTitle>
+  1466→            <AlertDialogDescription>
+  1467→              The public site will show the maintenance page for all guests until you switch it back
+  1468→              off. You (staff) keep full access with a gold banner. Remember to press Save on the
+  1469→              Maintenance tab to apply.
+  1470→            </AlertDialogDescription>
+  1471→          </AlertDialogHeader>
+  1472→          <AlertDialogFooter>
+  1473→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+  1474→            <AlertDialogAction
+  1475→              onClick={() => {
+  1476→                if (maintenance) {
+  1477→                  setMaintenance({ ...maintenance, enabled: true });
+  1478→                  touch("maintenance");
+  1479→                }
+  1480→              }}
+  1481→            >
+  1482→              <Check className="mr-1 size-4" aria-hidden="true" />
+  1483→              Yes, enable
+  1484→            </AlertDialogAction>
+  1485→          </AlertDialogFooter>
+  1486→        </AlertDialogContent>
+  1487→      </AlertDialog>
+  1488→    </AdminShell>
+  1489→  );
+  1490→}
+  1491→
