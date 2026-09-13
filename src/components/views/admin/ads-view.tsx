@@ -51,6 +51,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DataState, ForbiddenState, LoadingState } from "@/components/states";
 import { EmptyState } from "@/components/states/empty";
 import { SEOHead } from "@/components/shared/seo-head";
+import { SingleImageField } from "@/components/shared/image-uploader";
 import { toast } from "@/hooks/use-toast";
 import { AD_PLACEMENTS } from "@/lib/validation";
 import { cn } from "@/lib/utils";
@@ -652,18 +653,18 @@ export default function AdsView() {
 
             {/* type-conditional fields */}
             {form.type === "image" || form.type === "gif" || form.type === "sticker" ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="ad-image">Image URL</Label>
-                  <Input
-                    id="ad-image"
+              <div className="grid items-start gap-4 sm:grid-cols-2">
+                <div className="min-w-0 space-y-2">
+                  <Label>Ad image</Label>
+                  <SingleImageField
                     value={form.imageUrl}
-                    onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                    placeholder="https://... or /images/ads/banner.png"
-                    className="font-mono text-xs"
+                    onChange={(url) => setForm({ ...form, imageUrl: url })}
+                    label="Ad image"
+                    aspect="aspect-video"
+                    recommended="wide banner or square sticker — auto-converted to WebP"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                   <Label htmlFor="ad-alt">Image alt text</Label>
                   <Input
                     id="ad-alt"

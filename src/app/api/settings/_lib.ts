@@ -9,6 +9,7 @@ import type {
   JsonRecord,
   LocalizationSettings,
   MaintenanceSettings,
+  MarqueeImage,
   MarqueeMessage,
   MarqueeSpeed,
   MediaSettings,
@@ -91,14 +92,14 @@ export function defaultMedia(): MediaSettings {
     heroMarquee: {
       enabled: true,
       images: [
-        "/images/brand/og-cover.png",
-        "/images/blog/blog-ai-workflow.png",
-        "/images/store/prod-creator-camera.png",
-        "/images/blog/blog-ai-tools.png",
-        "/images/store/prod-headphones.png",
-        "/images/blog/blog-kp-foundation.png",
-        "/images/store/prod-keyboard.png",
-        "/images/brand/portrait.png",
+        { src: "/images/brand/og-cover.webp", href: "#/about" },
+        { src: "/images/blog/blog-ai-workflow.webp", href: "#/blog" },
+        { src: "/images/store/prod-creator-camera.webp", href: "#/store" },
+        { src: "/images/blog/blog-ai-tools.webp", href: "#/blog" },
+        { src: "/images/store/prod-headphones.webp", href: "#/store" },
+        { src: "/images/blog/blog-kp-foundation.webp", href: "#/blog" },
+        { src: "/images/store/prod-keyboard.webp", href: "#/store" },
+        { src: "/images/brand/portrait.webp", href: "#/about" },
       ],
       messages: [
         { text: "AI-powered sites from \u20B94,999", href: "#/services" },
@@ -192,7 +193,7 @@ export function defaultLocalization(): LocalizationSettings {
 
 /**
  * site_settings key "analytics" (Task 11-c) — DEFAULT MODE: privacy-first —
- * tracking stays OFF until the owner opts in; both integration IDs start
+ * tracking stays OFF until the owner opts in; all integration IDs start
  * empty (= nothing loaded); outbound-click tracking is ON so it activates
  * the moment analytics is switched on.
  */
@@ -201,6 +202,7 @@ export function defaultAnalytics(): AnalyticsSettings {
     enabled: false,
     googleAnalyticsId: "",
     plausibleDomain: "",
+    metaPixelId: "",
     trackOutboundClicks: true,
   };
 }
@@ -236,6 +238,37 @@ function pick<T extends string>(v: unknown, allowed: readonly T[], fallback: T):
 function strArray(v: unknown, fallback: string[]): string[] {
   if (!Array.isArray(v)) return fallback;
   return v.filter((x): x is string => typeof x === "string");
+}
+
+/**
+ * Hero marquee image rows: legacy plain strings + the {src, href} objects the
+ * admin editor persists (Task 13-e fix — the old string-only guard silently
+ * dropped the editor format, emptying the persisted marquee lane).
+ */
+function asMarqueeImages(
+  v: unknown,
+  fallback: ReadonlyArray<string | MarqueeImage>
+): MarqueeImage[] {
+  const normalize = (item: string | MarqueeImage): MarqueeImage =>
+    typeof item === "string" ? { src: item, href: null } : item;
+  if (!Array.isArray(v)) return fallback.map(normalize);
+  const out: MarqueeImage[] = [];
+  for (const item of v) {
+    if (typeof item === "string") {
+      const src = item.trim();
+      if (src) out.push({ src, href: null });
+      continue;
+    }
+    if (typeof item !== "object" || item === null) continue;
+    const m = item as { src?: unknown; href?: unknown };
+    if (typeof m.src !== "string" || !m.src.trim()) continue;
+    const href =
+      typeof m.href === "string" && (m.href.startsWith("#/") || m.href.startsWith("https://"))
+        ? m.href
+        : null;
+    out.push({ src: m.src.trim(), href });
+  }
+  return out.slice(0, 16);
 }
 
 function record(v: unknown, fallback: Record<string, string>): Record<string, string> {
@@ -357,7 +390,7 @@ export function resolveMedia(raw: Record<string, unknown>): MediaSettings {
   return {
     heroMarquee: {
       enabled: bool(hero.enabled, d.heroMarquee.enabled),
-      images: strArray(hero.images, d.heroMarquee.images).slice(0, 16),
+      images: asMarqueeImages(hero.images, d.heroMarquee.images),
       messages: resolveMarqueeMessages(hero.messages, d.heroMarquee.messages),
       speed: pick(hero.speed, MARQUEE_SPEEDS, d.heroMarquee.speed),
     },
@@ -455,6 +488,7 @@ export function resolveAnalytics(raw: Record<string, unknown>): AnalyticsSetting
     enabled: bool(raw.enabled, d.enabled),
     googleAnalyticsId: str(raw.googleAnalyticsId, d.googleAnalyticsId).trim(),
     plausibleDomain: str(raw.plausibleDomain, d.plausibleDomain).trim(),
+    metaPixelId: str(raw.metaPixelId, d.metaPixelId).trim(),
     trackOutboundClicks: bool(raw.trackOutboundClicks, d.trackOutboundClicks),
   };
 }

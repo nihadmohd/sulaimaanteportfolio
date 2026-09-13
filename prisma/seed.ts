@@ -130,7 +130,7 @@ const POSTS: PostSeed[] = [
     title: "Inside My AI-Powered Development Workflow in Calicut",
     excerpt:
       "The exact AI-first workflow I use to take client projects from a WhatsApp message to a deployed product — planning, prompting, reviewing and shipping.",
-    coverImageUrl: "/images/blog/blog-ai-workflow.png",
+    coverImageUrl: "/images/blog/blog-ai-workflow.webp",
     categorySlug: "ai-development",
     tags: ["ai-tools", "workflow", "web-development"],
     readingTimeMinutes: 7,
@@ -148,7 +148,7 @@ Every project that lands in my inbox starts the same way: a WhatsApp message, a 
 
 ## What Does an AI-First Workflow Actually Look Like?
 
-![The AI-first development workspace behind MN.KP projects](/images/blog/blog-ai-workflow.png)
+![The AI-first development workspace behind MN.KP projects](/images/blog/blog-ai-workflow.webp)
 
 An AI-first workflow does not mean typing "build me a website" and shipping whatever comes back. It means treating AI like a brilliant junior developer with infinite stamina and zero memory: exceptional at producing, unreliable at deciding.
 
@@ -212,7 +212,7 @@ Absolutely. I run projects for clients across time zones from Calicut. Async upd
     title: "The Best AI Tools for Rapid Development in 2025",
     excerpt:
       "Every AI tool in my 2025 stack, rated by what it actually does on a real client project — planning, code generation, review, testing and shipping.",
-    coverImageUrl: "/images/blog/blog-ai-tools.png",
+    coverImageUrl: "/images/blog/blog-ai-tools.webp",
     categorySlug: "ai-development",
     tags: ["ai-tools", "reviews", "productivity"],
     readingTimeMinutes: 8,
@@ -230,7 +230,7 @@ The AI tools market is loud. Every week a new assistant promises to replace deve
 
 ## Which AI Coding Assist Actually Writes Production Code?
 
-![The 2025 AI tool stack behind MN.KP builds](/images/blog/blog-ai-tools.png)
+![The 2025 AI tool stack behind MN.KP builds](/images/blog/blog-ai-tools.webp)
 
 The headline question of the year. My answer after twelve months of daily use: the frontier chat models are genuinely production-grade for web work — with caveats.
 
@@ -293,7 +293,7 @@ Small slices, mandatory human review, and manual testing on real devices. If you
     title: "Freelancing From Calicut: Building a Global Business From Kerala",
     excerpt:
       "Running a freelance business from Calicut while serving clients on three continents — the systems, pricing and mindset that make it work.",
-    coverImageUrl: "/images/blog/blog-freelance-calicut.png",
+    coverImageUrl: "/images/blog/blog-freelance-calicut.webp",
     categorySlug: "business",
     tags: ["freelancing", "business", "kerala"],
     readingTimeMinutes: 6,
@@ -313,7 +313,7 @@ This post is about the mechanics of that — because "work hard" is not a strate
 
 ## Why Build a Freelance Business From Calicut?
 
-![Freelancing from Calicut to the world](/images/blog/blog-freelance-calicut.png)
+![Freelancing from Calicut to the world](/images/blog/blog-freelance-calicut.webp)
 
 The honest reasons are cost and leverage. My overhead is a fraction of what it would be in a metro, which means a Kerala freelancer can price competitively for global clients without racing to the bottom. A project that looks small to a European agency is a serious month for a solo operator here — that arbitrage is a moat, not a shame.
 
@@ -363,7 +363,7 @@ Underpricing "to get started" and then being trapped at that rate. Start slightl
     title: "My Photography and AI Editing Stack, Explained",
     excerpt:
       "Portrait and product photography in Calicut, powered by a Lightroom-plus-AI editing pipeline — what I shoot with, and how much of the polish is software.",
-    coverImageUrl: "/images/blog/blog-photo-ai-editing.png",
+    coverImageUrl: "/images/blog/blog-photo-ai-editing.webp",
     categorySlug: "creative-media",
     tags: ["photography", "editing", "ai"],
     readingTimeMinutes: 4,
@@ -383,7 +383,7 @@ The tools have changed dramatically since then. This is the current stack, end t
 
 ## What Is Actually in the Camera Bag?
 
-![The photography and AI editing pipeline](/images/blog/blog-photo-ai-editing.png)
+![The photography and AI editing pipeline](/images/blog/blog-photo-ai-editing.webp)
 
 I keep the kit deliberately small:
 
@@ -437,7 +437,7 @@ Shooting takes one to two hours; delivery within a week, because the AI-assisted
     title: "From Engineering Diploma to AI-First Developer: My Journey",
     excerpt:
       "A Computer Engineering diploma in Kerala, a stubborn refusal to learn the slow way, and the AI-first career that came out of it — lessons included.",
-    coverImageUrl: "/images/blog/blog-career-journey.png",
+    coverImageUrl: "/images/blog/blog-career-journey.webp",
     categorySlug: "career",
     tags: ["career", "learning", "ai"],
     readingTimeMinutes: 6,
@@ -455,7 +455,7 @@ There is a moment every non-traditional developer knows. Someone sees your work,
 
 ## Why Did a Diploma Student Bet on AI?
 
-![The journey from diploma classrooms to AI-first development](/images/blog/blog-career-journey.png)
+![The journey from diploma classrooms to AI-first development](/images/blog/blog-career-journey.webp)
 
 The diploma gave me fundamentals: circuits, C programming, networking, databases. What it did not give me was time. A three-year syllabus moves slower than three months of the software industry, and I could feel the gap widening while I sat in classrooms.
 
@@ -501,7 +501,7 @@ It is going to replace juniors who only paste. Juniors who review, test and unde
     title: "KP Foundation: One Platform for Every Business Vision",
     excerpt:
       "KP Foundation is the parent idea: one platform, three brands, every kind of business born under a single roof — the vision and the first steps.",
-    coverImageUrl: "/images/blog/blog-kp-foundation.png",
+    coverImageUrl: "/images/blog/blog-kp-foundation.webp",
     categorySlug: "business",
     tags: ["kp-foundation", "business", "vision"],
     readingTimeMinutes: 5,
@@ -519,7 +519,7 @@ Most people meet my work through one brand — a website delivered, a photograph
 
 ## What Is KP Foundation?
 
-![The KP Foundation vision — one roof, every business](/images/blog/blog-kp-foundation.png)
+![The KP Foundation vision — one roof, every business](/images/blog/blog-kp-foundation.webp)
 
 Structurally, it is a parent platform with three brands inside it today:
 
@@ -595,7 +595,7 @@ const PRODUCTS: ProductSeed[] = [
     tagline: "The noise-cancelling benchmark for deep work and travel",
     brand: "Sony",
     merchant: "Amazon",
-    imageUrl: "/images/store/prod-headphones.png",
+    imageUrl: "/images/store/prod-headphones.webp",
     price: 29990,
     compareAtPrice: 34990,
     affiliateUrl: "https://www.amazon.in/dp/B09XS7JWHH?tag=mnkp-21",
@@ -641,7 +641,7 @@ The sound signature is warm and relaxed rather than analytical — forgiving on 
     tagline: "A gimbal camera that fits in a pocket and outshoots phones",
     brand: "DJI",
     merchant: "Amazon",
-    imageUrl: "/images/store/prod-creator-camera.png",
+    imageUrl: "/images/store/prod-creator-camera.webp",
     price: 64990,
     compareAtPrice: 69990,
     affiliateUrl: "https://www.amazon.in/dp/B0CJ1ST3CZ?tag=mnkp-21",
@@ -685,7 +685,7 @@ Low light from the one-inch sensor is a full class above any phone I have used; 
     tagline: "The mouse that makes eight-hour build days easier",
     brand: "Logitech",
     merchant: "Amazon",
-    imageUrl: "/images/store/prod-mouse.png",
+    imageUrl: "/images/store/prod-mouse.webp",
     price: 8495,
     compareAtPrice: 9995,
     affiliateUrl: "https://www.amazon.in/dp/B09HM94VDS?tag=mnkp-21",
@@ -727,7 +727,7 @@ Battery runs 70 days on a full charge, and USB-C top-ups make anxiety pointless.
     tagline: "Low-profile mechanical typing for deep-work sessions",
     brand: "Keychron",
     merchant: "Flipkart",
-    imageUrl: "/images/store/prod-keyboard.png",
+    imageUrl: "/images/store/prod-keyboard.webp",
     price: 9499,
     compareAtPrice: null,
     affiliateUrl: "https://www.flipkart.com/keychron-k3-pro-wireless-mechanical-keyboard",
@@ -772,7 +772,7 @@ The aluminum frame adds rigidity that survives a sling bag between client office
     tagline: "24,000 mAh of laptop-grade power for shoot days",
     brand: "Anker",
     merchant: "Amazon",
-    imageUrl: "/images/store/prod-powerbank.png",
+    imageUrl: "/images/store/prod-powerbank.webp",
     price: 12999,
     compareAtPrice: 14999,
     affiliateUrl: "https://www.amazon.in/dp/B09VPHVT2Z?tag=mnkp-21",
@@ -817,7 +817,7 @@ It doubles as a desktop charger: one USB-C port runs a laptop at full speed whil
     tagline: "Rugged, pocketable storage that keeps every shoot safe",
     brand: "Samsung",
     merchant: "Amazon",
-    imageUrl: "/images/store/prod-ssd.png",
+    imageUrl: "/images/store/prod-ssd.webp",
     price: 9799,
     compareAtPrice: 11999,
     affiliateUrl: "https://www.amazon.in/dp/B09X7BK27V?tag=mnkp-21",
@@ -1125,7 +1125,7 @@ async function main() {
       displayName: "Nihad KP",
       headline: "Freelancer · Businessman · AI-First Developer",
       bio: "I build apps, websites and digital solutions — not by writing every line from scratch, but by mastering the AI tools of tomorrow.",
-      avatarUrl: "/images/brand/portrait.png",
+      avatarUrl: "/images/brand/portrait.webp",
       location: "Calicut, Kerala, India",
       websiteUrl: SITE.url,
       socials: JSON.stringify(socials),
@@ -1142,7 +1142,7 @@ async function main() {
       displayName: "Nihad KP",
       headline: "Freelancer · Businessman · AI-First Developer",
       bio: "I build apps, websites and digital solutions — not by writing every line from scratch, but by mastering the AI tools of tomorrow.",
-      avatarUrl: "/images/brand/portrait.png",
+      avatarUrl: "/images/brand/portrait.webp",
       location: "Calicut, Kerala, India",
       websiteUrl: SITE.url,
       socials: JSON.stringify(socials),
@@ -1401,13 +1401,13 @@ async function main() {
     heroMarquee: {
       enabled: true,
       images: [
-        "/images/brand/og-cover.png",
-        "/images/blog/blog-ai-workflow.png",
-        "/images/blog/blog-freelance-calicut.png",
-        "/images/blog/blog-kp-foundation.png",
-        "/images/blog/blog-ai-tools.png",
-        "/images/store/prod-headphones.png",
-        "/images/store/prod-creator-camera.png",
+        "/images/brand/og-cover.webp",
+        "/images/blog/blog-ai-workflow.webp",
+        "/images/blog/blog-freelance-calicut.webp",
+        "/images/blog/blog-kp-foundation.webp",
+        "/images/blog/blog-ai-tools.webp",
+        "/images/store/prod-headphones.webp",
+        "/images/store/prod-creator-camera.webp",
       ],
     },
     stickers: {

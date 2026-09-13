@@ -15,23 +15,26 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ALink } from "@/components/router/link";
 import { useUiStore } from "@/stores/ui-store";
-import { COOKIE_CONSENT_KEY } from "@/lib/constants";
+import { useSettings } from "@/hooks/use-settings";
+import { CONSENT_CHANGE_EVENT, COOKIE_CONSENT_KEY } from "@/lib/constants";
 
 /**
  * CookieConsent — bottom banner (above the mobile tab bar) + preferences dialog.
  * Consent is persisted to localStorage under COOKIE_CONSENT_KEY:
  *   { necessary: true, analytics: boolean, marketing: boolean, decidedAt: number }
  * Slides in 800ms after load only when nothing is stored yet.
+ * Every decision also dispatches CONSENT_CHANGE_EVENT on window so the
+ * analytics loaders (site-analytics.tsx) activate immediately.
  */
 
-interface ConsentValue {
+export interface ConsentValue {
   necessary: true;
   analytics: boolean;
   marketing: boolean;
   decidedAt: number;
 }
 
-function readConsent(): ConsentValue | null {
+export function readConsent(): ConsentValue | null {
   try {
     const raw = window.localStorage.getItem(COOKIE_CONSENT_KEY);
     if (!raw) return null;
@@ -50,15 +53,20 @@ function readConsent(): ConsentValue | null {
 
 export function CookieConsent() {
   const { cookiePrefsOpen, setCookiePrefsOpen } = useUiStore();
+  const settings = useSettings();
   const [visible, setVisible] = React.useState(false);
   const [analytics, setAnalytics] = React.useState(false);
   const [marketing, setMarketing] = React.useState(false);
 
+  /** Banner only exists while the cookie-consent feature is enabled. */
+  const consentSystemOn = settings.data?.features?.cookieConsent !== false;
+
   React.useEffect(() => {
+    if (!consentSystemOn) return;
     if (readConsent()) return;
     const timer = window.setTimeout(() => setVisible(true), 800);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [consentSystemOn]);
 
   const persist = (value: ConsentValue) => {
     try {
@@ -66,6 +74,7 @@ export function CookieConsent() {
     } catch {
       /* storage unavailable — consent stays session-only */
     }
+    window.dispatchEvent(new CustomEvent<ConsentValue>(CONSENT_CHANGE_EVENT, { detail: value }));
     setVisible(false);
     setCookiePrefsOpen(false);
   };
@@ -77,7 +86,7 @@ export function CookieConsent() {
   const savePreferences = () =>
     persist({ necessary: true, analytics, marketing, decidedAt: Date.now() });
 
-  if (!visible && !cookiePrefsOpen) return null;
+  if ((!visible && !cookiePrefsOpen) || !consentSystemOn) return null;
 
   return (
     <>

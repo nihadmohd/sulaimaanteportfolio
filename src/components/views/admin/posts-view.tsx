@@ -178,7 +178,7 @@ export default function PostsView() {
                           {post.coverImageUrl ? (
                             <img
                               src={post.coverImageUrl}
-                              alt=""
+                              alt={post.title}
                               loading="lazy"
                               decoding="async"
                               className="hidden size-10 shrink-0 rounded-md object-cover sm:block"

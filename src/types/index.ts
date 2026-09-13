@@ -322,11 +322,21 @@ export interface MarqueeMessage {
 /** Hero marquee scroll speed presets (Task 12-d). */
 export type MarqueeSpeed = "slow" | "normal" | "fast";
 
+/**
+ * One image in the hero marquee image lane. Plain strings are legacy rows
+ * (no link); objects carry the click-through URL the owner set in Settings.
+ */
+export interface MarqueeImage {
+  src: string;
+  /** In-app hash route ("#/…") or external https URL; empty = not clickable. */
+  href?: string | null;
+}
+
 /** site_settings key "media". */
 export interface MediaSettings {
   heroMarquee: {
     enabled: boolean;
-    images: string[];
+    images: Array<string | MarqueeImage>;
     messages: MarqueeMessage[];
     speed: MarqueeSpeed;
   };
@@ -389,11 +399,13 @@ export interface LocalizationSettings {
   measurement: "metric" | "imperial";
 }
 
-/** site_settings key "analytics" — tracking integrations (Task 11). */
+/** site_settings key "analytics" — tracking integrations (Task 11; loader Task 13-e). */
 export interface AnalyticsSettings {
   enabled: boolean;
   googleAnalyticsId: string;
   plausibleDomain: string;
+  /** Meta (Facebook) Pixel numeric ID — empty = disabled. */
+  metaPixelId: string;
   trackOutboundClicks: boolean;
 }
 

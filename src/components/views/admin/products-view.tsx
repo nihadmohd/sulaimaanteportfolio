@@ -182,7 +182,7 @@ export default function ProductsView() {
                           {product.imageUrl ? (
                             <img
                               src={product.imageUrl}
-                              alt=""
+                              alt={product.name}
                               loading="lazy"
                               decoding="async"
                               className="size-10 shrink-0 rounded-md object-cover"

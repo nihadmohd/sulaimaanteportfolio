@@ -11,11 +11,12 @@ import {
   Eye,
   Plus,
   Trash2,
+  Wand2,
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -39,6 +40,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ALink } from "@/components/router/link";
 import { ForbiddenState, LoadingState } from "@/components/states";
+import { GalleryField, SingleImageField } from "@/components/shared/image-uploader";
 import { MarkdownBlock, MarkdownFallback } from "@/components/views/shared/markdown";
 import { ProductCard, Stars } from "@/components/shared/product-card";
 import { SEOHead } from "@/components/shared/seo-head";
@@ -76,12 +78,12 @@ import { DraftRecoveryBanner, useDraftAutosave } from "./editor-drafts";
  */
 
 const STORE_IMAGES = [
-  "/images/store/prod-headphones.png",
-  "/images/store/prod-creator-camera.png",
-  "/images/store/prod-mouse.png",
-  "/images/store/prod-keyboard.png",
-  "/images/store/prod-powerbank.png",
-  "/images/store/prod-ssd.png",
+  "/images/store/prod-headphones.webp",
+  "/images/store/prod-creator-camera.webp",
+  "/images/store/prod-mouse.webp",
+  "/images/store/prod-keyboard.webp",
+  "/images/store/prod-powerbank.webp",
+  "/images/store/prod-ssd.webp",
 ];
 
 const MERCHANT_SUGGESTIONS = ["Amazon", "Flipkart", "MN.KP Digital", "Croma", "Myntra", "Noise"];
@@ -142,7 +144,6 @@ export default function ProductEditView() {
   const [keySpecs, setKeySpecs] = React.useState<SpecRow[]>([]);
   const [rating, setRating] = React.useState(0);
   const [slugTouched, setSlugTouched] = React.useState(false);
-  const [galleryInput, setGalleryInput] = React.useState("");
   const [descTab, setDescTab] = React.useState<"write" | "preview">("write");
   const [extraDirty, setExtraDirty] = React.useState(false);
 
@@ -343,12 +344,59 @@ export default function ProductEditView() {
 
   const onSubmit = (values: ProductFormValues) => saveMutation.mutate(values);
 
-  const addGallery = () => {
-    const url = galleryInput.trim();
-    if (!url || gallery.includes(url) || gallery.length >= 8) return;
-    setGallery([...gallery, url]);
-    setGalleryInput("");
-    setExtraDirty(true);
+  /**
+   * Amazon URL normalizer — one click turns any messy Amazon link (search
+   * URLs, share links with 40 tracking params, short links) into the clean
+   * canonical /dp/<ASIN>?tag=… form. Keeps the domain + affiliate tag the
+   * owner already used; defaults to amazon.in + mnkp-21.
+   */
+  const normalizeAmazonUrl = () => {
+    const raw = (form.getValues("affiliateUrl") ?? "").trim();
+    if (!/^https?:\/\//i.test(raw)) {
+      toast({
+        title: "Paste an Amazon link first",
+        description: "The normalizer works on any amazon.* product or share URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const url = new URL(raw);
+      const host = url.hostname.replace(/^www\./, "");
+      if (!/^amazon\.[a-z.]+$/i.test(host) && !/^amzn\.to$/i.test(host)) {
+        toast({
+          title: "That is not an Amazon URL",
+          description: "Non-Amazon merchants keep their link exactly as pasted.",
+        });
+        return;
+      }
+      const existingTag = url.searchParams.get("tag") ?? "";
+      const asin =
+        /\/(?:dp|gp\/product|gp\/aw\/d|product)\/([A-Z0-9]{10})/i.exec(url.pathname)?.[1] ??
+        /\/([A-Z0-9]{10})(?:[/?#]|$)/.exec(url.pathname)?.[1] ??
+        "";
+      if (!asin) {
+        toast({
+          title: "No product ID found",
+          description: "Open the actual product page on Amazon, copy that URL and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const tag = existingTag || "mnkp-21";
+      const canonical = `https://${host}/dp/${asin}?tag=${tag}`;
+      if (canonical === raw) {
+        toast({ title: "Already clean", description: "This link is already in canonical form." });
+        return;
+      }
+      form.setValue("affiliateUrl", canonical, { shouldDirty: true });
+      toast({
+        title: "Link cleaned",
+        description: `Canonical /dp/${asin} with your ${tag} affiliate tag.`,
+      });
+    } catch {
+      toast({ title: "Could not parse that URL", variant: "destructive" });
+    }
   };
 
   /* ---------------- AI assist wiring ---------------- */
@@ -654,6 +702,16 @@ export default function ProductEditView() {
                             placeholder="https://www.amazon.in/dp/...?tag=mnkp-21"
                             className="h-10 font-mono text-[13px]"
                           />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-10 shrink-0 gap-1.5 text-xs"
+                            title="Extract the ASIN, strip tracking junk, append your affiliate tag"
+                            onClick={normalizeAmazonUrl}
+                          >
+                            <Wand2 className="size-3.5" aria-hidden="true" />
+                            Clean &amp; tag
+                          </Button>
                           {/^https?:\/\//.test(field.value ?? "") ? (
                             <a
                               href={field.value ?? ""}
@@ -668,7 +726,10 @@ export default function ProductEditView() {
                           ) : null}
                         </div>
                       </FormControl>
-                      <FormDescription>Where the Buy button sends visitors</FormDescription>
+                      <FormDescription>
+                        Where the Buy button sends visitors — “Clean &amp; tag” turns any
+                        messy Amazon link into canonical /dp/&lt;ASIN&gt;?tag=… form
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -725,23 +786,35 @@ export default function ProductEditView() {
               </CardContent>
             </Card>
 
-            {/* Media */}
+            {/* Media — direct uploads (Task 13-a) + quick picks */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Media</CardTitle>
+                <CardDescription>
+                  Upload from your device — every image is auto-optimized to WebP
+                  (resize + re-encode in your browser) before it is stored.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
                 <FormField
                   control={form.control}
                   name="imageUrl"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Main image URL</FormLabel>
+                    <FormItem className="space-y-2">
+                      <FormLabel>Main image</FormLabel>
                       <FormControl>
-                        <Input {...field} value={field.value ?? ""} placeholder="/images/store/... or https://..." className="h-10" />
+                        <SingleImageField
+                          value={field.value ?? ""}
+                          onChange={(url) => {
+                            field.onChange(url);
+                            setExtraDirty(true);
+                          }}
+                          label="Main image"
+                          aspect="aspect-square"
+                        />
                       </FormControl>
-                      <FormDescription>Quick pick:</FormDescription>
-                      <div className="flex flex-wrap gap-2 pt-1">
+                      <FormDescription>Library quick picks:</FormDescription>
+                      <div className="flex flex-wrap gap-2">
                         {STORE_IMAGES.map((src) => (
                           <button
                             key={src}
@@ -764,68 +837,27 @@ export default function ProductEditView() {
                   )}
                 />
 
-                {watched.imageUrl ? (
-                  <img
-                    src={watched.imageUrl}
-                    alt="Main image preview"
-                    loading="lazy"
-                    decoding="async"
-                    className="aspect-square w-40 rounded-lg border object-cover"
-                  />
-                ) : (
+                <div className="space-y-2">
+                  <FormLabel>Gallery — extra angles (Flipkart/Amazon style)</FormLabel>
                   <p className="text-xs text-muted-foreground">
-                    No image yet — cards fall back to the branded gold/emerald gradient.
+                    Visitors swipe through these on the product page (pinch-zoom
+                    lightbox included). Drag thumbnails to reorder; the star button
+                    promotes an image to the main slot.
                   </p>
-                )}
-
-                <div>
-                  <FormLabel>Gallery</FormLabel>
-                  <div className="mt-2 flex gap-2">
-                    <Input
-                      value={galleryInput}
-                      onChange={(e) => setGalleryInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addGallery();
-                        }
-                      }}
-                      placeholder="Add an image URL, press Enter (max 8)"
-                      aria-label="Add gallery image"
-                      className="h-10"
-                    />
-                    <Button type="button" variant="outline" className="h-10" onClick={addGallery}>
-                      Add
-                    </Button>
-                  </div>
-                  {gallery.length > 0 ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {gallery.map((src) => (
-                        <div key={src} className="group relative">
-                          <img
-                            src={src}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                            className="size-20 rounded-md border object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setGallery(gallery.filter((s) => s !== src));
-                              setExtraDirty(true);
-                            }}
-                            aria-label={`Remove gallery image ${src}`}
-                            className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border bg-background text-destructive shadow-sm"
-                          >
-                            <X className="size-3" aria-hidden="true" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs text-muted-foreground">No gallery images yet.</p>
-                  )}
+                  <GalleryField
+                    value={gallery}
+                    onChange={(urls) => {
+                      setGallery(urls);
+                      setExtraDirty(true);
+                    }}
+                    max={8}
+                    onMakeMain={(url) => {
+                      form.setValue("imageUrl", url, { shouldDirty: true });
+                      setGallery(gallery.filter((s) => s !== url));
+                      setExtraDirty(true);
+                      toast({ title: "Main image set", description: "Removed from the gallery to avoid a duplicate." });
+                    }}
+                  />
                 </div>
               </CardContent>
             </Card>

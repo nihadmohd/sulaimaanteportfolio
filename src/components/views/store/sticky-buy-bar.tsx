@@ -72,7 +72,7 @@ export function StickyBuyBar({ product, onCta, priceCardRef }: StickyBuyBarProps
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
-            alt=""
+            alt={product.name}
             loading="lazy"
             decoding="async"
             className="size-10 shrink-0 rounded-lg border object-cover"

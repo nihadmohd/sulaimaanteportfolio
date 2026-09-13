@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     siteName: "MN.KP",
     images: [
       {
-        url: "/images/brand/og-cover.png",
+        url: "/images/brand/og-cover.webp",
         width: 1344,
         height: 768,
         alt: "MN.KP — MOHAMMED NIHAD KP, AI-first developer from Calicut, Kerala",
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "MN.KP | AI-Powered Web & App Development in Calicut",
     description: `AI-first websites, apps and creative media from Calicut, Kerala. ${SITE.tagline}`,
-    images: ["/images/brand/og-cover.png"],
+    images: ["/images/brand/og-cover.webp"],
   },
   robots: {
     index: true,

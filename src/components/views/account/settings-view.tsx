@@ -28,7 +28,7 @@ import { useSession } from "@/hooks/use-session";
 import { toast } from "@/hooks/use-toast";
 import { SEOHead } from "@/components/shared/seo-head";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
-import { COOKIE_CONSENT_KEY, SITE } from "@/lib/constants";
+import { CONSENT_CHANGE_EVENT, COOKIE_CONSENT_KEY, SITE } from "@/lib/constants";
 import { apiFetch } from "@/components/views/auth/_shared";
 import { parseChips, type ClientUser } from "./_shared";
 import { cn } from "@/lib/utils";
@@ -220,6 +220,7 @@ export default function SettingsView() {
   const resetCookieConsent = () => {
     try {
       window.localStorage.removeItem(COOKIE_CONSENT_KEY);
+      window.dispatchEvent(new CustomEvent<null>(CONSENT_CHANGE_EVENT, { detail: null }));
       toast({
         title: "Cookie preferences reset",
         description: "The consent banner will re-appear so you can choose again.",
@@ -497,8 +498,8 @@ export default function SettingsView() {
                   — what we collect and why.
                 </li>
                 <li>
-                  <ALink href="#/legal/data-processing-addendum" className="font-medium text-primary underline-offset-2 hover:underline">
-                    Data Processing Addendum (DPA)
+                  <ALink href="#/legal/data-processing-agreement" className="font-medium text-primary underline-offset-2 hover:underline">
+                    Data Processing Agreement (DPA)
                   </ALink>{" "}
                   — how data is handled on your behalf.
                 </li>

@@ -1,0 +1,1068 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { useForm, useWatch } from "react-hook-form";
+     5→import { zodResolver } from "@hookform/resolvers/zod";
+     6→import { z } from "zod";
+     7→import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+     8→import {
+     9→  ArrowLeft,
+    10→  ExternalLink,
+    11→  Eye,
+    12→  Plus,
+    13→  Trash2,
+    14→  X,
+    15→} from "lucide-react";
+    16→import { Badge } from "@/components/ui/badge";
+    17→import { Button } from "@/components/ui/button";
+    18→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    19→import {
+    20→  Form,
+    21→  FormControl,
+    22→  FormDescription,
+    23→  FormField,
+    24→  FormItem,
+    25→  FormLabel,
+    26→  FormMessage,
+    27→} from "@/components/ui/form";
+    28→import { Input } from "@/components/ui/input";
+    29→import {
+    30→  Select,
+    31→  SelectContent,
+    32→  SelectItem,
+    33→  SelectTrigger,
+    34→  SelectValue,
+    35→} from "@/components/ui/select";
+    36→import { Slider } from "@/components/ui/slider";
+    37→import { Switch } from "@/components/ui/switch";
+    38→import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    39→import { Textarea } from "@/components/ui/textarea";
+    40→import { ALink } from "@/components/router/link";
+    41→import { ForbiddenState, LoadingState } from "@/components/states";
+    42→import { MarkdownBlock, MarkdownFallback } from "@/components/views/shared/markdown";
+    43→import { ProductCard, Stars } from "@/components/shared/product-card";
+    44→import { SEOHead } from "@/components/shared/seo-head";
+    45→import { toast } from "@/hooks/use-toast";
+    46→import { useHashParams } from "@/hooks/use-hash-params";
+    47→import { navigate } from "@/hooks/use-router";
+    48→import type { ProductDTO } from "@/types";
+    49→import { AdminShell } from "./_shell";
+    50→import {
+    51→  apiFetch,
+    52→  ConfirmAction,
+    53→  fmtDate,
+    54→  formatCompact,
+    55→  formatINR,
+    56→  slugify,
+    57→  useAdminGuard,
+    58→  useCategories,
+    59→} from "./_shared";
+    60→import {
+    61→  AiAssistCard,
+    62→  type AiAssistAction,
+    63→  type AiAssistConfirm,
+    64→} from "./ai-assist-card";
+    65→import { DraftRecoveryBanner, useDraftAutosave } from "./editor-drafts";
+    66→
+    67→/**
+    68→ * Product editor (#/admin/products/:id — route key "admin-product-edit";
+    69→ * "new"=create). The full affiliate form: auto-slug, markdown description
+    70→ * w/ preview, image + gallery chips, price/compare/discount, pros/cons row
+    71→ * editors, keySpecs pairs, rating slider, live ProductCard preview.
+    72→ *
+    73→ * Task 12-b power-features: an AI assist card that drafts an honest review
+    74→ * from the specs/pros/cons (backend route /api/ai/assist) and a local
+    75→ * autosave + crash-recovery banner (mnkp_draft_product_{id|new}).
+    76→ */
+    77→
+    78→const STORE_IMAGES = [
+    79→  "/images/store/prod-headphones.png",
+    80→  "/images/store/prod-creator-camera.png",
+    81→  "/images/store/prod-mouse.png",
+    82→  "/images/store/prod-keyboard.png",
+    83→  "/images/store/prod-powerbank.png",
+    84→  "/images/store/prod-ssd.png",
+    85→];
+    86→
+    87→const MERCHANT_SUGGESTIONS = ["Amazon", "Flipkart", "MN.KP Digital", "Croma", "Myntra", "Noise"];
+    88→
+    89→const productFormSchema = z.object({
+    90→  name: z.string().min(3, "Product name is required").max(140),
+    91→  slug: z.string().max(96).optional(),
+    92→  tagline: z.string().max(160).optional(),
+    93→  description: z.string().optional(),
+    94→  brand: z.string().max(60).optional(),
+    95→  merchant: z.string().max(60).optional(),
+    96→  imageUrl: z.string().optional(),
+    97→  affiliateUrl: z.string().min(3, "Affiliate URL is required").max(600),
+    98→  price: z
+    99→    .string()
+   100→    .optional()
+   101→    .refine((v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 0), "Enter a valid price"),
+   102→  compareAtPrice: z
+   103→    .string()
+   104→    .optional()
+   105→    .refine((v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 0), "Enter a valid price"),
+   106→  reviewCount: z
+   107→    .string()
+   108→    .optional()
+   109→    .refine((v) => !v || (Number.isInteger(Number(v)) && Number(v) >= 0), "Whole number"),
+   110→  status: z.enum(["active", "draft", "archived"]),
+   111→  isFeatured: z.boolean(),
+   112→  categoryId: z.string().optional(),
+   113→});
+   114→
+   115→type ProductFormValues = z.infer<typeof productFormSchema>;
+   116→
+   117→interface SpecRow {
+   118→  key: string;
+   119→  value: string;
+   120→}
+   121→
+   122→/** Snapshot payload for the local crash-recovery autosave. */
+   123→interface ProductDraftData {
+   124→  values: ProductFormValues;
+   125→  gallery: string[];
+   126→  pros: string[];
+   127→  cons: string[];
+   128→  keySpecs: SpecRow[];
+   129→  rating: number;
+   130→}
+   131→
+   132→export default function ProductEditView() {
+   133→  const { id } = useHashParams<{ id: string }>();
+   134→  const isNew = !id || id === "new";
+   135→  const { isLoading, allowed } = useAdminGuard();
+   136→  const queryClient = useQueryClient();
+   137→  const categories = useCategories("store");
+   138→
+   139→  const [gallery, setGallery] = React.useState<string[]>([]);
+   140→  const [pros, setPros] = React.useState<string[]>([]);
+   141→  const [cons, setCons] = React.useState<string[]>([]);
+   142→  const [keySpecs, setKeySpecs] = React.useState<SpecRow[]>([]);
+   143→  const [rating, setRating] = React.useState(0);
+   144→  const [slugTouched, setSlugTouched] = React.useState(false);
+   145→  const [galleryInput, setGalleryInput] = React.useState("");
+   146→  const [descTab, setDescTab] = React.useState<"write" | "preview">("write");
+   147→  const [extraDirty, setExtraDirty] = React.useState(false);
+   148→
+   149→  const form = useForm<ProductFormValues>({
+   150→    resolver: zodResolver(productFormSchema),
+   151→    defaultValues: {
+   152→      name: "",
+   153→      slug: "",
+   154→      tagline: "",
+   155→      description: "",
+   156→      brand: "",
+   157→      merchant: "",
+   158→      imageUrl: "",
+   159→      affiliateUrl: "",
+   160→      price: "",
+   161→      compareAtPrice: "",
+   162→      reviewCount: "",
+   163→      status: "active",
+   164→      isFeatured: false,
+   165→      categoryId: "",
+   166→    },
+   167→  });
+   168→
+   169→  const productQuery = useQuery({
+   170→    queryKey: ["admin-product", id],
+   171→    queryFn: () => apiFetch<ProductDTO>(`/api/products/${id}`),
+   172→    enabled: allowed && !isNew,
+   173→    retry: 1,
+   174→  });
+   175→
+   176→  React.useEffect(() => {
+   177→    if (!productQuery.data) return;
+   178→    const p = productQuery.data;
+   179→    form.reset({
+   180→      name: p.name,
+   181→      slug: p.slug,
+   182→      tagline: p.tagline ?? "",
+   183→      description: p.description ?? "",
+   184→      brand: p.brand ?? "",
+   185→      merchant: p.merchant ?? "",
+   186→      imageUrl: p.imageUrl ?? "",
+   187→      affiliateUrl: p.affiliateUrl,
+   188→      price: p.price != null ? String(p.price) : "",
+   189→      compareAtPrice: p.compareAtPrice != null ? String(p.compareAtPrice) : "",
+   190→      reviewCount: String(p.reviewCount ?? 0),
+   191→      status: p.status,
+   192→      isFeatured: p.isFeatured,
+   193→      categoryId: p.category?.id ?? "",
+   194→    });
+   195→    setGallery(p.gallery);
+   196→    setPros(p.pros);
+   197→    setCons(p.cons);
+   198→    setKeySpecs(Object.entries(p.keySpecs).map(([key, value]) => ({ key, value })));
+   199→    setRating(p.rating);
+   200→    setSlugTouched(true);
+   201→    setExtraDirty(false);
+   202→  }, [productQuery.data, form]);
+   203→
+   204→  // useWatch (single call, whole values) instead of form.watch — satisfies
+   205→  // react-hooks/incompatible-library; defaults are complete so the cast is safe.
+   206→  const watched = useWatch({ control: form.control }) as ProductFormValues;
+   207→
+   208→  const effectiveSlug = slugTouched && watched.slug ? slugify(watched.slug) : slugify(watched.name);
+   209→  const priceNum = watched.price ? Number(watched.price) : 0;
+   210→  const compareNum = watched.compareAtPrice ? Number(watched.compareAtPrice) : 0;
+   211→  const discount =
+   212→    compareNum > priceNum && priceNum > 0 ? Math.round((1 - priceNum / compareNum) * 100) : 0;
+   213→  const isDirty = form.formState.isDirty || extraDirty;
+   214→
+   215→  /* ---------------- local autosave + crash recovery ---------------- */
+   216→
+   217→  const draftKey = `mnkp_draft_product_${isNew ? "new" : id}`;
+   218→
+   219→  const draft = useDraftAutosave<ProductDraftData>({
+   220→    key: draftKey,
+   221→    ready: isNew || !!productQuery.data,
+   222→    isDirty,
+   223→    tick: JSON.stringify([watched, gallery, pros, cons, keySpecs, rating]),
+   224→    capture: () => ({ values: form.getValues(), gallery, pros, cons, keySpecs, rating }),
+   225→    differs: (snap) => {
+   226→      const data = snap.data;
+   227→      if (!data || typeof data !== "object" || typeof data.values !== "object" || !data.values) {
+   228→        return false; // unrecognized snapshot shape
+   229→      }
+   230→      if (isNew) {
+   231→        return !!(data.values.name?.trim() || data.values.description?.trim());
+   232→      }
+   233→      const p = productQuery.data;
+   234→      if (!p) return false;
+   235→      // only offer recovery when the local copy is newer than the server copy
+   236→      const serverTime = new Date(p.updatedAt).getTime();
+   237→      if (Number.isFinite(serverTime) && snap.savedAt <= serverTime) return false;
+   238→      return (
+   239→        data.values.name !== p.name ||
+   240→        (data.values.description ?? "") !== (p.description ?? "") ||
+   241→        data.values.status !== p.status ||
+   242→        JSON.stringify(data.pros ?? []) !== JSON.stringify(p.pros) ||
+   243→        JSON.stringify(data.cons ?? []) !== JSON.stringify(p.cons)
+   244→      );
+   245→    },
+   246→    onRestore: (data) => {
+   247→      const v = data.values;
+   248→      form.reset({
+   249→        name: v?.name ?? "",
+   250→        slug: v?.slug ?? "",
+   251→        tagline: v?.tagline ?? "",
+   252→        description: v?.description ?? "",
+   253→        brand: v?.brand ?? "",
+   254→        merchant: v?.merchant ?? "",
+   255→        imageUrl: v?.imageUrl ?? "",
+   256→        affiliateUrl: v?.affiliateUrl ?? "",
+   257→        price: v?.price ?? "",
+   258→        compareAtPrice: v?.compareAtPrice ?? "",
+   259→        reviewCount: v?.reviewCount ?? "",
+   260→        status: v?.status ?? "active",
+   261→        isFeatured: !!v?.isFeatured,
+   262→        categoryId: v?.categoryId ?? "",
+   263→      });
+   264→      setGallery(Array.isArray(data.gallery) ? data.gallery : []);
+   265→      setPros(Array.isArray(data.pros) ? data.pros : []);
+   266→      setCons(Array.isArray(data.cons) ? data.cons : []);
+   267→      setKeySpecs(Array.isArray(data.keySpecs) ? data.keySpecs : []);
+   268→      setRating(typeof data.rating === "number" ? data.rating : 0);
+   269→      setSlugTouched(true);
+   270→      setExtraDirty(true);
+   271→      toast({ title: "Local draft restored", description: "Review it and save when you are ready." });
+   272→    },
+   273→  });
+   274→
+   275→  const saveMutation = useMutation({
+   276→    mutationFn: (values: ProductFormValues) => {
+   277→      const body: Record<string, unknown> = {
+   278→        name: values.name,
+   279→        affiliateUrl: values.affiliateUrl,
+   280→        status: values.status,
+   281→        isFeatured: values.isFeatured,
+   282→        currency: "INR",
+   283→        imageUrl: values.imageUrl || "",
+   284→        gallery: gallery.filter(Boolean),
+   285→        pros: pros.map((s) => s.trim()).filter(Boolean),
+   286→        cons: cons.map((s) => s.trim()).filter(Boolean),
+   287→        keySpecs: Object.fromEntries(
+   288→          keySpecs.filter((row) => row.key.trim()).map((row) => [row.key.trim(), row.value])
+   289→        ),
+   290→        rating,
+   291→        reviewCount: Number(values.reviewCount || 0),
+   292→        price: values.price ? Number(values.price) : null,
+   293→        compareAtPrice: values.compareAtPrice ? Number(values.compareAtPrice) : null,
+   294→        categoryId: values.categoryId || null,
+   295→        tagline: values.tagline || undefined,
+   296→        description: values.description || undefined,
+   297→        brand: values.brand || undefined,
+   298→        merchant: values.merchant || undefined,
+   299→      };
+   300→      if (slugTouched && values.slug) body.slug = slugify(values.slug);
+   301→      return isNew
+   302→        ? apiFetch<ProductDTO>("/api/products", { method: "POST", body: JSON.stringify(body) })
+   303→        : apiFetch<ProductDTO>(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify(body) });
+   304→    },
+   305→    onSuccess: (product) => {
+   306→      toast({ title: isNew ? "Product created" : "Product saved", description: product.name });
+   307→      setExtraDirty(false);
+   308→      draft.clear();
+   309→      void queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+   310→      void queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+   311→      if (isNew) navigate(`/admin/products/${product.id}`);
+   312→      else form.reset(form.getValues());
+   313→    },
+   314→    onError: (e: Error) =>
+   315→      toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+   316→  });
+   317→
+   318→  const deleteMutation = useMutation({
+   319→    mutationFn: () => apiFetch(`/api/products/${id}`, { method: "DELETE" }),
+   320→    onSuccess: () => {
+   321→      toast({ title: "Product deleted" });
+   322→      draft.clear();
+   323→      void queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+   324→      navigate("/admin/products");
+   325→    },
+   326→    onError: (e: Error) =>
+   327→      toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+   328→  });
+   329→
+   330→  if (isLoading) return <LoadingState variant="spinner" label="Loading editor" />;
+   331→  if (!allowed) return <ForbiddenState />;
+   332→  if (!isNew && productQuery.isPending) return <LoadingState variant="skeleton" rows={6} />;
+   333→  if (!isNew && productQuery.isError) {
+   334→    return (
+   335→      <AdminShell title="Edit product">
+   336→        <p className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+   337→          This product could not be loaded.{" "}
+   338→          {productQuery.error instanceof Error ? productQuery.error.message : ""}
+   339→        </p>
+   340→      </AdminShell>
+   341→    );
+   342→  }
+   343→
+   344→  const onSubmit = (values: ProductFormValues) => saveMutation.mutate(values);
+   345→
+   346→  const addGallery = () => {
+   347→    const url = galleryInput.trim();
+   348→    if (!url || gallery.includes(url) || gallery.length >= 8) return;
+   349→    setGallery([...gallery, url]);
+   350→    setGalleryInput("");
+   351→    setExtraDirty(true);
+   352→  };
+   353→
+   354→  /* ---------------- AI assist wiring ---------------- */
+   355→
+   356→  const buildAiRequest = (action: AiAssistAction): Record<string, unknown> => {
+   357→    if (action !== "description") throw new Error("This action is not available for products.");
+   358→    const name = (form.getValues("name") ?? "").trim();
+   359→    if (!name) throw new Error("Add the product name first.");
+   360→    return {
+   361→      action,
+   362→      productName: name,
+   363→      tagline: (form.getValues("tagline") ?? "").trim() || undefined,
+   364→      specs: Object.fromEntries(
+   365→        keySpecs.filter((row) => row.key.trim()).map((row) => [row.key.trim(), row.value])
+   366→      ),
+   367→      pros: pros.map((s) => s.trim()).filter(Boolean),
+   368→      cons: cons.map((s) => s.trim()).filter(Boolean),
+   369→    };
+   370→  };
+   371→
+   372→  const applyAiResult = (action: AiAssistAction, text: string) => {
+   373→    if (action !== "description") return;
+   374→    form.setValue("description", text, { shouldDirty: true });
+   375→    setDescTab("write");
+   376→    toast({ title: "Description drafted", description: "Review the copy before saving." });
+   377→  };
+   378→
+   379→  const aiConfirmFor = (action: AiAssistAction): AiAssistConfirm | null => {
+   380→    if (action !== "description") return null;
+   381→    if (!(form.getValues("description") ?? "").trim()) return null; // nothing to lose yet
+   382→    return {
+   383→      title: "Replace the current description?",
+   384→      description: "The markdown description will be replaced by the AI-drafted review. The previous version stays recoverable from your local draft or the server copy until you save.",
+   385→    };
+   386→  };
+   387→
+   388→  const rowEditor = (
+   389→    rows: string[],
+   390→    setRows: (rows: string[]) => void,
+   391→    label: string,
+   392→    placeholder: string
+   393→  ) => (
+   394→    <div className="space-y-2">
+   395→      {rows.map((row, i) => (
+   396→        <div key={`${label}-${i}`} className="flex gap-2">
+   397→          <Input
+   398→            value={row}
+   399→            onChange={(e) => {
+   400→              const next = [...rows];
+   401→              next[i] = e.target.value;
+   402→              setRows(next);
+   403→              setExtraDirty(true);
+   404→            }}
+   405→            placeholder={placeholder}
+   406→            aria-label={`${label} ${i + 1}`}
+   407→            className="h-10"
+   408→          />
+   409→          <Button
+   410→            type="button"
+   411→            variant="ghost"
+   412→            size="icon"
+   413→            className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
+   414→            onClick={() => {
+   415→              setRows(rows.filter((_, idx) => idx !== i));
+   416→              setExtraDirty(true);
+   417→            }}
+   418→            aria-label={`Remove ${label} ${i + 1}`}
+   419→          >
+   420→            <X className="size-4" aria-hidden="true" />
+   421→          </Button>
+   422→        </div>
+   423→      ))}
+   424→      <Button
+   425→        type="button"
+   426→        variant="outline"
+   427→        size="sm"
+   428→        className="h-9 gap-2"
+   429→        onClick={() => {
+   430→          setRows([...rows, ""]);
+   431→          setExtraDirty(true);
+   432→        }}
+   433→      >
+   434→        <Plus className="size-4" aria-hidden="true" />
+   435→        Add {label.toLowerCase()}
+   436→      </Button>
+   437→    </div>
+   438→  );
+   439→
+   440→  return (
+   441→    <AdminShell
+   442→      title={isNew ? "New product" : "Edit product"}
+   443→      description={isNew ? "Add a curated item to the affiliate store." : `Last updated ${fmtDate(productQuery.data?.updatedAt)}`}
+   444→      actions={
+   445→        <>
+   446→          {isDirty ? (
+   447→            <Badge variant="outline" className="h-9 border-amber-500/40 bg-amber-500/10 px-3 text-amber-600 dark:text-amber-400">
+   448→              Unsaved changes
+   449→            </Badge>
+   450→          ) : null}
+   451→          <ALink href="#/admin/products">
+   452→            <Button variant="outline" size="sm" className="h-9 gap-2">
+   453→              <ArrowLeft className="size-4" aria-hidden="true" />
+   454→              All products
+   455→            </Button>
+   456→          </ALink>
+   457→          <Button
+   458→            size="sm"
+   459→            className="h-9"
+   460→            onClick={form.handleSubmit(onSubmit)}
+   461→            disabled={saveMutation.isPending}
+   462→          >
+   463→            {saveMutation.isPending ? "Saving..." : isNew ? "Create product" : "Save changes"}
+   464→          </Button>
+   465→          {!isNew ? (
+   466→            <ConfirmAction
+   467→              trigger={
+   468→                <Button
+   469→                  variant="outline"
+   470→                  size="icon"
+   471→                  className="size-9 text-muted-foreground hover:text-destructive"
+   472→                  aria-label="Delete product"
+   473→                >
+   474→                  <Trash2 className="size-4" aria-hidden="true" />
+   475→                </Button>
+   476→              }
+   477→              title="Delete this product?"
+   478→              description="The catalog entry and its click history will be permanently removed."
+   479→              onConfirm={() => deleteMutation.mutateAsync()}
+   480→            />
+   481→          ) : null}
+   482→        </>
+   483→      }
+   484→    >
+   485→      <SEOHead title={`${isNew ? "New product" : "Edit product"} — Admin & Developer | MN.KP`} noindex />
+   486→
+   487→      {draft.snapshot ? (
+   488→        <DraftRecoveryBanner
+   489→          savedAt={draft.snapshot.savedAt}
+   490→          onRestore={draft.restore}
+   491→          onDiscard={draft.discard}
+   492→        />
+   493→      ) : null}
+   494→
+   495→      <Form {...form}>
+   496→        <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-6 lg:grid-cols-[1fr_360px]">
+   497→          {/* ---------------- main column ---------------- */}
+   498→          <div className="space-y-6">
+   499→            <Card>
+   500→              <CardContent className="space-y-5 pt-6">
+   501→                <FormField
+   502→                  control={form.control}
+   503→                  name="name"
+   504→                  render={({ field }) => (
+   505→                    <FormItem>
+   506→                      <FormLabel>Name</FormLabel>
+   507→                      <FormControl>
+   508→                        <Input placeholder="Sony WH-1000XM5 Wireless Headphones" {...field} className="h-10 text-base" />
+   509→                      </FormControl>
+   510→                      <FormMessage />
+   511→                    </FormItem>
+   512→                  )}
+   513→                />
+   514→
+   515→                <FormField
+   516→                  control={form.control}
+   517→                  name="slug"
+   518→                  render={({ field }) => (
+   519→                    <FormItem>
+   520→                      <FormLabel>Slug</FormLabel>
+   521→                      <FormControl>
+   522→                        <div className="flex items-center gap-2">
+   523→                          <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">/store/</span>
+   524→                          <Input
+   525→                            {...field}
+   526→                            value={slugTouched ? field.value : effectiveSlug}
+   527→                            onChange={(e) => {
+   528→                              setSlugTouched(true);
+   529→                              field.onChange(e);
+   530→                            }}
+   531→                            placeholder="auto-generated-from-name"
+   532→                            className="h-10 font-mono text-sm"
+   533→                          />
+   534→                        </div>
+   535→                      </FormControl>
+   536→                      <FormDescription>
+   537→                        {slugTouched ? "Custom slug — dashes and lowercase" : "Auto-generated from the name (editable)"}
+   538→                      </FormDescription>
+   539→                      <FormMessage />
+   540→                    </FormItem>
+   541→                  )}
+   542→                />
+   543→
+   544→                <FormField
+   545→                  control={form.control}
+   546→                  name="tagline"
+   547→                  render={({ field }) => (
+   548→                    <FormItem>
+   549→                      <FormLabel>Tagline</FormLabel>
+   550→                      <FormControl>
+   551→                        <Input {...field} value={field.value ?? ""} placeholder="The one-line pitch shown on cards" className="h-10" />
+   552→                      </FormControl>
+   553→                      <FormDescription>{(field.value ?? "").length}/160 characters</FormDescription>
+   554→                      <FormMessage />
+   555→                    </FormItem>
+   556→                  )}
+   557→                />
+   558→
+   559→                <div className="grid gap-5 sm:grid-cols-2">
+   560→                  <FormField
+   561→                    control={form.control}
+   562→                    name="brand"
+   563→                    render={({ field }) => (
+   564→                      <FormItem>
+   565→                        <FormLabel>Brand</FormLabel>
+   566→                        <FormControl>
+   567→                          <Input {...field} value={field.value ?? ""} placeholder="Sony" className="h-10" />
+   568→                        </FormControl>
+   569→                        <FormMessage />
+   570→                      </FormItem>
+   571→                    )}
+   572→                  />
+   573→                  <FormField
+   574→                    control={form.control}
+   575→                    name="merchant"
+   576→                    render={({ field }) => (
+   577→                      <FormItem>
+   578→                        <FormLabel>Merchant</FormLabel>
+   579→                        <FormControl>
+   580→                          <>
+   581→                            <Input {...field} value={field.value ?? ""} placeholder="Amazon" list="merchant-suggestions" className="h-10" />
+   582→                            <datalist id="merchant-suggestions">
+   583→                              {MERCHANT_SUGGESTIONS.map((m) => (
+   584→                                <option key={m} value={m} />
+   585→                              ))}
+   586→                            </datalist>
+   587→                          </>
+   588→                        </FormControl>
+   589→                        <FormDescription>Suggestions: Amazon, Flipkart, MN.KP Digital...</FormDescription>
+   590→                        <FormMessage />
+   591→                      </FormItem>
+   592→                    )}
+   593→                  />
+   594→                </div>
+   595→
+   596→                <div>
+   597→                  <FormLabel>Description (markdown)</FormLabel>
+   598→                  <Tabs value={descTab} onValueChange={(v) => setDescTab(v as "write" | "preview")} className="mt-2">
+   599→                    <div className="flex items-center justify-between">
+   600→                      <TabsList className="h-9">
+   601→                        <TabsTrigger value="write" className="h-7">Write</TabsTrigger>
+   602→                        <TabsTrigger value="preview" className="h-7">
+   603→                          <Eye className="mr-1 size-3.5" aria-hidden="true" />
+   604→                          Preview
+   605→                        </TabsTrigger>
+   606→                      </TabsList>
+   607→                      <p className="text-xs text-muted-foreground">
+   608→                        {(watched.description ?? "").length.toLocaleString("en-IN")} chars
+   609→                      </p>
+   610→                    </div>
+   611→                  </Tabs>
+   612→                  {descTab === "write" ? (
+   613→                    <FormField
+   614→                      control={form.control}
+   615→                      name="description"
+   616→                      render={({ field }) => (
+   617→                        <FormItem className="mt-3">
+   618→                          <FormControl>
+   619→                            <Textarea
+   620→                              {...field}
+   621→                              value={field.value ?? ""}
+   622→                              rows={12}
+   623→                              placeholder={"An honest review — who it is for, who should skip it..."}
+   624→                              className="min-h-[280px] font-mono text-[13px] leading-relaxed"
+   625→                            />
+   626→                          </FormControl>
+   627→                          <FormMessage />
+   628→                        </FormItem>
+   629→                      )}
+   630→                    />
+   631→                  ) : (
+   632→                    <div className="mt-3 min-h-[280px] rounded-lg border p-4">
+   633→                      {(watched.description ?? "").trim() ? (
+   634→                        <React.Suspense fallback={<MarkdownFallback />}>
+   635→                          <MarkdownBlock content={watched.description ?? ""} />
+   636→                        </React.Suspense>
+   637→                      ) : (
+   638→                        <p className="text-sm text-muted-foreground">Nothing to preview yet.</p>
+   639→                      )}
+   640→                    </div>
+   641→                  )}
+   642→                </div>
+   643→
+   644→                <FormField
+   645→                  control={form.control}
+   646→                  name="affiliateUrl"
+   647→                  render={({ field }) => (
+   648→                    <FormItem>
+   649→                      <FormLabel>Affiliate URL</FormLabel>
+   650→                      <FormControl>
+   651→                        <div className="flex gap-2">
+   652→                          <Input
+   653→                            {...field}
+   654→                            placeholder="https://www.amazon.in/dp/...?tag=mnkp-21"
+   655→                            className="h-10 font-mono text-[13px]"
+   656→                          />
+   657→                          {/^https?:\/\//.test(field.value ?? "") ? (
+   658→                            <a
+   659→                              href={field.value ?? ""}
+   660→                              target="_blank"
+   661→                              rel="noopener noreferrer"
+   662→                              aria-label="Open affiliate URL in a new tab"
+   663→                              title="Open affiliate URL"
+   664→                              className="flex size-10 shrink-0 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
+   665→                            >
+   666→                              <ExternalLink className="size-4" aria-hidden="true" />
+   667→                            </a>
+   668→                          ) : null}
+   669→                        </div>
+   670→                      </FormControl>
+   671→                      <FormDescription>Where the Buy button sends visitors</FormDescription>
+   672→                      <FormMessage />
+   673→                    </FormItem>
+   674→                  )}
+   675→                />
+   676→              </CardContent>
+   677→            </Card>
+   678→
+   679→            {/* Pricing */}
+   680→            <Card>
+   681→              <CardHeader className="pb-3">
+   682→                <CardTitle className="text-base">Pricing</CardTitle>
+   683→              </CardHeader>
+   684→              <CardContent className="space-y-5">
+   685→                <div className="grid gap-5 sm:grid-cols-2">
+   686→                  <FormField
+   687→                    control={form.control}
+   688→                    name="price"
+   689→                    render={({ field }) => (
+   690→                      <FormItem>
+   691→                        <FormLabel>Price (INR)</FormLabel>
+   692→                        <FormControl>
+   693→                          <Input {...field} value={field.value ?? ""} inputMode="numeric" placeholder="29990" className="h-10" />
+   694→                        </FormControl>
+   695→                        <FormMessage />
+   696→                      </FormItem>
+   697→                    )}
+   698→                  />
+   699→                  <FormField
+   700→                    control={form.control}
+   701→                    name="compareAtPrice"
+   702→                    render={({ field }) => (
+   703→                      <FormItem>
+   704→                        <FormLabel>Compare-at price (MRP)</FormLabel>
+   705→                        <FormControl>
+   706→                          <Input {...field} value={field.value ?? ""} inputMode="numeric" placeholder="34990" className="h-10" />
+   707→                        </FormControl>
+   708→                        <FormMessage />
+   709→                      </FormItem>
+   710→                    )}
+   711→                  />
+   712→                </div>
+   713→                <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+   714→                  <span className="text-muted-foreground">Card shows: </span>
+   715→                  <span className="font-semibold">{formatINR(priceNum || null)}</span>
+   716→                  {discount > 0 ? (
+   717→                    <>
+   718→                      <span className="ml-2 text-muted-foreground line-through">{formatINR(compareNum)}</span>
+   719→                      <Badge className="ml-2 bg-gold text-gold-foreground">-{discount}%</Badge>
+   720→                    </>
+   721→                  ) : (
+   722→                    <span className="ml-2 text-xs text-muted-foreground">no discount</span>
+   723→                  )}
+   724→                </div>
+   725→              </CardContent>
+   726→            </Card>
+   727→
+   728→            {/* Media */}
+   729→            <Card>
+   730→              <CardHeader className="pb-3">
+   731→                <CardTitle className="text-base">Media</CardTitle>
+   732→              </CardHeader>
+   733→              <CardContent className="space-y-5">
+   734→                <FormField
+   735→                  control={form.control}
+   736→                  name="imageUrl"
+   737→                  render={({ field }) => (
+   738→                    <FormItem>
+   739→                      <FormLabel>Main image URL</FormLabel>
+   740→                      <FormControl>
+   741→                        <Input {...field} value={field.value ?? ""} placeholder="/images/store/... or https://..." className="h-10" />
+   742→                      </FormControl>
+   743→                      <FormDescription>Quick pick:</FormDescription>
+   744→                      <div className="flex flex-wrap gap-2 pt-1">
+   745→                        {STORE_IMAGES.map((src) => (
+   746→                          <button
+   747→                            key={src}
+   748→                            type="button"
+   749→                            onClick={() => {
+   750→                              field.onChange(src);
+   751→                              setExtraDirty(true);
+   752→                            }}
+   753→                            aria-label={`Use image ${src}`}
+   754→                            className={`size-14 overflow-hidden rounded-md border-2 transition-transform hover:scale-105 ${
+   755→                              field.value === src ? "border-gold" : "border-transparent"
+   756→                            }`}
+   757→                          >
+   758→                            <img src={src} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
+   759→                          </button>
+   760→                        ))}
+   761→                      </div>
+   762→                      <FormMessage />
+   763→                    </FormItem>
+   764→                  )}
+   765→                />
+   766→
+   767→                {watched.imageUrl ? (
+   768→                  <img
+   769→                    src={watched.imageUrl}
+   770→                    alt="Main image preview"
+   771→                    loading="lazy"
+   772→                    decoding="async"
+   773→                    className="aspect-square w-40 rounded-lg border object-cover"
+   774→                  />
+   775→                ) : (
+   776→                  <p className="text-xs text-muted-foreground">
+   777→                    No image yet — cards fall back to the branded gold/emerald gradient.
+   778→                  </p>
+   779→                )}
+   780→
+   781→                <div>
+   782→                  <FormLabel>Gallery</FormLabel>
+   783→                  <div className="mt-2 flex gap-2">
+   784→                    <Input
+   785→                      value={galleryInput}
+   786→                      onChange={(e) => setGalleryInput(e.target.value)}
+   787→                      onKeyDown={(e) => {
+   788→                        if (e.key === "Enter") {
+   789→                          e.preventDefault();
+   790→                          addGallery();
+   791→                        }
+   792→                      }}
+   793→                      placeholder="Add an image URL, press Enter (max 8)"
+   794→                      aria-label="Add gallery image"
+   795→                      className="h-10"
+   796→                    />
+   797→                    <Button type="button" variant="outline" className="h-10" onClick={addGallery}>
+   798→                      Add
+   799→                    </Button>
+   800→                  </div>
+   801→                  {gallery.length > 0 ? (
+   802→                    <div className="mt-3 flex flex-wrap gap-2">
+   803→                      {gallery.map((src) => (
+   804→                        <div key={src} className="group relative">
+   805→                          <img
+   806→                            src={src}
+   807→                            alt=""
+   808→                            loading="lazy"
+   809→                            decoding="async"
+   810→                            className="size-20 rounded-md border object-cover"
+   811→                          />
+   812→                          <button
+   813→                            type="button"
+   814→                            onClick={() => {
+   815→                              setGallery(gallery.filter((s) => s !== src));
+   816→                              setExtraDirty(true);
+   817→                            }}
+   818→                            aria-label={`Remove gallery image ${src}`}
+   819→                            className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border bg-background text-destructive shadow-sm"
+   820→                          >
+   821→                            <X className="size-3" aria-hidden="true" />
+   822→                          </button>
+   823→                        </div>
+   824→                      ))}
+   825→                    </div>
+   826→                  ) : (
+   827→                    <p className="mt-2 text-xs text-muted-foreground">No gallery images yet.</p>
+   828→                  )}
+   829→                </div>
+   830→              </CardContent>
+   831→            </Card>
+   832→
+   833→            {/* Review verdict */}
+   834→            <Card>
+   835→              <CardHeader className="pb-3">
+   836→                <CardTitle className="text-base">Review verdict</CardTitle>
+   837→              </CardHeader>
+   838→              <CardContent className="space-y-6">
+   839→                <div>
+   840→                  <div className="flex items-center justify-between">
+   841→                    <FormLabel>Rating</FormLabel>
+   842→                    <span className="flex items-center gap-2">
+   843→                      <Stars rating={rating} size="md" />
+   844→                      <span className="text-sm font-medium tabular-nums">{rating.toFixed(1)} / 5</span>
+   845→                    </span>
+   846→                  </div>
+   847→                  <Slider
+   848→                    value={[rating]}
+   849→                    min={0}
+   850→                    max={5}
+   851→                    step={0.1}
+   852→                    onValueChange={([v]) => {
+   853→                      setRating(v);
+   854→                      setExtraDirty(true);
+   855→                    }}
+   856→                    aria-label="Product rating"
+   857→                    className="mt-3"
+   858→                  />
+   859→                </div>
+   860→
+   861→                <FormField
+   862→                  control={form.control}
+   863→                  name="reviewCount"
+   864→                  render={({ field }) => (
+   865→                    <FormItem>
+   866→                      <FormLabel>Review count</FormLabel>
+   867→                      <FormControl>
+   868→                        <Input {...field} value={field.value ?? ""} inputMode="numeric" placeholder="0" className="h-10 sm:max-w-[200px]" />
+   869→                      </FormControl>
+   870→                      <FormMessage />
+   871→                    </FormItem>
+   872→                  )}
+   873→                />
+   874→
+   875→                <div className="grid gap-6 md:grid-cols-2">
+   876→                  <div>
+   877→                    <FormLabel>Pros</FormLabel>
+   878→                    <p className="mb-2 text-xs text-muted-foreground">What earns the recommendation</p>
+   879→                    {rowEditor(pros, setPros, "Pro", "Great noise cancelling...")}
+   880→                  </div>
+   881→                  <div>
+   882→                    <FormLabel>Cons</FormLabel>
+   883→                    <p className="mb-2 text-xs text-muted-foreground">The honest trade-offs</p>
+   884→                    {rowEditor(cons, setCons, "Con", "Pricey for casual listeners...")}
+   885→                  </div>
+   886→                </div>
+   887→
+   888→                <div>
+   889→                  <FormLabel>Key specs</FormLabel>
+   890→                  <p className="mb-2 text-xs text-muted-foreground">Label → value rows shown on the product page</p>
+   891→                  <div className="space-y-2">
+   892→                    {keySpecs.map((row, i) => (
+   893→                      <div key={`spec-${i}`} className="flex gap-2">
+   894→                        <Input
+   895→                          value={row.key}
+   896→                          onChange={(e) => {
+   897→                            const next = [...keySpecs];
+   898→                            next[i] = { ...next[i], key: e.target.value };
+   899→                            setKeySpecs(next);
+   900→                            setExtraDirty(true);
+   901→                          }}
+   902→                          placeholder="Battery"
+   903→                          aria-label={`Spec label ${i + 1}`}
+   904→                          className="h-10 sm:max-w-[180px]"
+   905→                        />
+   906→                        <Input
+   907→                          value={row.value}
+   908→                          onChange={(e) => {
+   909→                            const next = [...keySpecs];
+   910→                            next[i] = { ...next[i], value: e.target.value };
+   911→                            setKeySpecs(next);
+   912→                            setExtraDirty(true);
+   913→                          }}
+   914→                          placeholder="30 hours ANC on"
+   915→                          aria-label={`Spec value ${i + 1}`}
+   916→                          className="h-10"
+   917→                        />
+   918→                        <Button
+   919→                          type="button"
+   920→                          variant="ghost"
+   921→                          size="icon"
+   922→                          className="size-10 shrink-0 text-muted-foreground hover:text-destructive"
+   923→                          onClick={() => {
+   924→                            setKeySpecs(keySpecs.filter((_, idx) => idx !== i));
+   925→                            setExtraDirty(true);
+   926→                          }}
+   927→                          aria-label={`Remove spec ${i + 1}`}
+   928→                        >
+   929→                          <X className="size-4" aria-hidden="true" />
+   930→                        </Button>
+   931→                      </div>
+   932→                    ))}
+   933→                    <Button
+   934→                      type="button"
+   935→                      variant="outline"
+   936→                      size="sm"
+   937→                      className="h-9 gap-2"
+   938→                      onClick={() => {
+   939→                        setKeySpecs([...keySpecs, { key: "", value: "" }]);
+   940→                        setExtraDirty(true);
+   941→                      }}
+   942→                    >
+   943→                      <Plus className="size-4" aria-hidden="true" />
+   944→                      Add spec
+   945→                    </Button>
+   946→                  </div>
+   947→                </div>
+   948→              </CardContent>
+   949→            </Card>
+   950→          </div>
+   951→
+   952→          {/* ---------------- side column ---------------- */}
+   953→          <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+   954→            <AiAssistCard
+   955→              subline="Draft an honest review from the specs"
+   956→              actions={[{ action: "description", label: "Draft review" }]}
+   957→              buildRequest={buildAiRequest}
+   958→              applyResult={applyAiResult}
+   959→              confirmFor={aiConfirmFor}
+   960→            />
+   961→
+   962→            <Card>
+   963→              <CardHeader className="pb-3">
+   964→                <CardTitle className="text-base">Listing</CardTitle>
+   965→              </CardHeader>
+   966→              <CardContent className="space-y-5">
+   967→                <FormField
+   968→                  control={form.control}
+   969→                  name="status"
+   970→                  render={({ field }) => (
+   971→                    <FormItem>
+   972→                      <FormLabel>Status</FormLabel>
+   973→                      <Select value={field.value} onValueChange={field.onChange}>
+   974→                        <FormControl>
+   975→                          <SelectTrigger className="h-10">
+   976→                            <SelectValue placeholder="Status" />
+   977→                          </SelectTrigger>
+   978→                        </FormControl>
+   979→                        <SelectContent>
+   980→                          <SelectItem value="active">Active</SelectItem>
+   981→                          <SelectItem value="draft">Draft</SelectItem>
+   982→                          <SelectItem value="archived">Archived</SelectItem>
+   983→                        </SelectContent>
+   984→                      </Select>
+   985→                      <FormMessage />
+   986→                    </FormItem>
+   987→                  )}
+   988→                />
+   989→
+   990→                <FormField
+   991→                  control={form.control}
+   992→                  name="categoryId"
+   993→                  render={({ field }) => (
+   994→                    <FormItem>
+   995→                      <FormLabel>Category</FormLabel>
+   996→                      <Select value={field.value ?? ""} onValueChange={field.onChange}>
+   997→                        <FormControl>
+   998→                          <SelectTrigger className="h-10">
+   999→                            <SelectValue placeholder="Uncategorized" />
+  1000→                          </SelectTrigger>
+  1001→                        </FormControl>
+  1002→                        <SelectContent>
+  1003→                          {(categories.data ?? []).map((c) => (
+  1004→                            <SelectItem key={c.id} value={c.id}>
+  1005→                              {c.name}
+  1006→                            </SelectItem>
+  1007→                          ))}
+  1008→                        </SelectContent>
+  1009→                      </Select>
+  1010→                      <FormMessage />
+  1011→                    </FormItem>
+  1012→                  )}
+  1013→                />
+  1014→
+  1015→                <FormField
+  1016→                  control={form.control}
+  1017→                  name="isFeatured"
+  1018→                  render={({ field }) => (
+  1019→                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+  1020→                      <div className="space-y-0.5">
+  1021→                        <FormLabel className="text-sm">Featured</FormLabel>
+  1022→                        <p className="text-xs text-muted-foreground">Rotates into the sponsored ad slots</p>
+  1023→                      </div>
+  1024→                      <FormControl>
+  1025→                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+  1026→                      </FormControl>
+  1027→                    </FormItem>
+  1028→                  )}
+  1029→                />
+  1030→
+  1031→                {productQuery.data ? (
+  1032→                  <div className="space-y-1 rounded-lg border p-3 text-xs text-muted-foreground">
+  1033→                    <p>Clicks: <span className="font-medium text-foreground">{formatCompact(productQuery.data.clicksCount)}</span></p>
+  1034→                    <p>Created: {fmtDate(productQuery.data.createdAt)}</p>
+  1035→                  </div>
+  1036→                ) : null}
+  1037→
+  1038→                <Button type="submit" className="h-10 w-full" disabled={saveMutation.isPending}>
+  1039→                  {saveMutation.isPending ? "Saving..." : isNew ? "Create product" : "Save changes"}
+  1040→                </Button>
+  1041→              </CardContent>
+  1042→            </Card>
+  1043→
+  1044→            {/* Live ProductCard preview */}
+  1045→            <div>
+  1046→              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold">
+  1047→                Live card preview
+  1048→              </p>
+  1049→              <ProductCard
+  1050→                product={{
+  1051→                  slug: effectiveSlug || "preview",
+  1052→                  name: watched.name || "Product name",
+  1053→                  tagline: watched.tagline || null,
+  1054→                  image: watched.imageUrl || null,
+  1055→                  price: priceNum,
+  1056→                  compareAtPrice: compareNum || null,
+  1057→                  rating,
+  1058→                  merchant: watched.merchant || null,
+  1059→                }}
+  1060→              />
+  1061→            </div>
+  1062→          </div>
+  1063→        </form>
+  1064→      </Form>
+  1065→    </AdminShell>
+  1066→  );
+  1067→}
+  1068→

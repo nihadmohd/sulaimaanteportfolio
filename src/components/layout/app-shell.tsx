@@ -12,6 +12,7 @@ import { PullToRefresh } from "@/components/layout/pull-to-refresh";
 import { CommandMenu } from "@/components/layout/command-menu";
 import { MaintenanceState, OfflineState } from "@/components/states/http-states";
 import { CookieConsent } from "@/components/shared/cookie-consent";
+import { SiteAnalytics } from "@/components/shared/site-analytics";
 import {
   AdFooterBanner,
   AdHeaderBanner,
@@ -30,10 +31,12 @@ import { useUiStore } from "@/stores/ui-store";
  *   AppProviders › RouterProvider › [MaintenanceGate, OfflineBanner,
  *   flex-column(header / ad-header-banner / ad-marquee / main#main ›
  *   AppRouter / ad-footer-banner / footer), MobileNav, CommandMenu,
- *   AdSticker, CookieConsent]
+ *   AdSticker, SiteAnalytics, CookieConsent]
  *
  * The site-wide DB ad units (Task 9-e) null-render when ads are disabled
- * or no live ad exists, so the shell never shifts.
+ * or no live ad exists, so the shell never shifts. SiteAnalytics (Task 13-e)
+ * renders nothing — it injects GA4 / Plausible / Meta Pixel scripts from the
+ * analytics settings group, gated on the visitor's cookie consent.
  *
  * The footer sticks to the bottom of short viewports via the flex column +
  * mt-auto semantics; long content pushes it down naturally.
@@ -111,6 +114,7 @@ function ShellInner() {
       <CommandKeyListener />
       <AdSticker />
       <SiteStickers />
+      <SiteAnalytics />
       <CookieConsent />
     </MaintenanceGate>
   );

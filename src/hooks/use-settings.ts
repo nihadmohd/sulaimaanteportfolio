@@ -28,7 +28,8 @@ export interface SiteSettings {
   footer?: Partial<SettingsFooter>;
   media?: Record<string, unknown> & {
     heroMarquee?: {
-      images?: string[];
+      /** Legacy plain strings + {src, href} rows persisted by the admin editor. */
+      images?: Array<string | { src: string; href?: string | null }>;
       enabled?: boolean;
       messages?: Array<{ text?: string; href?: string | null }>;
       speed?: "slow" | "normal" | "fast";
@@ -36,6 +37,9 @@ export interface SiteSettings {
     stickers?: { enabled?: boolean };
   };
   ads?: { enabled?: boolean };
+  features?: {
+    cookieConsent?: boolean;
+  };
   maintenance?: {
     enabled?: boolean;
     message?: string;
@@ -63,6 +67,7 @@ export interface SiteSettings {
     enabled?: boolean;
     googleAnalyticsId?: string;
     plausibleDomain?: string;
+    metaPixelId?: string;
     trackOutboundClicks?: boolean;
   };
 }

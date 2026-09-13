@@ -67,7 +67,7 @@ export default function AboutView() {
         title="About MOHAMMED NIHAD KP — AI-First Developer & Freelancer from Calicut | MN.KP"
         description="From a Computer Engineering diploma in Calicut to AI-powered digital execution — the story, skills, stack and 195-country vision of Mohammed Nihad KP."
         canonicalPath="/about"
-        ogImage="/images/brand/portrait.png"
+        ogImage="/images/brand/portrait.webp"
         ogType="profile"
         jsonLd={PERSON_JSON_LD}
       />
@@ -79,7 +79,7 @@ export default function AboutView() {
         <aside className="mx-auto w-full max-w-[300px] lg:mx-0">
           <div className="lg:sticky lg:top-24">
             <img
-              src="/images/brand/portrait.png"
+              src="/images/brand/portrait.webp"
               alt="Portrait of MOHAMMED NIHAD KP — AI-first developer and freelancer from Calicut, Kerala"
               loading="lazy"
               decoding="async"

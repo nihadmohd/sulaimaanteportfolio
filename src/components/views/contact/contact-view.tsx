@@ -223,7 +223,7 @@ export default function ContactView() {
         title="Contact & Inquiries — Hire an AI Developer in Calicut | MN.KP"
         description="Reach MOHAMMED NIHAD KP for projects, collaborations, scholarships or sponsorships. WhatsApp, email or the inquiry form — replies within 24 hours."
         canonicalPath="/contact"
-        ogImage="/images/brand/og-cover.png"
+        ogImage="/images/brand/og-cover.webp"
         jsonLd={CONTACT_JSON_LD}
       />
 

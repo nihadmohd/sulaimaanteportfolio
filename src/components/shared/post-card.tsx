@@ -82,7 +82,7 @@ export function PostCard({ post, size = "default", className }: PostCardProps) {
           {post.coverImage ? (
             <img
               src={post.coverImage}
-              alt=""
+              alt={post.title}
               loading="lazy"
               decoding="async"
               className="size-full object-cover"
@@ -141,7 +141,7 @@ export function PostCard({ post, size = "default", className }: PostCardProps) {
         {post.coverImage ? (
           <img
             src={post.coverImage}
-            alt=""
+            alt={post.title}
             loading="lazy"
             decoding="async"
             className="size-16 shrink-0 rounded-md object-cover"

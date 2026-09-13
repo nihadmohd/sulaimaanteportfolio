@@ -716,7 +716,7 @@ export function NextUpCard({ currentSlug, posts }: NextUpCardProps) {
             {pick.coverImage ? (
               <img
                 src={pick.coverImage}
-                alt=""
+                alt={pick.title}
                 loading="lazy"
                 decoding="async"
                 className="h-full w-full object-cover"

@@ -71,6 +71,7 @@ import {
 } from "./ai-assist-card";
 import { MarkdownToolbar } from "./markdown-toolbar";
 import { DraftRecoveryBanner, useDraftAutosave } from "./editor-drafts";
+import { SingleImageField } from "@/components/shared/image-uploader";
 
 /**
  * Post editor (#/admin/posts/:id — route key "admin-post-edit"; "new"=create).
@@ -85,12 +86,12 @@ import { DraftRecoveryBanner, useDraftAutosave } from "./editor-drafts";
  */
 
 const BLOG_COVERS = [
-  "/images/blog/blog-ai-workflow.png",
-  "/images/blog/blog-ai-tools.png",
-  "/images/blog/blog-career-journey.png",
-  "/images/blog/blog-freelance-calicut.png",
-  "/images/blog/blog-kp-foundation.png",
-  "/images/blog/blog-photo-ai-editing.png",
+  "/images/blog/blog-ai-workflow.webp",
+  "/images/blog/blog-ai-tools.webp",
+  "/images/blog/blog-career-journey.webp",
+  "/images/blog/blog-freelance-calicut.webp",
+  "/images/blog/blog-kp-foundation.webp",
+  "/images/blog/blog-photo-ai-editing.webp",
 ];
 
 const postFormSchema = z.object({
@@ -722,12 +723,20 @@ export default function PostEditView() {
                   name="coverImageUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Cover image URL</FormLabel>
+                      <FormLabel>Cover image</FormLabel>
                       <FormControl>
-                        <Input {...field} value={field.value ?? ""} placeholder="/images/blog/... or https://..." className="h-10" />
+                        <SingleImageField
+                          value={field.value ?? ""}
+                          onChange={(url) => {
+                            field.onChange(url);
+                            setExtraDirty(true);
+                          }}
+                          label="Cover image"
+                          aspect="aspect-[16/9]"
+                        />
                       </FormControl>
-                      <FormDescription>Quick pick:</FormDescription>
-                      <div className="flex flex-wrap gap-2 pt-1">
+                      <FormDescription>Library quick picks:</FormDescription>
+                      <div className="flex flex-wrap gap-2">
                         {BLOG_COVERS.map((src) => (
                           <button
                             key={src}
@@ -861,8 +870,13 @@ export default function PostEditView() {
                         <FormItem>
                           <FormLabel>OG / social image URL</FormLabel>
                           <FormControl>
-                            <Input {...field} value={field.value ?? ""} placeholder="Falls back to the cover image" className="h-10" />
+                            <Input {...field} value={field.value ?? ""} placeholder="https://... (optional)" className="h-10" />
                           </FormControl>
+                          <FormDescription>
+                            Advanced — leave empty to fall back to the cover image
+                            on social cards. Accepts https:// URLs and site-relative
+                            /api/media/... paths.
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}

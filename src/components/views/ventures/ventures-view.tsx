@@ -387,7 +387,7 @@ export default function VenturesView() {
         title="Ventures & Business Ideas — Calicut Store, Chaliyam Connect & More | MN.KP"
         description="Every MN.KP business idea and venture in one place — the Calicut Store, Chaliyam Connect, digital products and long-horizon startup ideas from Calicut, Kerala. Got a startup idea? Join me and build it together."
         canonicalPath="/ventures"
-        ogImage="/images/brand/og-cover.png"
+        ogImage="/images/brand/og-cover.webp"
         jsonLd={jsonLd}
       />
 

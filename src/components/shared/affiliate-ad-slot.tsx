@@ -397,7 +397,7 @@ function FeaturedProductsFallback({
               {product.image ? (
                 <img
                   src={product.image}
-                  alt=""
+                  alt={product.name}
                   loading="lazy"
                   decoding="async"
                   className="size-14 shrink-0 rounded-md object-cover"

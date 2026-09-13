@@ -20,6 +20,22 @@ const optionalUrl = z
   .optional()
   .or(z.literal(""));
 
+/**
+ * Image URL cell (Task 13): absolute http(s) URLs OR site-relative paths
+ * ("/api/media/..." uploads, "/images/..." library picks). The platform's
+ * own media is same-origin, so relative paths are first-class here — mirrors
+ * the lenient csvLinkCell pattern in api/import/route.ts. Canonical/website
+ * links stay strict (optionalUrl) because they must be absolute.
+ */
+const siteImageUrl = z
+  .string()
+  .max(600)
+  .refine((v) => v === "" || /^https?:\/\//i.test(v) || v.startsWith("/"), {
+    message: "Use an https:// URL or a site-relative path like /api/media/...",
+  });
+
+const optionalImageUrl = siteImageUrl.optional().or(z.literal(""));
+
 // ---------- auth lifecycle ----------
 export const registerSchema = z.object({
   fullName: z.string().min(2, "Enter your full name").max(80),
@@ -65,7 +81,7 @@ export const postCreateSchema = z.object({
   slug: slug.optional(),
   excerpt: z.string().max(300).optional(),
   content: z.string().min(1, "Content is required").max(80_000),
-  coverImageUrl: optionalUrl,
+  coverImageUrl: optionalImageUrl,
   status: z.enum(["draft", "published", "archived"]).default("draft"),
   isFeatured: z.boolean().default(false),
   tags: z.array(z.string().min(1).max(30)).max(10).default([]),
@@ -73,7 +89,7 @@ export const postCreateSchema = z.object({
   categoryId: z.string().min(1).optional().nullable(),
   seoTitle: z.string().max(70).optional(),
   seoDescription: z.string().max(180).optional(),
-  ogImageUrl: optionalUrl,
+  ogImageUrl: optionalImageUrl,
   canonicalUrl: optionalUrl,
   publishedAt: z.string().optional(),
 });
@@ -89,7 +105,7 @@ export const postUpdateSchema = z.object({
   slug: slug.optional(),
   excerpt: z.string().max(300).optional(),
   content: z.string().min(1, "Content is required").max(80_000).optional(),
-  coverImageUrl: optionalUrl,
+  coverImageUrl: optionalImageUrl,
   status: z.enum(["draft", "published", "archived"]).optional(),
   isFeatured: z.boolean().optional(),
   tags: z.array(z.string().min(1).max(30)).max(10).optional(),
@@ -97,7 +113,7 @@ export const postUpdateSchema = z.object({
   categoryId: z.string().min(1).optional().nullable(),
   seoTitle: z.string().max(70).optional(),
   seoDescription: z.string().max(180).optional(),
-  ogImageUrl: optionalUrl,
+  ogImageUrl: optionalImageUrl,
   canonicalUrl: optionalUrl,
   publishedAt: z.string().optional(),
 });
@@ -110,8 +126,8 @@ export const productCreateSchema = z.object({
   description: z.string().max(30_000).optional(),
   brand: z.string().max(60).optional(),
   merchant: z.string().max(60).optional(),
-  imageUrl: optionalUrl,
-  gallery: z.array(z.string().url().max(600)).max(8).default([]),
+  imageUrl: optionalImageUrl,
+  gallery: z.array(siteImageUrl).max(8).default([]),
   price: z.number().min(0).max(10_000_000).optional().nullable(),
   compareAtPrice: z.number().min(0).max(10_000_000).optional().nullable(),
   currency: z.string().min(1).max(8).default("INR"),
@@ -134,8 +150,8 @@ export const productUpdateSchema = z.object({
   description: z.string().max(30_000).optional(),
   brand: z.string().max(60).optional(),
   merchant: z.string().max(60).optional(),
-  imageUrl: optionalUrl,
-  gallery: z.array(z.string().url().max(600)).max(8).optional(),
+  imageUrl: optionalImageUrl,
+  gallery: z.array(siteImageUrl).max(8).optional(),
   price: z.number().min(0).max(10_000_000).optional().nullable(),
   compareAtPrice: z.number().min(0).max(10_000_000).optional().nullable(),
   currency: z.string().min(1).max(8).optional(),
@@ -253,9 +269,9 @@ export const adCreateSchema = z.object({
   placement: z.enum(AD_PLACEMENTS),
   title: z.string().max(120).optional().or(z.literal("")),
   body: z.string().max(600).optional().or(z.literal("")),
-  imageUrl: optionalUrl,
+  imageUrl: optionalImageUrl,
   imageAlt: z.string().max(160).optional().or(z.literal("")),
-  images: z.array(z.string().url().max(600)).max(16).default([]),
+  images: z.array(siteImageUrl).max(16).default([]),
   linkUrl: adLink,
   linkLabel: z.string().max(40).default("Learn more"),
   active: z.boolean().default(true),
@@ -271,9 +287,9 @@ export const adUpdateSchema = z.object({
   placement: z.enum(AD_PLACEMENTS).optional(),
   title: z.string().max(120).optional().or(z.literal("")),
   body: z.string().max(600).optional().or(z.literal("")),
-  imageUrl: optionalUrl,
+  imageUrl: optionalImageUrl,
   imageAlt: z.string().max(160).optional().or(z.literal("")),
-  images: z.array(z.string().url().max(600)).max(16).optional(),
+  images: z.array(siteImageUrl).max(16).optional(),
   linkUrl: adLink,
   linkLabel: z.string().max(40).optional(),
   active: z.boolean().optional(),
@@ -303,7 +319,7 @@ export const ventureCreateSchema = z.object({
   status: z.enum(VENTURE_STATUSES).default("live"),
   location: z.string().max(120).optional().or(z.literal("")),
   websiteUrl: optionalUrl,
-  imageUrl: optionalUrl,
+  imageUrl: optionalImageUrl,
   highlights: z.array(z.string().min(1).max(80)).max(8).default([]),
   collabRoles: z.array(z.string().min(1).max(80)).max(8).default([]),
   sortOrder: z.number().int().min(0).max(999).default(0),
@@ -320,7 +336,7 @@ export const ventureUpdateSchema = z.object({
   status: z.enum(VENTURE_STATUSES).optional(),
   location: z.string().max(120).optional().or(z.literal("")),
   websiteUrl: optionalUrl,
-  imageUrl: optionalUrl,
+  imageUrl: optionalImageUrl,
   highlights: z.array(z.string().min(1).max(80)).max(8).optional(),
   collabRoles: z.array(z.string().min(1).max(80)).max(8).optional(),
   sortOrder: z.number().int().min(0).max(999).optional(),

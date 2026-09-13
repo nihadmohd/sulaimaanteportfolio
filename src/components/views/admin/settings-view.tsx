@@ -11,10 +11,13 @@ import {
   Check,
   GalleryHorizontal,
   Globe,
+  Link2,
+  Loader2,
   Plus,
   Save,
   ShieldCheck,
   Sparkles,
+  UploadCloud,
   Wrench,
   X,
 } from "lucide-react";
@@ -47,6 +50,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataState, ForbiddenState, LoadingState } from "@/components/states";
 import { SEOHead } from "@/components/shared/seo-head";
+import { uploadImageFile } from "@/lib/image-tools";
 import { toast } from "@/hooks/use-toast";
 import type { JsonRecord, StatsResponse } from "@/types";
 import { cn } from "@/lib/utils";
@@ -123,9 +127,14 @@ interface FooterDraft {
   columns: ColumnDraft[];
 }
 
+interface HeroImageDraft {
+  src: string;
+  href: string;
+}
+
 interface MediaDraft {
   heroEnabled: boolean;
-  heroImages: string[];
+  heroImages: HeroImageDraft[];
   heroMessages: MessageDraft[];
   heroSpeed: string;
   stickersEnabled: boolean;
@@ -189,6 +198,7 @@ interface AnalyticsDraft {
   enabled: boolean;
   googleAnalyticsId: string;
   plausibleDomain: string;
+  metaPixelId: string;
   trackOutboundClicks: boolean;
 }
 
@@ -204,6 +214,22 @@ function asBool(v: unknown, fallback = false): boolean {
 }
 function asStrArr(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+/** Hero marquee rows: legacy plain strings + {src,href} objects. */
+function asHeroImages(v: unknown): HeroImageDraft[] {
+  if (!Array.isArray(v)) return [];
+  const out: HeroImageDraft[] = [];
+  for (const item of v) {
+    if (typeof item === "string") {
+      if (item.trim()) out.push({ src: item, href: "" });
+    } else if (typeof item === "object" && item !== null) {
+      const m = item as { src?: unknown; href?: unknown };
+      if (typeof m.src === "string" && m.src.trim()) {
+        out.push({ src: m.src, href: typeof m.href === "string" ? m.href : "" });
+      }
+    }
+  }
+  return out.slice(0, 14);
 }
 function asRecord(v: unknown): Record<string, string> {
   if (typeof v !== "object" || v === null || Array.isArray(v)) return {};
@@ -363,6 +389,41 @@ export default function SettingsView() {
   const [newGif, setNewGif] = React.useState("");
   const [newKeyword, setNewKeyword] = React.useState("");
 
+  /* hero marquee lane-A uploads (Task 13-c) */
+  const heroFileRef = React.useRef<HTMLInputElement | null>(null);
+  const [heroDropping, setHeroDropping] = React.useState(false);
+  const [heroUploading, setHeroUploading] = React.useState(0);
+
+  const runHeroUpload = (files: FileList | File[]) => {
+    const list = Array.from(files).filter(
+      (f) => f.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|avif)$/i.test(f.name)
+    );
+    if (list.length === 0) {
+      toast({ title: "Not an image", description: "Drop a JPG, PNG, WebP, GIF or AVIF file.", variant: "destructive" });
+      return;
+    }
+    setHeroUploading((n) => n + list.length);
+    for (const file of list) {
+      void uploadImageFile(file)
+        .then((meta) => {
+          setMedia((m) =>
+            m
+              ? { ...m, heroImages: [...m.heroImages, { src: meta.url, href: "" }].slice(0, 14) }
+              : m
+          );
+          touch("media");
+          toast({
+            title: "Marquee image uploaded",
+            description: "Set its click URL in the row below, then save.",
+          });
+        })
+        .catch((e: Error) => {
+          toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+        })
+        .finally(() => setHeroUploading((n) => Math.max(0, n - 1)));
+    }
+  };
+
   React.useEffect(() => {
     const data = settingsQuery.data;
     if (!data) return;
@@ -414,7 +475,7 @@ export default function SettingsView() {
     });
     setMedia({
       heroEnabled: asBool(hero.enabled, true),
-      heroImages: asStrArr(hero.images),
+      heroImages: asHeroImages(hero.images),
       heroMessages: Array.isArray(hero.messages)
         ? (hero.messages as unknown[]).map((mm) => {
             const msg = (mm ?? {}) as { text?: unknown; href?: unknown };
@@ -478,6 +539,7 @@ export default function SettingsView() {
       enabled: asBool(an.enabled, false),
       googleAnalyticsId: asString(an.googleAnalyticsId),
       plausibleDomain: asString(an.plausibleDomain),
+      metaPixelId: asString(an.metaPixelId),
       trackOutboundClicks: asBool(an.trackOutboundClicks, true),
     });
     setMaintenance({
@@ -540,7 +602,13 @@ export default function SettingsView() {
   const buildMediaValue = (): Record<string, unknown> => ({
     heroMarquee: {
       enabled: media?.heroEnabled ?? false,
-      images: media?.heroImages ?? [],
+      images: (media?.heroImages ?? [])
+        .map((img) => ({
+          src: img.src.trim(),
+          href: img.href.trim() || null,
+        }))
+        .filter((img) => img.src.length > 0)
+        .slice(0, 14),
       messages: (media?.heroMessages ?? [])
         .map((m) => ({ text: m.text.trim().slice(0, 60), href: m.href.trim() || null }))
         .filter((m) => m.text.length > 0)
@@ -608,6 +676,7 @@ export default function SettingsView() {
     enabled: analytics?.enabled ?? false,
     googleAnalyticsId: analytics?.googleAnalyticsId?.trim() ?? "",
     plausibleDomain: analytics?.plausibleDomain?.trim() ?? "",
+    metaPixelId: analytics?.metaPixelId?.trim() ?? "",
     trackOutboundClicks: analytics?.trackOutboundClicks ?? true,
   });
 
@@ -1019,29 +1088,108 @@ export default function SettingsView() {
                     </CardHeader>
                     <CardContent className="space-y-5">
                       <div className="grid gap-5 lg:grid-cols-2">
-                        {/* lane A — images */}
+                        {/* lane A — images (upload + per-image click URL) */}
                         <div className="space-y-3">
                           <Label>Image track — lane A</Label>
+                          <p className="text-[11px] leading-snug text-muted-foreground">
+                            Full-colour scrolling images. Set a link per image — visitors
+                            who click go straight there (in-app routes like #/store or any
+                            https URL you give). Uploads are auto-optimized to WebP.
+                          </p>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            aria-label="Upload marquee images from your device"
+                            onClick={() => heroFileRef.current?.click()}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                heroFileRef.current?.click();
+                              }
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              setHeroDropping(true);
+                            }}
+                            onDragLeave={() => setHeroDropping(false)}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              setHeroDropping(false);
+                              if (e.dataTransfer.files.length > 0) runHeroUpload(e.dataTransfer.files);
+                            }}
+                            className={
+                              "flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed px-3 py-3.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
+                              (heroDropping ? "border-gold bg-gold/10" : "border-border bg-muted/30 hover:border-gold/50 hover:bg-gold/5")
+                            }
+                          >
+                            {heroUploading > 0 ? (
+                              <Loader2 className="size-4 animate-spin text-gold" aria-hidden="true" />
+                            ) : (
+                              <UploadCloud className="size-4 text-muted-foreground" aria-hidden="true" />
+                            )}
+                            <span className="font-medium">
+                              {heroUploading > 0
+                                ? `Uploading ${heroUploading} image${heroUploading === 1 ? "" : "s"}…`
+                                : "Drop / click to upload images"}
+                            </span>
+                            <input
+                              ref={heroFileRef}
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                              multiple
+                              className="sr-only"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) runHeroUpload(e.target.files);
+                                e.target.value = "";
+                              }}
+                            />
+                          </div>
                           {media.heroImages.map((img, i) => (
-                            <div key={`hero-${i}`} className="flex items-center gap-2">
-                              <img src={img} alt="" loading="lazy" decoding="async" className="size-10 shrink-0 rounded-md border object-cover" />
-                              <Input
-                                value={img}
-                                onChange={(e) => {
-                                  const next = [...media.heroImages];
-                                  next[i] = e.target.value;
-                                  setMedia({ ...media, heroImages: next });
-                                  touch("media");
-                                }}
-                                aria-label={`Marquee image ${i + 1}`}
-                                className="flex-1 font-mono text-xs"
-                              />
-                              <div className="flex shrink-0 gap-1">
+                            <div key={`hero-${i}`} className="flex items-start gap-2 rounded-lg border bg-card p-2">
+                              <img src={img.src} alt={`Marquee image ${i + 1}`} loading="lazy" decoding="async" className="size-12 shrink-0 rounded-md border object-cover" />
+                              <div className="min-w-0 flex-1 space-y-1.5">
+                                <div className="relative">
+                                  <GalleryHorizontal
+                                    className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground"
+                                    aria-hidden="true"
+                                  />
+                                  <Input
+                                    value={img.src}
+                                    onChange={(e) => {
+                                      const next = [...media.heroImages];
+                                      next[i] = { ...img, src: e.target.value };
+                                      setMedia({ ...media, heroImages: next });
+                                      touch("media");
+                                    }}
+                                    aria-label={`Marquee image ${i + 1} source`}
+                                    className="h-8 pl-7 font-mono text-[11px]"
+                                  />
+                                </div>
+                                <div className="relative">
+                                  <Link2
+                                    className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground"
+                                    aria-hidden="true"
+                                  />
+                                  <Input
+                                    value={img.href}
+                                    onChange={(e) => {
+                                      const next = [...media.heroImages];
+                                      next[i] = { ...img, href: e.target.value };
+                                      setMedia({ ...media, heroImages: next });
+                                      touch("media");
+                                    }}
+                                    placeholder="Click URL — #/store or https://…"
+                                    aria-label={`Marquee image ${i + 1} click URL`}
+                                    className="h-8 pl-7 font-mono text-[11px]"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex shrink-0 flex-col gap-1">
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="icon"
-                                  className="size-9"
+                                  className="size-7"
                                   disabled={i === 0}
                                   onClick={() => {
                                     const next = [...media.heroImages];
@@ -1051,13 +1199,13 @@ export default function SettingsView() {
                                   }}
                                   aria-label={`Move image ${i + 1} up`}
                                 >
-                                  <ArrowUp className="size-4" aria-hidden="true" />
+                                  <ArrowUp className="size-3.5" aria-hidden="true" />
                                 </Button>
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="icon"
-                                  className="size-9"
+                                  className="size-7"
                                   disabled={i === media.heroImages.length - 1}
                                   onClick={() => {
                                     const next = [...media.heroImages];
@@ -1067,20 +1215,20 @@ export default function SettingsView() {
                                   }}
                                   aria-label={`Move image ${i + 1} down`}
                                 >
-                                  <ArrowDown className="size-4" aria-hidden="true" />
+                                  <ArrowDown className="size-3.5" aria-hidden="true" />
                                 </Button>
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  className="size-9 text-muted-foreground hover:text-destructive"
+                                  className="size-7 text-muted-foreground hover:text-destructive"
                                   onClick={() => {
                                     setMedia({ ...media, heroImages: media.heroImages.filter((_, idx) => idx !== i) });
                                     touch("media");
                                   }}
                                   aria-label={`Remove image ${i + 1}`}
                                 >
-                                  <X className="size-4" aria-hidden="true" />
+                                  <X className="size-3.5" aria-hidden="true" />
                                 </Button>
                               </div>
                             </div>
@@ -1091,16 +1239,16 @@ export default function SettingsView() {
                               onChange={(e) => setNewImage(e.target.value)}
                               placeholder="/images/blog/... (add image URL)"
                               aria-label="New marquee image URL"
-                              className="h-10"
+                              className="h-9 font-mono text-xs"
                             />
                             <Button
                               type="button"
                               variant="outline"
-                              className="h-10"
+                              className="h-9"
                               onClick={() => {
                                 const url = newImage.trim();
-                                if (!url || media.heroImages.includes(url)) return;
-                                setMedia({ ...media, heroImages: [...media.heroImages, url] });
+                                if (!url || media.heroImages.some((h) => h.src === url)) return;
+                                setMedia({ ...media, heroImages: [...media.heroImages, { src: url, href: "" }] });
                                 setNewImage("");
                                 touch("media");
                               }}
@@ -1898,7 +2046,10 @@ export default function SettingsView() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Default mode: privacy-first — tracking stays OFF until you opt in.
+                Default mode: privacy-first — tracking stays OFF until you opt in. Once enabled,
+                the matching scripts load site-wide for every visitor (GA and Plausible follow the
+                visitor&apos;s analytics cookie consent, Meta Pixel the marketing consent — nothing
+                loads while the cookie-consent feature is on and consent is missing).
               </p>
               {analytics ? (
                 <Card>
@@ -1907,7 +2058,10 @@ export default function SettingsView() {
                       <BarChart3 className="size-4 text-primary" aria-hidden="true" />
                       Tracking integrations
                     </CardTitle>
-                    <CardDescription>Google Analytics and/or Plausible — off by default</CardDescription>
+                    <CardDescription>
+                      Google Analytics, Plausible and/or Meta Pixel — off by default, live site-wide
+                      once enabled
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-5">
                     <div className="flex items-center justify-between rounded-lg border p-3">
@@ -1917,7 +2071,8 @@ export default function SettingsView() {
                           Analytics enabled
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Privacy-first: tracking stays off until you enable it — Default: OFF
+                          Privacy-first: tracking stays off until you enable it — scripts then go live
+                          site-wide — Default: OFF
                         </p>
                       </div>
                       <Switch
@@ -1948,6 +2103,19 @@ export default function SettingsView() {
                           className="font-mono text-xs"
                         />
                         <p className="text-xs text-muted-foreground">Leave empty = disabled — Default: empty</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="a-meta">Meta Pixel ID</Label>
+                        <Input
+                          id="a-meta"
+                          value={analytics.metaPixelId}
+                          onChange={(e) => { setAnalytics({ ...analytics, metaPixelId: e.target.value }); touch("analytics"); }}
+                          placeholder="123456789012345"
+                          className="font-mono text-xs"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Numeric Facebook / Instagram Pixel ID — leave empty = disabled — Default: empty
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between rounded-lg border p-3">

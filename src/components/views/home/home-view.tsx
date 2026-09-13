@@ -212,6 +212,59 @@ interface HeroMessage {
   href: string | null;
 }
 
+/** Client-side guard for one marquee image row (string or {src,href}). */
+interface HeroImage {
+  src: string;
+  href: string | null;
+  alt: string;
+}
+
+/** Friendly alt for a marquee image derived from its destination. */
+function marqueeImageAlt(href: string | null): string {
+  if (!href) return "MN.KP highlight";
+  if (href.startsWith("#/")) {
+    const route = href.slice(2).split("/")[0] ?? "";
+    const labels: Record<string, string> = {
+      store: "Curated gear from the MN.KP store",
+      blog: "Latest writing on the MN.KP blog",
+      services: "MN.KP services",
+      ventures: "MN.KP ventures",
+      about: "About MOHAMMED NIHAD KP",
+      contact: "Contact MN.KP",
+      support: "MN.KP support",
+    };
+    return labels[route] ?? `MN.KP highlight — ${route}`;
+  }
+  try {
+    return `MN.KP highlight — ${new URL(href).hostname.replace(/^www\./, "")}`;
+  } catch {
+    return "MN.KP highlight";
+  }
+}
+
+/** Normalize settings rows: legacy plain strings + {src,href} objects. */
+function parseHeroImages(raw: unknown): HeroImage[] {
+  if (!Array.isArray(raw)) return [];
+  const out: HeroImage[] = [];
+  for (const item of raw) {
+    if (typeof item === "string") {
+      if (item.trim()) out.push({ src: item, href: null, alt: marqueeImageAlt(null) });
+      continue;
+    }
+    if (typeof item !== "object" || item === null) continue;
+    const m = item as { src?: unknown; href?: unknown };
+    if (typeof m.src !== "string" || !m.src.trim()) continue;
+    const href =
+      typeof m.href === "string" && (m.href.startsWith("#/") || m.href.startsWith("https://"))
+        ? m.href
+        : typeof m.href === "string" && m.href.startsWith("http://")
+          ? m.href
+          : null;
+    out.push({ src: m.src.trim(), href, alt: marqueeImageAlt(href) });
+  }
+  return out;
+}
+
 function parseHeroMessages(raw: unknown): HeroMessage[] {
   if (!Array.isArray(raw)) return [];
   const out: HeroMessage[] = [];
@@ -324,19 +377,20 @@ function HeroAdChip({ ad, trackImpression }: { ad: AdDTO; trackImpression: boole
 /**
  * HeroMarquee — dual-lane marketing band below the hero.
  *
- * Lane A scrolls the curated image track (grayscale, color on hover); lane B
- * scrolls the opposite way mixing tracked "hero-marquee" ads with the owner's
- * marketing chips. Both pause on hover/focus, respect reduced motion and fade
- * at the viewport edges. Renders nothing when disabled or fully empty.
+ * Lane A scrolls the curated image track — FULL COLOUR since Task 13-c (the
+ * greyscale treatment was retired) and every image clicks through to the
+ * URL the owner set per-image in Settings → Media (in-app routes navigate
+ * natively; external ads open in a new tab with rel="sponsored noopener").
+ * Lane B scrolls the opposite way mixing tracked "hero-marquee" ads with the
+ * owner's marketing chips. Both pause on hover/focus, respect reduced motion
+ * and fade at the viewport edges. Renders nothing when disabled or empty.
  */
 function HeroMarquee() {
   const settings = useSettings();
   const marquee = settings.data?.media?.heroMarquee;
   const { ads } = useAdsForPlacement("hero-marquee");
 
-  const images = (marquee?.images ?? []).filter(
-    (src): src is string => typeof src === "string" && src.length > 0
-  );
+  const images = parseHeroImages(marquee?.images);
   const messages = parseHeroMessages(marquee?.messages);
   const speed: MarqueeSpeed =
     marquee?.speed === "slow" || marquee?.speed === "fast" ? marquee.speed : "normal";
@@ -376,16 +430,35 @@ function HeroMarquee() {
         {images.length > 0 ? (
           <div className="mnkp-marquee mnkp-marquee--fade">
             <div className="mnkp-marquee__track" style={{ animationDuration: duration }}>
-              {[...images, ...images].map((src, index) => (
-                <img
-                  key={`hero-img-${index}-${src}`}
-                  src={src}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="press mx-2 h-16 w-auto max-w-none shrink-0 rounded-lg border object-cover grayscale transition-all duration-300 hover:grayscale-0 hover:border-gold/40 sm:mx-2.5 sm:h-20 md:h-24"
-                />
-              ))}
+              {[...images, ...images].map((image, index) => {
+                const img = (
+                  <img
+                    src={image.src}
+                    alt={image.alt}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-16 w-auto max-w-none shrink-0 rounded-lg border object-cover transition-all duration-300 hover:border-gold/50 hover:shadow-md hover:shadow-gold/10 sm:h-20 md:h-24"
+                  />
+                );
+                return image.href ? (
+                  <ALink
+                    key={`hero-img-${index}-${image.src}`}
+                    href={image.href}
+                    aria-label={image.alt}
+                    className="press mx-2 inline-flex shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mx-2.5"
+                    rel="sponsored noopener"
+                  >
+                    {img}
+                  </ALink>
+                ) : (
+                  <span
+                    key={`hero-img-${index}-${image.src}`}
+                    className="mx-2 inline-flex shrink-0 sm:mx-2.5"
+                  >
+                    {img}
+                  </span>
+                );
+              })}
             </div>
           </div>
         ) : null}
@@ -556,7 +629,7 @@ export default function HomeView() {
         title="MN.KP | AI-Powered Web & App Development in Calicut — MOHAMMED NIHAD KP"
         description="Hire MOHAMMED NIHAD KP — Calicut-based AI-first developer & freelancer delivering fast websites, apps, photo & video services, and an honestly curated affiliate store."
         canonicalPath="/"
-        ogImage="/images/brand/og-cover.png"
+        ogImage="/images/brand/og-cover.webp"
       />
 
       <HeroSection />
@@ -742,7 +815,7 @@ export default function HomeView() {
       <section className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[280px_1fr] lg:px-8">
         <div className="mx-auto w-full max-w-[280px]">
           <img
-            src="/images/brand/portrait.png"
+            src="/images/brand/portrait.webp"
             alt="Portrait of MOHAMMED NIHAD KP — AI-first developer and freelancer from Calicut"
             loading="lazy"
             decoding="async"

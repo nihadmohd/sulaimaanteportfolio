@@ -151,7 +151,7 @@ function jsonRecordCell(value: string): Record<string, string> {
 
 /**
  * Lenient URL/path cell for CSV round-trips. The platform's own data uses
- * site-relative image paths ("/images/store/x.png"), which the strict zod
+ * site-relative image paths ("/images/store/x.webp"), which the strict zod
  * optionalUrl rejects — so CSV import accepts absolute http(s) URLs,
  * site-relative /paths, #/routes and mailto:, and errors on anything else.
  * (Deliberate 11-b deviation from the JSON path, documented in worklog.)

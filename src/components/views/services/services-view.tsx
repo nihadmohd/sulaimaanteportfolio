@@ -79,7 +79,7 @@ export default function ServicesView() {
         title="Services — AI Development, Photography & Videography in Calicut | MN.KP"
         description="AI-powered web & app development, AI training, photography, videography, editing and marketing services in Calicut, Kerala. Free quote within 24 hours."
         canonicalPath="/services"
-        ogImage="/images/brand/og-cover.png"
+        ogImage="/images/brand/og-cover.webp"
         jsonLd={SERVICES_JSON_LD}
       />
 

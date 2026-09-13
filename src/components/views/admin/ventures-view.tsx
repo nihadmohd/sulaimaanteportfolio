@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DataState, ForbiddenState, LoadingState } from "@/components/states";
 import { EmptyState } from "@/components/states/empty";
 import { SEOHead } from "@/components/shared/seo-head";
+import { SingleImageField } from "@/components/shared/image-uploader";
 import { toast } from "@/hooks/use-toast";
 import type { VentureCategory, VentureDTO, VentureStatus } from "@/types";
 import { AdminShell } from "./_shell";
@@ -374,16 +375,25 @@ export default function VenturesAdminView() {
       });
       return;
     }
-    for (const field of [form.websiteUrl, form.imageUrl]) {
-      const url = field.trim();
-      if (url && !/^https?:\/\//.test(url)) {
-        toast({
-          title: "Invalid URL",
-          description: "Website and image URLs must start with https://",
-          variant: "destructive",
-        });
-        return;
-      }
+    const website = form.websiteUrl.trim();
+    if (website && !/^https?:\/\//.test(website)) {
+      toast({
+        title: "Invalid website URL",
+        description: "The website link must start with https://",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Uploaded covers live at site-relative /api/media/... paths — accept
+    // those too (mirrors the CSV import + server-side siteImageUrl rule).
+    const image = form.imageUrl.trim();
+    if (image && !/^https?:\/\//.test(image) && !image.startsWith("/")) {
+      toast({
+        title: "Invalid image URL",
+        description: "Image URLs must start with https:// or / (uploaded images use /api/media/...).",
+        variant: "destructive",
+      });
+      return;
     }
     setSaving(true);
     try {
@@ -692,27 +702,29 @@ export default function VenturesAdminView() {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="venture-website">Website URL</Label>
-                <Input
-                  id="venture-website"
-                  value={form.websiteUrl}
-                  onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })}
-                  placeholder="https://..."
-                  className="font-mono text-xs"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="venture-image">Image URL</Label>
-                <Input
-                  id="venture-image"
-                  value={form.imageUrl}
-                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                  placeholder="https://... (optional cover)"
-                  className="font-mono text-xs"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="venture-website">Website URL</Label>
+              <Input
+                id="venture-website"
+                value={form.websiteUrl}
+                onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })}
+                placeholder="https://..."
+                className="font-mono text-xs"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Venture image</Label>
+              <SingleImageField
+                value={form.imageUrl}
+                onChange={(url) => setForm({ ...form, imageUrl: url })}
+                label="Venture image"
+                aspect="aspect-video"
+                recommended="16:9 cover — auto-converted to WebP"
+              />
+              <p className="text-xs text-muted-foreground">
+                Shown as the card cover on the public Ventures page (optional).
+              </p>
             </div>
 
             <div className="space-y-2">

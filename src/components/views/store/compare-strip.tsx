@@ -70,7 +70,7 @@ export function CompareStrip({ current, related }: CompareStripProps) {
                 {item.imageUrl ? (
                   <img
                     src={item.imageUrl}
-                    alt=""
+                    alt={item.name}
                     loading="lazy"
                     decoding="async"
                     className="size-14 shrink-0 rounded-lg border bg-muted object-cover"

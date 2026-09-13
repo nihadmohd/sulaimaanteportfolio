@@ -17,7 +17,7 @@ export const SITE = {
   cvUrl: "https://drive.google.com/file/d/1wzvYQdy3LTLekoCOhytPM5m0AGO0n9nr/preview",
   /** Change to the production domain on deploy (used for canonical/sitemap/JSON-LD). */
   url: "https://mohdnihadkp.vercel.app",
-  ogImage: "/images/brand/og-cover.png",
+  ogImage: "/images/brand/og-cover.webp",
 } as const;
 
 export interface SocialLink {
@@ -117,5 +117,11 @@ export const DEMO_CREDENTIALS = {
 } as const;
 
 export const COOKIE_CONSENT_KEY = "mnkp_cookie_consent";
+/**
+ * Fired on window whenever the cookie-consent value changes (set or cleared)
+ * so analytics loaders (site-analytics.tsx) can re-evaluate without a reload.
+ * detail: ConsentValue | null (null = consent cleared).
+ */
+export const CONSENT_CHANGE_EVENT = "mnkp:consent-change";
 export const VIEW_DEDUPE_PREFIX = "mnkp_pv_";
 export const PRESENCE_SOCKET_QUERY = "XTransformPort=3003";
