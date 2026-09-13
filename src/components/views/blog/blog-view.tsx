@@ -209,6 +209,7 @@ export default function BlogView() {
 
       <header className="mt-6 sm:mt-8">
         <SectionHeading
+          as="h1"
           microLabel="The MN.KP blog"
           title="Guides worth your screen time"
           description="AI workflows, rapid development and freelancing from Calicut — written to be used, not just read. Every post answers a real question."

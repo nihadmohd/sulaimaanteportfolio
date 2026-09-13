@@ -76,9 +76,9 @@ export const ROUTES: RouteEntry[] = [
   {
     key: "ventures",
     pattern: "/ventures",
-    title: "Ventures & Business Ideas — Calicut Store, Chaliyam Connect & More | MN.KP",
+    title: "Ventures & Business Ideas — Build a Startup with Me | MN.KP",
     description:
-      "Every MN.KP business idea and venture in one place — the Calicut Store, Chaliyam Connect, digital products and long-horizon startup ideas from Calicut, Kerala. Got a startup idea? Join me and build it together.",
+      "Explore MN.KP ventures and startup ideas from Calicut, Kerala — live projects, incubating ideas and open calls to collaborate. Pitch yours and build it with me.",
   },
   {
     key: "contact",
@@ -150,6 +150,13 @@ export const ROUTES: RouteEntry[] = [
     pattern: "/admin/login",
     title: "Admin Sign In | MN.KP",
     description: "Sign in to the MN.KP Admin & Developer console.",
+    noindex: true,
+  },
+  {
+    key: "setup",
+    pattern: "/setup",
+    title: "Set Up Your Website | MN.KP",
+    description: "First-run setup — create the owner account for this MN.KP website.",
     noindex: true,
   },
   {
@@ -269,6 +276,14 @@ export const ROUTES: RouteEntry[] = [
     pattern: "/admin/import",
     title: "Import Content | MN.KP Admin",
     description: "Bulk-import posts and products from your old website via JSON.",
+    noindex: true,
+    guard: "staff",
+  },
+  {
+    key: "admin-seo",
+    pattern: "/admin/seo",
+    title: "SEO Toolkit | MN.KP Admin",
+    description: "Search Console verification, SERP previews, SEO health audit and the backlink growth playbook.",
     noindex: true,
     guard: "staff",
   },

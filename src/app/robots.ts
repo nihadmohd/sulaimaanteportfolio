@@ -7,9 +7,10 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/admin", "/account", "/onboarding", "/auth"],
+        disallow: ["/api/", "/admin", "/account", "/onboarding", "/auth", "/setup"],
       },
     ],
     sitemap: "https://mohdnihadkp.vercel.app/sitemap.xml",
+    host: "https://mohdnihadkp.vercel.app",
   };
 }

@@ -11,7 +11,7 @@ import { ALink } from "@/components/router/link";
 import { toast } from "@/hooks/use-toast";
 import { SEOHead } from "@/components/shared/seo-head";
 import { forgotPasswordSchema } from "@/lib/validation";
-import { AUTH_THEMES, AuthShell, DemoCredentialsCard, apiFetch } from "./_shared";
+import { AUTH_THEMES, AuthShell, apiFetch } from "./_shared";
 
 type ForgotValues = { email: string };
 

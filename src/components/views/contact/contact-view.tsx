@@ -231,6 +231,7 @@ export default function ContactView() {
 
       <header className="mt-8">
         <SectionHeading
+          as="h1"
           microLabel="Contact"
           title="Let's talk about what you're building"
           description={

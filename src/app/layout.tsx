@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { SITE, SOCIALS } from "@/lib/constants";
+import { db } from "@/lib/db";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,53 +15,105 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE.url),
-  title: {
-    default: "MN.KP | AI-Powered Web & App Development in Calicut — MOHAMMED NIHAD KP",
-    template: "%s | MN.KP",
-  },
-  description: `MOHAMMED NIHAD KP is a Calicut-based AI-first developer and freelancer delivering fast websites, apps, photo and video services, plus an honestly curated affiliate store. ${SITE.tagline}`,
-  keywords: [
-    "AI developer Calicut",
-    "web development Kerala",
-    "photography Calicut",
-    "videography Kozhikode",
-    "affiliate store",
-    "MOHAMMED NIHAD KP",
-  ],
-  authors: [{ name: SITE.owner }],
-  creator: SITE.owner,
-  icons: {
-    icon: ["/favicon.svg", "/favicon-32.png", "/icon-192.png"],
-    apple: "/apple-touch-icon.png",
-  },
-  openGraph: {
-    title: "MN.KP | AI-Powered Web & App Development in Calicut — MOHAMMED NIHAD KP",
-    description: `Hire MOHAMMED NIHAD KP — Calicut-based AI-first developer and freelancer. ${SITE.tagline}`,
-    type: "website",
-    url: SITE.url,
-    siteName: "MN.KP",
-    images: [
-      {
-        url: "/images/brand/og-cover.webp",
-        width: 1344,
-        height: 768,
-        alt: "MN.KP — MOHAMMED NIHAD KP, AI-first developer from Calicut, Kerala",
-      },
+/** Owner-managed SEO tokens (Admin → Settings → SEO / SEO Toolkit). */
+async function loadSeoSettings(): Promise<{
+  googleVerification: string;
+  bingVerification: string;
+  keywords: string[];
+}> {
+  try {
+    const row = await db.siteSetting.findUnique({ where: { key: "seo" } });
+    if (!row) return { googleVerification: "", bingVerification: "", keywords: [] };
+    const parsed = JSON.parse(row.value) as {
+      googleVerification?: unknown;
+      bingVerification?: unknown;
+      keywords?: unknown;
+    };
+    const keywords = Array.isArray(parsed.keywords)
+      ? parsed.keywords.filter((k): k is string => typeof k === "string")
+      : [];
+    return {
+      googleVerification:
+        typeof parsed.googleVerification === "string" ? parsed.googleVerification.trim() : "",
+      bingVerification:
+        typeof parsed.bingVerification === "string" ? parsed.bingVerification.trim() : "",
+      keywords,
+    };
+  } catch {
+    return { googleVerification: "", bingVerification: "", keywords: [] };
+  }
+}
+
+/**
+ * Dynamic metadata — emits the google-site-verification / msvalidate.01 meta
+ * tags Search Console & Bing Webmaster Tools need, plus the owner's keyword
+ * set. Static fallbacks keep the site crawlable when the DB is unreachable.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await loadSeoSettings();
+  return {
+    metadataBase: new URL(SITE.url),
+    title: {
+      default: "MN.KP | AI-Powered Web & App Development in Calicut — MOHAMMED NIHAD KP",
+      template: "%s | MN.KP",
+    },
+    description: `MOHAMMED NIHAD KP is a Calicut-based AI-first developer and freelancer delivering fast websites, apps, photo and video services, plus an honestly curated affiliate store. ${SITE.tagline}`,
+    keywords: seo.keywords.length > 0 ? seo.keywords : [
+      "AI developer Calicut",
+      "web development Kerala",
+      "photography Calicut",
+      "videography Kozhikode",
+      "affiliate store",
+      "MOHAMMED NIHAD KP",
     ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "MN.KP | AI-Powered Web & App Development in Calicut",
-    description: `AI-first websites, apps and creative media from Calicut, Kerala. ${SITE.tagline}`,
-    images: ["/images/brand/og-cover.webp"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+    authors: [{ name: SITE.owner }],
+    creator: SITE.owner,
+    icons: {
+      icon: ["/favicon.svg", "/favicon-32.png", "/icon-192.png"],
+      apple: "/apple-touch-icon.png",
+    },
+    alternates: {
+      canonical: "/",
+    },
+    openGraph: {
+      title: "MN.KP | AI-Powered Web & App Development in Calicut — MOHAMMED NIHAD KP",
+      description: `Hire MOHAMMED NIHAD KP — Calicut-based AI-first developer and freelancer. ${SITE.tagline}`,
+      type: "website",
+      url: SITE.url,
+      siteName: "MN.KP",
+      images: [
+        {
+          url: "/images/brand/og-cover.webp",
+          width: 1344,
+          height: 768,
+          alt: "MN.KP — MOHAMMED NIHAD KP, AI-first developer from Calicut, Kerala",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "MN.KP | AI-Powered Web & App Development in Calicut",
+      description: `AI-first websites, apps and creative media from Calicut, Kerala. ${SITE.tagline}`,
+      images: ["/images/brand/og-cover.webp"],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
+    },
+    verification: {
+      google: seo.googleVerification || undefined,
+      other: seo.bingVerification
+        ? { "msvalidate.01": seo.bingVerification }
+        : undefined,
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",

@@ -13,6 +13,7 @@ import {
   Mail,
   Megaphone,
   PanelLeft,
+  Search,
   Settings,
   ShoppingBag,
   Terminal,
@@ -99,6 +100,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "GROWTH",
     items: [
+      { label: "SEO Toolkit", href: "/admin/seo", icon: Search },
       { label: "Ad Manager", href: "/admin/ads", icon: Megaphone },
       { label: "Marketing", href: "/admin/marketing", icon: TrendingUp },
     ],

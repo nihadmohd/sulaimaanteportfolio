@@ -87,6 +87,7 @@ export default function ServicesView() {
 
       <header className="mt-5 md:mt-8">
         <SectionHeading
+          as="h1"
           microLabel="Services in Calicut, Kerala"
           title="Five services. One standard: shipped."
           description="Everything below is delivered with the same AI-powered workflow I write about on the blog — planned, built and launched from Calicut, for clients anywhere in the world."

@@ -237,6 +237,7 @@ export default function StoreView() {
 
       <header className="mt-6 sm:mt-8">
         <SectionHeading
+          as="h1"
           microLabel="The MN.KP affiliate store"
           title="Gear I actually use"
           description="Every product here is honestly reviewed and used on real client work before it earns a link. Prices in INR, curated in Calicut for creators everywhere."

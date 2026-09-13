@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { SEOHead } from "@/components/shared/seo-head";
 import { registerSchema } from "@/lib/validation";
 import type { SafeUser } from "@/types";
-import { AUTH_THEMES, AuthShell, DemoCredentialsCard, PasswordInput, apiFetch } from "./_shared";
+import { AUTH_THEMES, AuthShell, PasswordInput, apiFetch } from "./_shared";
 
 const registerFormSchema = registerSchema.extend({
   terms: z.boolean().refine((v) => v === true, {
@@ -158,7 +158,7 @@ export default function RegisterView() {
                     <FormControl>
                       <Input
                         autoComplete="name"
-                        placeholder="e.g. Aarav Sharma"
+                        placeholder="e.g. Arjun Menon"
                         className={t.input}
                         {...field}
                       />
@@ -272,13 +272,6 @@ export default function RegisterView() {
           </Form>
         )}
 
-        {!registered ? (
-          <DemoCredentialsCard
-            theme="amber"
-            account="user"
-            note="Prefer a ready-made test account? Use the demo customer login on the sign-in page."
-          />
-        ) : null}
       </AuthShell>
     </>
   );

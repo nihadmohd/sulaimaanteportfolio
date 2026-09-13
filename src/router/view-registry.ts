@@ -27,6 +27,7 @@ export const viewRegistry: Record<string, React.LazyExoticComponent<ComponentTyp
   "auth-forgot-password": lazy(() => import("@/components/views/auth/forgot-password-view")),
   "auth-reset-password": lazy(() => import("@/components/views/auth/reset-password-view")),
   "admin-login": lazy(() => import("@/components/views/auth/admin-login-view")),
+  setup: lazy(() => import("@/components/views/setup/setup-view")),
   onboarding: lazy(() => import("@/components/views/onboarding/onboarding-view")),
 
   // account
@@ -49,4 +50,5 @@ export const viewRegistry: Record<string, React.LazyExoticComponent<ComponentTyp
   "admin-marketing": lazy(() => import("@/components/views/admin/marketing-view")),
   "admin-activity": lazy(() => import("@/components/views/admin/activity-view")),
   "admin-import": lazy(() => import("@/components/views/admin/import-view")),
+  "admin-seo": lazy(() => import("@/components/views/admin/seo-view")),
 };

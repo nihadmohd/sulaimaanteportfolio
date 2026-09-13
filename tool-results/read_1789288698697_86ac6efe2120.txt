@@ -1,0 +1,826 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { useQuery } from "@tanstack/react-query";
+     5→import {
+     6→  AlertCircle,
+     7→  AlertTriangle,
+     8→  ArrowRight,
+     9→  Check,
+    10→  Copy,
+    11→  ExternalLink,
+    12→  Eye,
+    13→  FileText,
+    14→  Link2,
+    15→  Megaphone,
+    16→  MousePointerClick,
+    17→  Rss,
+    18→  Search,
+    19→  Settings,
+    20→  Target,
+    21→  TrendingUp,
+    22→  Upload,
+    23→  Users,
+    24→} from "lucide-react";
+    25→import { Badge } from "@/components/ui/badge";
+    26→import { Button } from "@/components/ui/button";
+    27→import {
+    28→  Card,
+    29→  CardAction,
+    30→  CardContent,
+    31→  CardDescription,
+    32→  CardHeader,
+    33→  CardTitle,
+    34→} from "@/components/ui/card";
+    35→import { Input } from "@/components/ui/input";
+    36→import { Label } from "@/components/ui/label";
+    37→import {
+    38→  Table,
+    39→  TableBody,
+    40→  TableCell,
+    41→  TableHead,
+    42→  TableHeader,
+    43→  TableRow,
+    44→} from "@/components/ui/table";
+    45→import { ALink } from "@/components/router/link";
+    46→import { DataState, ForbiddenState, LoadingState } from "@/components/states";
+    47→import { SEOHead } from "@/components/shared/seo-head";
+    48→import { navigate } from "@/hooks/use-router";
+    49→import { useSettings } from "@/hooks/use-settings";
+    50→import { toast } from "@/hooks/use-toast";
+    51→import type { AdDTO, AdPlacement, AdStatsDTO, SeoSettings, StatsResponse } from "@/types";
+    52→import { cn } from "@/lib/utils";
+    53→import { AdminShell } from "./_shell";
+    54→import { apiFetch, formatCompact, KpiCard, useAdminGuard } from "./_shared";
+    55→
+    56→/**
+    57→ * Marketing Hub (#/admin/marketing — route key "admin-marketing").
+    58→ * Professional growth console — recharts stays out of this bundle entirely
+    59→ * (proportional copper bars only).
+    60→ *
+    61→ * · KPIs:           /api/ads?all=1&stats=1 + /api/stats
+    62→ * · UTM builder:    pure client-side (no network)
+    63→ * · Funnel:         stats kpis (views → clicks → CTR + top products)
+    64→ * · Top content:    stats series viewsByPost
+    65→ * · Ad performance: /api/ads?all=1&stats=1 items (top 6 by clicks)
+    66→ * · SEO health:     useSettings → PublicSettings.seo group
+    67→ */
+    68→
+    69→interface AdsAllResponse {
+    70→  items: AdDTO[];
+    71→  stats?: AdStatsDTO;
+    72→}
+    73→
+    74→const PLACEMENT_LABEL: Record<AdPlacement, string> = {
+    75→  "header-banner": "Header banner",
+    76→  "blog-inline": "Blog inline",
+    77→  "blog-sidebar": "Blog sidebar",
+    78→  "between-cards": "Between cards",
+    79→  "home-strip": "Home strip",
+    80→  "hero-marquee": "Hero marquee",
+    81→  "store-side": "Store side",
+    82→  "footer-banner": "Footer banner",
+    83→  "product-inline": "Product inline",
+    84→  marquee: "Marquee",
+    85→  sticker: "Sticker",
+    86→};
+    87→
+    88→function ctrOf(clicks: number, impressions: number): string {
+    89→  if (!impressions) return "—";
+    90→  return `${((clicks / impressions) * 100).toFixed(1)}%`;
+    91→}
+    92→
+    93→/* ------------------------------------------------------------------ */
+    94→/* UTM campaign builder (star feature — pure client-side)              */
+    95→/* ------------------------------------------------------------------ */
+    96→
+    97→const DEFAULT_BASE_URL = "https://mohdnihadkp.vercel.app";
+    98→
+    99→type UtmValues = Record<"source" | "medium" | "campaign" | "term" | "content", string>;
+   100→
+   101→const UTM_FIELDS: Array<{
+   102→  id: keyof UtmValues;
+   103→  label: string;
+   104→  placeholder: string;
+   105→  required?: boolean;
+   106→}> = [
+   107→  { id: "source", label: "Campaign source", placeholder: "whatsapp", required: true },
+   108→  { id: "medium", label: "Campaign medium", placeholder: "social" },
+   109→  { id: "campaign", label: "Campaign name", placeholder: "venture-launch", required: true },
+   110→  { id: "term", label: "Campaign term", placeholder: "optional — paid keyword" },
+   111→  { id: "content", label: "Campaign content", placeholder: "optional — variant / link text" },
+   112→];
+   113→
+   114→/** Clipboard write with a legacy execCommand fallback (non-secure contexts). */
+   115→async function copyText(text: string): Promise<boolean> {
+   116→  try {
+   117→    if (typeof navigator !== "undefined" && navigator.clipboard) {
+   118→      await navigator.clipboard.writeText(text);
+   119→      return true;
+   120→    }
+   121→  } catch {
+   122→    /* fall through to the legacy path */
+   123→  }
+   124→  try {
+   125→    const area = document.createElement("textarea");
+   126→    area.value = text;
+   127→    area.setAttribute("readonly", "");
+   128→    area.style.position = "fixed";
+   129→    area.style.opacity = "0";
+   130→    document.body.appendChild(area);
+   131→    area.select();
+   132→    const ok = document.execCommand("copy");
+   133→    area.remove();
+   134→    return ok;
+   135→  } catch {
+   136→    return false;
+   137→  }
+   138→}
+   139→
+   140→function UtmBuilder() {
+   141→  const [baseUrl, setBaseUrl] = React.useState(DEFAULT_BASE_URL);
+   142→  const [values, setValues] = React.useState<UtmValues>({
+   143→    source: "",
+   144→    medium: "",
+   145→    campaign: "",
+   146→    term: "",
+   147→    content: "",
+   148→  });
+   149→  const [copied, setCopied] = React.useState(false);
+   150→
+   151→  const campaignUrl = React.useMemo(() => {
+   152→    const raw = baseUrl.trim();
+   153→    if (!raw) return "";
+   154→    const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+   155→    let url: URL;
+   156→    try {
+   157→      url = new URL(candidate);
+   158→    } catch {
+   159→      return "";
+   160→    }
+   161→    const entries: Array<[string, string]> = [
+   162→      ["utm_source", values.source.trim()],
+   163→      ["utm_medium", values.medium.trim()],
+   164→      ["utm_campaign", values.campaign.trim()],
+   165→      ["utm_term", values.term.trim()],
+   166→      ["utm_content", values.content.trim()],
+   167→    ];
+   168→    for (const [key, value] of entries) {
+   169→      if (value) url.searchParams.set(key, value);
+   170→    }
+   171→    return url.toString();
+   172→  }, [baseUrl, values]);
+   173→
+   174→  const trimmedBase = baseUrl.trim();
+   175→  const paramCount = (["source", "medium", "campaign", "term", "content"] as const).filter(
+   176→    (key) => values[key].trim()
+   177→  ).length;
+   178→  const missingRequired = !values.source.trim() || !values.campaign.trim();
+   179→
+   180→  const hint: { tone: "warn" | "ok"; text: string } = !trimmedBase || !campaignUrl
+   181→    ? { tone: "warn", text: "Enter a valid base URL (e.g. https://mohdnihadkp.vercel.app) to build on." }
+   182→    : missingRequired
+   183→      ? { tone: "warn", text: "Add a campaign source and campaign name to complete the tag." }
+   184→      : {
+   185→          tone: "ok",
+   186→          text: `${paramCount} UTM parameter${paramCount === 1 ? "" : "s"} tagged — ready to share.`,
+   187→        };
+   188→
+   189→  const onCopy = async () => {
+   190→    if (!campaignUrl) return;
+   191→    const ok = await copyText(campaignUrl);
+   192→    if (ok) {
+   193→      setCopied(true);
+   194→      toast({
+   195→        title: "Campaign URL copied",
+   196→        description: "Paste it straight into your campaign post or bio link.",
+   197→      });
+   198→      window.setTimeout(() => setCopied(false), 1800);
+   199→    } else {
+   200→      toast({
+   201→        title: "Could not copy",
+   202→        description: "Select the URL field and copy it manually.",
+   203→        variant: "destructive",
+   204→      });
+   205→    }
+   206→  };
+   207→
+   208→  const onOpen = () => {
+   209→    if (campaignUrl) window.open(campaignUrl, "_blank", "noopener,noreferrer");
+   210→  };
+   211→
+   212→  return (
+   213→    <Card className="min-w-0 py-4 md:py-6">
+   214→      <CardHeader className="px-4 pb-3 md:px-6">
+   215→        <CardTitle className="flex items-center gap-2 text-base">
+   216→          <Link2 className="size-4 text-gold" aria-hidden="true" />
+   217→          UTM campaign builder
+   218→        </CardTitle>
+   219→        <CardDescription>
+   220→          Tag any link with UTM parameters before sharing it — analytics-ready in one paste.
+   221→        </CardDescription>
+   222→      </CardHeader>
+   223→      <CardContent className="px-4 pt-0 md:px-6">
+   224→        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+   225→          <div className="space-y-1.5 sm:col-span-2 xl:col-span-3">
+   226→            <Label htmlFor="utm-base" className="text-xs">
+   227→              Base URL
+   228→            </Label>
+   229→            <Input
+   230→              id="utm-base"
+   231→              value={baseUrl}
+   232→              onChange={(e) => setBaseUrl(e.target.value)}
+   233→              placeholder={DEFAULT_BASE_URL}
+   234→              inputMode="url"
+   235→              className="h-9"
+   236→            />
+   237→          </div>
+   238→          {UTM_FIELDS.map((field) => (
+   239→            <div key={field.id} className="space-y-1.5">
+   240→              <Label htmlFor={`utm-${field.id}`} className="text-xs">
+   241→                {field.label}
+   242→                {field.required ? (
+   243→                  <>
+   244→                    <span className="ml-0.5 text-gold" aria-hidden="true">
+   245→                      *
+   246→                    </span>
+   247→                    <span className="sr-only">(required)</span>
+   248→                  </>
+   249→                ) : null}
+   250→              </Label>
+   251→              <Input
+   252→                id={`utm-${field.id}`}
+   253→                value={values[field.id]}
+   254→                onChange={(e) =>
+   255→                  setValues((v) => ({ ...v, [field.id]: e.target.value }) as UtmValues)
+   256→                }
+   257→                placeholder={field.placeholder}
+   258→                className="h-9"
+   259→              />
+   260→            </div>
+   261→          ))}
+   262→        </div>
+   263→
+   264→        <div className="mt-4 rounded-lg border bg-muted/30 p-3">
+   265→          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+   266→            Generated campaign URL
+   267→          </p>
+   268→          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+   269→            <Input
+   270→              readOnly
+   271→              value={campaignUrl}
+   272→              placeholder="https://…"
+   273→              aria-label="Generated campaign URL"
+   274→              className="h-9 min-w-0 flex-1 font-mono text-xs"
+   275→            />
+   276→            <div className="flex shrink-0 gap-2">
+   277→              <Button
+   278→                variant="outline"
+   279→                size="sm"
+   280→                className="h-9 gap-1.5"
+   281→                onClick={onCopy}
+   282→                disabled={!campaignUrl}
+   283→              >
+   284→                {copied ? (
+   285→                  <Check className="size-3.5" aria-hidden="true" />
+   286→                ) : (
+   287→                  <Copy className="size-3.5" aria-hidden="true" />
+   288→                )}
+   289→                {copied ? "Copied" : "Copy"}
+   290→              </Button>
+   291→              <Button size="sm" className="h-9 gap-1.5" onClick={onOpen} disabled={!campaignUrl}>
+   292→                <ExternalLink className="size-3.5" aria-hidden="true" />
+   293→                Open
+   294→              </Button>
+   295→            </div>
+   296→          </div>
+   297→          <p
+   298→            className={cn(
+   299→              "mt-2 flex items-center gap-1.5 text-xs",
+   300→              hint.tone === "warn" ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+   301→            )}
+   302→          >
+   303→            {hint.tone === "warn" ? (
+   304→              <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
+   305→            ) : (
+   306→              <Check
+   307→                className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+   308→                aria-hidden="true"
+   309→              />
+   310→            )}
+   311→            {hint.text}
+   312→          </p>
+   313→        </div>
+   314→      </CardContent>
+   315→    </Card>
+   316→  );
+   317→}
+   318→
+   319→/* ------------------------------------------------------------------ */
+   320→/* SEO health checklist                                                */
+   321→/* ------------------------------------------------------------------ */
+   322→
+   323→function SeoHealthCard({ seo, loading }: { seo?: SeoSettings; loading: boolean }) {
+   324→  const checks: Array<{ label: string; detail: string; passing: boolean }> = seo
+   325→    ? [
+   326→        {
+   327→          label: "Title suffix",
+   328→          detail: seo.titleSuffix.trim() ? `“${seo.titleSuffix.trim()}”` : "Not set",
+   329→          passing: seo.titleSuffix.trim().length > 0,
+   330→        },
+   331→        {
+   332→          label: "Meta description (70+ chars)",
+   333→          detail: `${seo.defaultDescription.trim().length} chars`,
+   334→          passing: seo.defaultDescription.trim().length >= 70,
+   335→        },
+   336→        {
+   337→          label: "Target keywords (3+)",
+   338→          detail: `${seo.keywords.length} keywords`,
+   339→          passing: seo.keywords.length >= 3,
+   340→        },
+   341→        {
+   342→          label: "Google Search Console",
+   343→          detail: seo.googleVerification.trim() ? "Verified" : "Not set",
+   344→          passing: seo.googleVerification.trim().length > 0,
+   345→        },
+   346→        {
+   347→          label: "Bing Webmaster",
+   348→          detail: seo.bingVerification.trim() ? "Verified" : "Not set",
+   349→          passing: seo.bingVerification.trim().length > 0,
+   350→        },
+   351→      ]
+   352→    : [];
+   353→  const passing = checks.filter((c) => c.passing).length;
+   354→
+   355→  return (
+   356→    <Card className="min-w-0 py-4 md:py-6">
+   357→      <CardHeader className="px-4 pb-3 md:px-6">
+   358→        <CardTitle className="flex items-center gap-2 text-base">
+   359→          <Search className="size-4 text-gold" aria-hidden="true" />
+   360→          SEO health
+   361→        </CardTitle>
+   362→        <CardDescription>
+   363→          {loading ? "Checking SEO defaults…" : seo ? `${passing} / 5 checks passing` : "SEO settings unavailable"}
+   364→        </CardDescription>
+   365→        <CardAction>
+   366→          <ALink href="#/admin/settings">
+   367→            <Button variant="outline" size="sm" className="h-9 gap-1.5">
+   368→              <Settings className="size-3.5" aria-hidden="true" />
+   369→              Open SEO settings
+   370→            </Button>
+   371→          </ALink>
+   372→        </CardAction>
+   373→      </CardHeader>
+   374→      <CardContent className="px-4 pt-0 md:px-6">
+   375→        {loading ? (
+   376→          <div className="space-y-2" aria-hidden="true">
+   377→            {[0, 1, 2, 3, 4].map((i) => (
+   378→              <div key={i} className="h-9 animate-pulse rounded-md bg-muted" />
+   379→            ))}
+   380→          </div>
+   381→        ) : !seo ? (
+   382→          <p className="text-sm text-muted-foreground">
+   383→            Could not read SEO settings just now — open the SEO settings tab to review them directly.
+   384→          </p>
+   385→        ) : (
+   386→          <>
+   387→            <ul className="divide-y">
+   388→              {checks.map((check) => (
+   389→                <li
+   390→                  key={check.label}
+   391→                  className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+   392→                >
+   393→                  <span
+   394→                    className={cn(
+   395→                      "flex size-6 shrink-0 items-center justify-center rounded-md",
+   396→                      check.passing
+   397→                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+   398→                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+   399→                    )}
+   400→                  >
+   401→                    {check.passing ? (
+   402→                      <Check className="size-3.5" aria-hidden="true" />
+   403→                    ) : (
+   404→                      <AlertTriangle className="size-3.5" aria-hidden="true" />
+   405→                    )}
+   406→                  </span>
+   407→                  <p className="min-w-0 flex-1 truncate text-sm font-medium">{check.label}</p>
+   408→                  <p
+   409→                    className={cn(
+   410→                      "shrink-0 text-xs tabular-nums",
+   411→                      check.passing ? "text-muted-foreground" : "text-amber-600 dark:text-amber-400"
+   412→                    )}
+   413→                  >
+   414→                    {check.detail}
+   415→                  </p>
+   416→                </li>
+   417→              ))}
+   418→            </ul>
+   419→            <div className="mt-3 flex gap-1" aria-hidden="true">
+   420→              {checks.map((check) => (
+   421→                <div
+   422→                  key={check.label}
+   423→                  className={cn("h-1 flex-1 rounded-full", check.passing ? "bg-gold" : "bg-muted")}
+   424→                />
+   425→              ))}
+   426→            </div>
+   427→          </>
+   428→        )}
+   429→      </CardContent>
+   430→    </Card>
+   431→  );
+   432→}
+   433→
+   434→/* ------------------------------------------------------------------ */
+   435→/* view                                                                */
+   436→/* ------------------------------------------------------------------ */
+   437→
+   438→export default function MarketingView() {
+   439→  const { isLoading, allowed } = useAdminGuard();
+   440→
+   441→  const statsQuery = useQuery({
+   442→    queryKey: ["admin-stats"],
+   443→    queryFn: () => apiFetch<StatsResponse>("/api/stats"),
+   444→    enabled: allowed,
+   445→    staleTime: 30_000,
+   446→    retry: 1,
+   447→  });
+   448→
+   449→  const adsQuery = useQuery({
+   450→    queryKey: ["admin-ads-stats"],
+   451→    queryFn: () => apiFetch<AdsAllResponse>("/api/ads?all=1&stats=1"),
+   452→    enabled: allowed,
+   453→    staleTime: 30_000,
+   454→    retry: 1,
+   455→  });
+   456→
+   457→  const settingsQuery = useSettings();
+   458→  const seo = (settingsQuery.data as unknown as { seo?: SeoSettings } | null | undefined)?.seo;
+   459→
+   460→  if (isLoading) return <LoadingState variant="spinner" label="Loading marketing hub" />;
+   461→  if (!allowed) return <ForbiddenState />;
+   462→
+   463→  const k = statsQuery.data?.kpis;
+   464→  const adStats = adsQuery.data?.stats;
+   465→  const allAds = adsQuery.data?.items ?? [];
+   466→  const topAds = [...allAds].sort((a, b) => b.clicks - a.clicks).slice(0, 6);
+   467→  const topProducts = (statsQuery.data?.series.clicksByProduct ?? []).slice(0, 3);
+   468→  const topPosts = (statsQuery.data?.series.viewsByPost ?? []).slice(0, 3);
+   469→  const maxProductClicks = Math.max(1, ...topProducts.map((p) => p.clicks));
+   470→  const maxPostViews = Math.max(1, ...topPosts.map((p) => p.views));
+   471→  const affiliateCtr = k && k.totalViews > 0 ? (k.totalClicks / k.totalViews) * 100 : 0;
+   472→  const funnelBarWidth = k && k.totalClicks > 0 ? Math.min(100, Math.max(affiliateCtr, 1.5)) : 0;
+   473→
+   474→  return (
+   475→    <AdminShell
+   476→      title="Marketing Hub"
+   477→      description="Build campaign links, track ad performance, the affiliate funnel and SEO health in one place."
+   478→    >
+   479→      <SEOHead title="Marketing Hub — Admin & Developer | MN.KP" noindex />
+   480→
+   481→      <DataState query={statsQuery} empty={false} skeletonRows={4}>
+   482→        {() => (
+   483→          <div className="space-y-4 md:space-y-6">
+   484→            {/* 1 · KPI row */}
+   485→            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 xl:grid-cols-5">
+   486→              <KpiCard
+   487→                label="Ad impressions"
+   488→                value={adStats ? formatCompact(adStats.impressions) : "—"}
+   489→                sub="Across all placements"
+   490→                icon={Megaphone}
+   491→              />
+   492→              <KpiCard
+   493→                label="Ad clicks"
+   494→                value={adStats ? formatCompact(adStats.clicks) : "—"}
+   495→                sub={adStats ? `CTR ${adStats.ctr.toFixed(2)}%` : undefined}
+   496→                icon={MousePointerClick}
+   497→              />
+   498→              <KpiCard
+   499→                label="Newsletter"
+   500→                value={k ? `${k.confirmedSubscribers} / ${k.subscribers}` : "—"}
+   501→                sub="confirmed subscribers"
+   502→                icon={Rss}
+   503→              />
+   504→              <KpiCard
+   505→                label="Affiliate clicks"
+   506→                value={k ? formatCompact(k.totalClicks) : "—"}
+   507→                sub="Product link clicks"
+   508→                icon={Target}
+   509→              />
+   510→              <KpiCard
+   511→                label="Total views"
+   512→                value={k ? formatCompact(k.totalViews) : "—"}
+   513→                sub="Across all posts"
+   514→                icon={Eye}
+   515→              />
+   516→            </div>
+   517→
+   518→            {/* 2 · UTM campaign builder */}
+   519→            <UtmBuilder />
+   520→
+   521→            {/* 3 + 4 · affiliate funnel / top content */}
+   522→            <div className="grid gap-4 lg:grid-cols-2">
+   523→              <Card className="min-w-0 py-4 md:py-6">
+   524→                <CardHeader className="px-4 pb-3 md:px-6">
+   525→                  <CardTitle className="flex items-center gap-2 text-base">
+   526→                    <TrendingUp className="size-4 text-gold" aria-hidden="true" />
+   527→                    Affiliate funnel
+   528→                  </CardTitle>
+   529→                  <CardDescription>Content views → affiliate clicks → conversion</CardDescription>
+   530→                </CardHeader>
+   531→                <CardContent className="px-4 pt-0 md:px-6">
+   532→                  <div className="flex items-center gap-1.5 sm:gap-2">
+   533→                    {[
+   534→                      { label: "Total views", value: k ? formatCompact(k.totalViews) : "—" },
+   535→                      { label: "Affiliate clicks", value: k ? formatCompact(k.totalClicks) : "—" },
+   536→                      { label: "CTR", value: k ? `${affiliateCtr.toFixed(1)}%` : "—" },
+   537→                    ].map((step, i) => (
+   538→                      <React.Fragment key={step.label}>
+   539→                        {i > 0 ? (
+   540→                          <ArrowRight
+   541→                            className="hidden size-3.5 shrink-0 text-muted-foreground sm:block"
+   542→                            aria-hidden="true"
+   543→                          />
+   544→                        ) : null}
+   545→                        <div
+   546→                          className={cn(
+   547→                            "min-w-0 flex-1 rounded-lg border bg-muted/30 px-2 py-2 text-center sm:px-3",
+   548→                            i === 2 && "border-gold/40"
+   549→                          )}
+   550→                        >
+   551→                          <p className="truncate text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+   552→                            {step.label}
+   553→                          </p>
+   554→                          <p
+   555→                            className={cn(
+   556→                              "mt-0.5 text-base font-semibold tabular-nums tracking-tight sm:text-lg",
+   557→                              i === 2 && "text-gold"
+   558→                            )}
+   559→                          >
+   560→                            {step.value}
+   561→                          </p>
+   562→                        </div>
+   563→                      </React.Fragment>
+   564→                    ))}
+   565→                  </div>
+   566→
+   567→                  <div className="mt-4">
+   568→                    <div className="flex items-center justify-between">
+   569→                      <p className="text-xs text-muted-foreground">Views → clicks conversion</p>
+   570→                      <p className="text-xs font-semibold tabular-nums text-gold">
+   571→                        {affiliateCtr.toFixed(1)}%
+   572→                      </p>
+   573→                    </div>
+   574→                    <div
+   575→                      className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+   576→                      role="img"
+   577→                      aria-label={`Affiliate click-through rate ${affiliateCtr.toFixed(1)} percent`}
+   578→                    >
+   579→                      <div
+   580→                        className="h-full rounded-full bg-gold"
+   581→                        style={{ width: `${funnelBarWidth}%` }}
+   582→                      />
+   583→                    </div>
+   584→                  </div>
+   585→
+   586→                  <div className="mt-4 space-y-2.5">
+   587→                    <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+   588→                      Top clicked products
+   589→                    </p>
+   590→                    {topProducts.length > 0 ? (
+   591→                      topProducts.map((p) => (
+   592→                        <div key={p.name} className="flex items-center gap-3">
+   593→                          <p className="w-[45%] shrink-0 truncate text-sm" title={p.name}>
+   594→                            {p.name}
+   595→                          </p>
+   596→                          <div
+   597→                            aria-hidden="true"
+   598→                            className="h-1.5 min-w-6 flex-1 overflow-hidden rounded-full bg-muted"
+   599→                          >
+   600→                            <div
+   601→                              className="h-full rounded-full bg-gold"
+   602→                              style={{
+   603→                                width: `${Math.max(6, (p.clicks / maxProductClicks) * 100)}%`,
+   604→                              }}
+   605→                            />
+   606→                          </div>
+   607→                          <p className="w-10 shrink-0 text-right text-sm font-semibold tabular-nums">
+   608→                            {formatCompact(p.clicks)}
+   609→                          </p>
+   610→                        </div>
+   611→                      ))
+   612→                    ) : (
+   613→                      <p className="text-sm text-muted-foreground">
+   614→                        No product clicks recorded yet — affiliate links will show up here.
+   615→                      </p>
+   616→                    )}
+   617→                  </div>
+   618→                </CardContent>
+   619→              </Card>
+   620→
+   621→              <Card className="min-w-0 py-4 md:py-6">
+   622→                <CardHeader className="px-4 pb-3 md:px-6">
+   623→                  <CardTitle className="flex items-center gap-2 text-base">
+   624→                    <FileText className="size-4 text-gold" aria-hidden="true" />
+   625→                    Top content
+   626→                  </CardTitle>
+   627→                  <CardDescription>Most-viewed posts across the blog</CardDescription>
+   628→                </CardHeader>
+   629→                <CardContent className="px-4 pt-0 md:px-6">
+   630→                  <ol className="space-y-2.5">
+   631→                    {topPosts.length > 0 ? (
+   632→                      topPosts.map((p, i) => (
+   633→                        <li key={p.title} className="flex items-center gap-3">
+   634→                          <span
+   635→                            aria-hidden="true"
+   636→                            className={cn(
+   637→                              "flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-semibold",
+   638→                              i === 0 ? "bg-gold/15 text-gold" : "bg-muted text-muted-foreground"
+   639→                            )}
+   640→                          >
+   641→                            {i + 1}
+   642→                          </span>
+   643→                          <p className="w-[45%] shrink-0 truncate text-sm font-medium" title={p.title}>
+   644→                            {p.title}
+   645→                          </p>
+   646→                          <div
+   647→                            aria-hidden="true"
+   648→                            className="h-1.5 min-w-6 flex-1 overflow-hidden rounded-full bg-muted"
+   649→                          >
+   650→                            <div
+   651→                              className="h-full rounded-full bg-gold"
+   652→                              style={{ width: `${Math.max(6, (p.views / maxPostViews) * 100)}%` }}
+   653→                            />
+   654→                          </div>
+   655→                          <p className="w-14 shrink-0 text-right text-sm font-semibold tabular-nums">
+   656→                            {formatCompact(p.views)}
+   657→                            <span className="sr-only"> views</span>
+   658→                          </p>
+   659→                        </li>
+   660→                      ))
+   661→                    ) : (
+   662→                      <li className="text-sm text-muted-foreground">
+   663→                        No post views recorded yet — publish and share to start the counter.
+   664→                      </li>
+   665→                    )}
+   666→                  </ol>
+   667→                </CardContent>
+   668→              </Card>
+   669→            </div>
+   670→
+   671→            {/* 5 · ad performance */}
+   672→            <Card className="min-w-0 py-4 md:py-6">
+   673→              <CardHeader className="px-4 pb-3 md:px-6">
+   674→                <CardTitle className="flex items-center gap-2 text-base">
+   675→                  <Megaphone className="size-4 text-gold" aria-hidden="true" />
+   676→                  Ad performance
+   677→                </CardTitle>
+   678→                <CardDescription>
+   679→                  {allAds.length > 6
+   680→                    ? `Top 6 of ${allAds.length} ads by clicks`
+   681→                    : `${allAds.length} ${allAds.length === 1 ? "ad" : "ads"}, sorted by clicks`}
+   682→                </CardDescription>
+   683→                <CardAction>
+   684→                  <ALink href="#/admin/ads">
+   685→                    <Button variant="outline" size="sm" className="h-9 gap-1.5">
+   686→                      Ad Manager
+   687→                      <ArrowRight className="size-3.5" aria-hidden="true" />
+   688→                    </Button>
+   689→                  </ALink>
+   690→                </CardAction>
+   691→              </CardHeader>
+   692→              <CardContent className="p-0 pb-3">
+   693→                {adsQuery.isPending ? (
+   694→                  <div className="space-y-2 px-4 md:px-6" aria-hidden="true">
+   695→                    {[0, 1, 2].map((i) => (
+   696→                      <div key={i} className="h-10 animate-pulse rounded-md bg-muted" />
+   697→                    ))}
+   698→                  </div>
+   699→                ) : topAds.length === 0 ? (
+   700→                  <div className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-6">
+   701→                    <p className="text-sm text-muted-foreground">
+   702→                      No ads yet — create your first one in the Ad Manager.
+   703→                    </p>
+   704→                    <ALink href="#/admin/ads">
+   705→                      <Button variant="outline" size="sm" className="h-9 gap-1.5">
+   706→                        <Megaphone className="size-3.5" aria-hidden="true" />
+   707→                        Create ad
+   708→                      </Button>
+   709→                    </ALink>
+   710→                  </div>
+   711→                ) : (
+   712→                  <div className="overflow-hidden">
+   713→                    <Table>
+   714→                      <TableHeader>
+   715→                        <TableRow>
+   716→                          <TableHead className="min-w-0">Ad</TableHead>
+   717→                          <TableHead className="hidden w-24 text-center md:table-cell">
+   718→                            Status
+   719→                          </TableHead>
+   720→                          <TableHead className="hidden text-right md:table-cell">Impr.</TableHead>
+   721→                          <TableHead className="w-16 text-right">Clicks</TableHead>
+   722→                          <TableHead className="w-16 text-right">CTR</TableHead>
+   723→                        </TableRow>
+   724→                      </TableHeader>
+   725→                      <TableBody>
+   726→                        {topAds.map((ad) => (
+   727→                          <TableRow
+   728→                            key={ad.id}
+   729→                            className="cursor-pointer"
+   730→                            onClick={() => navigate("/admin/ads")}
+   731→                          >
+   732→                            <TableCell>
+   733→                              <div className="flex min-w-0 items-center gap-2">
+   734→                                <span
+   735→                                  aria-hidden="true"
+   736→                                  className={cn(
+   737→                                    "size-1.5 shrink-0 rounded-full md:hidden",
+   738→                                    ad.active ? "bg-gold" : "bg-muted-foreground/40"
+   739→                                  )}
+   740→                                />
+   741→                                <p className="truncate text-sm font-medium">{ad.name}</p>
+   742→                              </div>
+   743→                              <Badge
+   744→                                variant="outline"
+   745→                                className="mt-1 px-1.5 py-0 text-[10px] font-normal text-muted-foreground"
+   746→                              >
+   747→                                {PLACEMENT_LABEL[ad.placement]}
+   748→                              </Badge>
+   749→                            </TableCell>
+   750→                            <TableCell className="hidden md:table-cell">
+   751→                              <span
+   752→                                className={cn(
+   753→                                  "inline-flex items-center gap-1.5 text-xs",
+   754→                                  ad.active ? "text-gold" : "text-muted-foreground"
+   755→                                )}
+   756→                              >
+   757→                                <span
+   758→                                  aria-hidden="true"
+   759→                                  className={cn(
+   760→                                    "size-1.5 rounded-full",
+   761→                                    ad.active ? "bg-gold" : "bg-muted-foreground/40"
+   762→                                  )}
+   763→                                />
+   764→                                {ad.active ? "Active" : "Off"}
+   765→                              </span>
+   766→                            </TableCell>
+   767→                            <TableCell className="hidden text-right text-sm tabular-nums text-muted-foreground md:table-cell">
+   768→                              {formatCompact(ad.impressions)}
+   769→                            </TableCell>
+   770→                            <TableCell className="text-right text-sm font-medium tabular-nums">
+   771→                              {formatCompact(ad.clicks)}
+   772→                            </TableCell>
+   773→                            <TableCell className="text-right text-sm tabular-nums">
+   774→                              {ctrOf(ad.clicks, ad.impressions)}
+   775→                            </TableCell>
+   776→                          </TableRow>
+   777→                        ))}
+   778→                      </TableBody>
+   779→                    </Table>
+   780→                    {allAds.length > 6 ? (
+   781→                      <p className="px-4 pt-2 text-xs text-muted-foreground md:px-6">
+   782→                        Showing the 6 most-clicked ads — open the Ad Manager for the full list.
+   783→                      </p>
+   784→                    ) : null}
+   785→                  </div>
+   786→                )}
+   787→              </CardContent>
+   788→            </Card>
+   789→
+   790→            {/* 6 · SEO health */}
+   791→            <SeoHealthCard seo={seo} loading={settingsQuery.isPending} />
+   792→
+   793→            {/* 7 · quick actions */}
+   794→            <section aria-label="Quick actions" className="flex flex-wrap items-center gap-2">
+   795→              <ALink href="#/admin/ads">
+   796→                <Button variant="outline" size="sm" className="h-9 gap-1.5">
+   797→                  <Megaphone className="size-3.5" aria-hidden="true" />
+   798→                  Ad Manager
+   799→                </Button>
+   800→              </ALink>
+   801→              <ALink href="#/admin/import">
+   802→                <Button variant="outline" size="sm" className="h-9 gap-1.5">
+   803→                  <Upload className="size-3.5" aria-hidden="true" />
+   804→                  Import &amp; Export
+   805→                </Button>
+   806→              </ALink>
+   807→              <ALink href="#/admin/subscribers">
+   808→                <Button variant="outline" size="sm" className="h-9 gap-1.5">
+   809→                  <Users className="size-3.5" aria-hidden="true" />
+   810→                  Subscribers
+   811→                </Button>
+   812→              </ALink>
+   813→              <ALink href="#/admin/settings">
+   814→                <Button variant="outline" size="sm" className="h-9 gap-1.5">
+   815→                  <Settings className="size-3.5" aria-hidden="true" />
+   816→                  SEO settings
+   817→                </Button>
+   818→              </ALink>
+   819→            </section>
+   820→          </div>
+   821→        )}
+   822→      </DataState>
+   823→    </AdminShell>
+   824→  );
+   825→}
+   826→

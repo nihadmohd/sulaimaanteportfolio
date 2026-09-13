@@ -143,6 +143,7 @@ export default function SupportView() {
 
       <header>
         <SectionHeading
+          as="h1"
           microLabel="HELP CENTER"
           title="Support & Help Center"
           description="Fast answers about services, affiliate orders, payments, privacy and accounts — plus the fastest ways to reach a human in Calicut when the answer you need is not here."

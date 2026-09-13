@@ -241,7 +241,7 @@ export default function OnboardingView() {
             {/* header */}
             <div className="border-b px-6 py-5 sm:px-8">
               <div className="flex items-center gap-3">
-                <img src="/logo.svg" alt="" className="h-9 w-9" width={36} height={36} />
+                <img src="/logo.svg" alt="MN.KP monogram crest" className="h-9 w-9" width={36} height={36} />
                 <div>
                   <h1 id="onboarding-title" className="text-lg font-semibold tracking-tight">
                     Set up your account

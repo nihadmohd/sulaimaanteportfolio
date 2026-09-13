@@ -110,12 +110,6 @@ export const FOOTER_DEFAULT: {
   socialsEnabled: true,
 };
 
-export const DEMO_CREDENTIALS = {
-  admin: { email: "intobusyness@gmail.com", password: "Nihad@Admin2025", hint: "Admin & Developer console" },
-  author: { email: "author@mnkp.dev", password: "Author@2025", hint: "Content author" },
-  user: { email: "user@mnkp.dev", password: "User@2025", hint: "Customer account" },
-} as const;
-
 export const COOKIE_CONSENT_KEY = "mnkp_cookie_consent";
 /**
  * Fired on window whenever the cookie-consent value changes (set or cleared)

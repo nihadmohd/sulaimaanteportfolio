@@ -96,7 +96,7 @@ export function SiteFooter() {
           {/* Brand block */}
           <div className="col-span-2 max-w-xs md:col-span-1">
             <div className="flex items-center gap-2.5">
-              <img src="/logo.svg" alt="" className="h-9 w-9" width={36} height={36} loading="lazy" />
+              <img src="/logo.svg" alt="MN.KP monogram crest" className="h-9 w-9" width={36} height={36} loading="lazy" />
               <p className="text-lg font-semibold tracking-tight">
                 MN<span className="text-gold">.KP</span>
               </p>

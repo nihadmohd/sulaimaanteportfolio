@@ -78,12 +78,12 @@ import { DraftRecoveryBanner, useDraftAutosave } from "./editor-drafts";
  */
 
 const STORE_IMAGES = [
-  "/images/store/prod-headphones.webp",
-  "/images/store/prod-creator-camera.webp",
-  "/images/store/prod-mouse.webp",
-  "/images/store/prod-keyboard.webp",
-  "/images/store/prod-powerbank.webp",
-  "/images/store/prod-ssd.webp",
+  "/images/brand/marquee-webcraft.webp",
+  "/images/brand/marquee-workspace.webp",
+  "/images/brand/marquee-photography.webp",
+  "/images/brand/marquee-videography.webp",
+  "/images/brand/marquee-global.webp",
+  "/images/brand/marquee-calicut.webp",
 ];
 
 const MERCHANT_SUGGESTIONS = ["Amazon", "Flipkart", "MN.KP Digital", "Croma", "Myntra", "Noise"];

@@ -4,7 +4,7 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { KeyRound, Loader2, ShieldAlert, Terminal } from "lucide-react";
+import { KeyRound, Loader2, ShieldAlert, Sparkles, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -14,11 +14,11 @@ import { useSession } from "@/hooks/use-session";
 import { toast } from "@/hooks/use-toast";
 import { SEOHead } from "@/components/shared/seo-head";
 import { loginSchema } from "@/lib/validation";
+import { useQuery } from "@tanstack/react-query";
 import type { SafeUser } from "@/types";
 import {
   AUTH_THEMES,
   AuthShell,
-  DemoCredentialsCard,
   PasswordInput,
   apiFetch,
   safeNextPath,
@@ -40,6 +40,15 @@ export default function AdminLoginView() {
   const { refetch } = useSession();
   const next = safeNextPath(query.get("next"));
   const [forbidden, setForbidden] = React.useState<string | null>(null);
+
+  // First-run detection — surfaces the "claim your website" callout while
+  // no owner account exists yet (fresh installs only).
+  const setup = useQuery({
+    queryKey: ["setup-status"],
+    queryFn: () => apiFetch<{ needsSetup: boolean }>("/api/auth/setup"),
+    staleTime: 15_000,
+  });
+  const needsSetup = setup.isSuccess && setup.data.needsSetup;
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -145,7 +154,7 @@ export default function AdminLoginView() {
                       type="email"
                       inputMode="email"
                       autoComplete="email"
-                      placeholder="intobusyness@gmail.com"
+                      placeholder="staff@email.com"
                       className={t.input}
                       {...field}
                     />
@@ -187,11 +196,27 @@ export default function AdminLoginView() {
           </form>
         </Form>
 
-        <DemoCredentialsCard
-          theme="obsidian"
-          account="admin"
-          note="The seeded Admin & Developer account — full console access."
-        />
+        {needsSetup ? (
+          <div
+            role="note"
+            className="mt-6 rounded-xl border border-gold/40 bg-gold/[0.07] px-4 py-4"
+          >
+            <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-gold">
+              <Sparkles className="size-3.5" aria-hidden="true" />
+              First run
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+              This website has no owner account yet. Create yours to unlock the
+              full Admin &amp; Developer console.
+            </p>
+            <ALink href="#/setup" className="mt-3 block">
+              <Button className="h-10 w-full gap-2 bg-gold font-medium text-gold-foreground hover:bg-gold/90">
+                <Sparkles className="size-4" aria-hidden="true" />
+                Set up your website
+              </Button>
+            </ALink>
+          </div>
+        ) : null}
       </AuthShell>
     </>
   );

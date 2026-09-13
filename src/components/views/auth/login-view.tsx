@@ -18,7 +18,6 @@ import type { SafeUser } from "@/types";
 import {
   AUTH_THEMES,
   AuthShell,
-  DemoCredentialsCard,
   PasswordInput,
   apiFetch,
   loginDestination,
@@ -164,21 +163,20 @@ export default function LoginView() {
           </form>
         </Form>
 
-        <DemoCredentialsCard
-          theme="graphite"
-          account="user"
-          note={
-            <>
-              Admin &amp; Developer?{" "}
-              <ALink
-                href="#/admin/login"
-                className="font-medium text-gold underline-offset-2 hover:underline"
-              >
-                Use the Admin &amp; Developer login
-              </ALink>
-            </>
-          }
-        />
+        <div
+          role="note"
+          className="mt-6 rounded-xl border border-gold/25 bg-stone-900/60 px-4 py-3 text-center text-sm"
+        >
+          <p className="text-stone-300">
+            Admin &amp; Developer?{" "}
+            <ALink
+              href="#/admin/login"
+              className="font-medium text-gold underline-offset-2 hover:underline"
+            >
+              Use the Admin &amp; Developer login
+            </ALink>
+          </p>
+        </div>
 
         <div className="mt-6 space-y-2 text-center text-sm">
           <p className={t.sub}>

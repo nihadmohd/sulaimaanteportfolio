@@ -86,12 +86,12 @@ import { SingleImageField } from "@/components/shared/image-uploader";
  */
 
 const BLOG_COVERS = [
-  "/images/blog/blog-ai-workflow.webp",
-  "/images/blog/blog-ai-tools.webp",
-  "/images/blog/blog-career-journey.webp",
-  "/images/blog/blog-freelance-calicut.webp",
-  "/images/blog/blog-kp-foundation.webp",
-  "/images/blog/blog-photo-ai-editing.webp",
+  "/images/brand/marquee-workspace.webp",
+  "/images/brand/marquee-webcraft.webp",
+  "/images/brand/marquee-photography.webp",
+  "/images/brand/marquee-videography.webp",
+  "/images/brand/marquee-global.webp",
+  "/images/brand/marquee-calicut.webp",
 ];
 
 const postFormSchema = z.object({

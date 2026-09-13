@@ -172,7 +172,7 @@ export function SiteHeader() {
             className="flex shrink-0 items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label={`${SITE.name} — home`}
           >
-            <img src="/logo.svg" alt="" className="h-7 w-7 md:h-8 md:w-8" width={32} height={32} />
+            <img src="/logo.svg" alt="MN.KP monogram crest" className="h-7 w-7 md:h-8 md:w-8" width={32} height={32} />
             <span className="text-base font-semibold tracking-tight md:text-lg">
               MN<span className="text-gold">.KP</span>
             </span>

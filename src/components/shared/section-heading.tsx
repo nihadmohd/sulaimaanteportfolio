@@ -15,6 +15,12 @@ export interface SectionHeadingProps {
   align?: "left" | "center";
   id?: string;
   className?: string;
+  /**
+   * Heading level — "h1" for the single page-level heading (one per page),
+   * "h2" for sections beneath it. Keeps the document outline clean for
+   * screen readers and search engines.
+   */
+  as?: "h1" | "h2";
 }
 
 export function SectionHeading({
@@ -24,8 +30,10 @@ export function SectionHeading({
   align = "left",
   id,
   className,
+  as = "h2",
 }: SectionHeadingProps) {
   const centered = align === "center";
+  const Heading = as;
   return (
     <div
       id={id}
@@ -36,9 +44,15 @@ export function SectionHeading({
           {microLabel}
         </p>
       ) : null}
-      <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight md:text-3xl">
+      <Heading
+        className={
+          as === "h1"
+            ? "mt-2 text-balance text-3xl font-semibold tracking-tight md:text-4xl"
+            : "mt-2 text-balance text-2xl font-semibold tracking-tight md:text-3xl"
+        }
+      >
         {title}
-      </h2>
+      </Heading>
       <div
         aria-hidden="true"
         className={cn("gold-rule mt-4 w-24", centered && "gold-rule-center")}

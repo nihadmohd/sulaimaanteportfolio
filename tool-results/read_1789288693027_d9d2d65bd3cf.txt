@@ -1,0 +1,688 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { useMutation, useQuery } from "@tanstack/react-query";
+     5→import { useForm, useWatch } from "react-hook-form";
+     6→import { zodResolver } from "@hookform/resolvers/zod";
+     7→import { z } from "zod";
+     8→import {
+     9→  ArrowRight,
+    10→  Briefcase,
+    11→  Check,
+    12→  ExternalLink,
+    13→  Handshake,
+    14→  Lightbulb,
+    15→  MapPin,
+    16→  Megaphone,
+    17→  MessageCircle,
+    18→  Network,
+    19→  Package,
+    20→  Rocket,
+    21→  RotateCcw,
+    22→  Send,
+    23→  Store,
+    24→  Users,
+    25→  type LucideIcon,
+    26→} from "lucide-react";
+    27→import { Badge } from "@/components/ui/badge";
+    28→import { Button } from "@/components/ui/button";
+    29→import { Input } from "@/components/ui/input";
+    30→import { Label } from "@/components/ui/label";
+    31→import {
+    32→  Select,
+    33→  SelectContent,
+    34→  SelectItem,
+    35→  SelectTrigger,
+    36→  SelectValue,
+    37→} from "@/components/ui/select";
+    38→import { Textarea } from "@/components/ui/textarea";
+    39→import { ALink } from "@/components/router/link";
+    40→import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+    41→import { SectionHeading } from "@/components/shared/section-heading";
+    42→import { SEOHead } from "@/components/shared/seo-head";
+    43→import { DataState, ErrorState, SuccessState } from "@/components/states";
+    44→import { toast } from "@/hooks/use-toast";
+    45→import { apiFetch } from "@/lib/api-client";
+    46→import { SITE } from "@/lib/constants";
+    47→import { cn } from "@/lib/utils";
+    48→import type { InquiryDTO, VentureCategory, VentureDTO, VentureStatus } from "@/types";
+    49→
+    50→/**
+    51→ * VenturesView — route key "ventures" (#/ventures).
+    52→ *
+    53→ * Public catalogue of every business idea and venture (Calicut Store,
+    54→ * Chaliyam Connect, MN.KP Digital, Project 195...), a "join me — build the
+    55→ * next startup" collab band, and a startup-idea inquiry form that lands in
+    56→ * the Admin & Developer inbox as a type "venture" inquiry.
+    57→ */
+    58→
+    59→/* ------------------------------------------------------------------ */
+    60→/* category / status metadata                                          */
+    61→/* ------------------------------------------------------------------ */
+    62→
+    63→const CATEGORY_META: Record<VentureCategory, { label: string; icon: LucideIcon }> = {
+    64→  venture: { label: "Venture", icon: Rocket },
+    65→  store: { label: "Store", icon: Store },
+    66→  community: { label: "Community", icon: Network },
+    67→  tech: { label: "Tech", icon: Lightbulb },
+    68→  product: { label: "Product", icon: Package },
+    69→  service: { label: "Service", icon: Briefcase },
+    70→  media: { label: "Media", icon: Megaphone },
+    71→};
+    72→
+    73→const STATUS_META: Record<
+    74→  VentureStatus,
+    75→  { label: string; dot: string; badge: string }
+    76→> = {
+    77→  live: {
+    78→    label: "Live",
+    79→    dot: "bg-emerald-500",
+    80→    badge: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    81→  },
+    82→  incubating: {
+    83→    label: "Incubating",
+    84→    dot: "bg-amber-500",
+    85→    badge: "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    86→  },
+    87→  planned: {
+    88→    label: "Planned",
+    89→    dot: "bg-gold",
+    90→    badge: "border-gold/40 bg-gold/10 text-gold",
+    91→  },
+    92→  idea: {
+    93→    label: "Idea",
+    94→    dot: "bg-muted-foreground/60",
+    95→    badge: "border-border bg-muted text-muted-foreground",
+    96→  },
+    97→  retired: {
+    98→    label: "Retired",
+    99→    dot: "bg-muted-foreground/60",
+   100→    badge: "border-border bg-muted text-muted-foreground",
+   101→  },
+   102→};
+   103→
+   104→/* ------------------------------------------------------------------ */
+   105→/* inquiry form schema (client-side mirror of inquiryCreateSchema)     */
+   106→/* ------------------------------------------------------------------ */
+   107→
+   108→const INTENT_OPTIONS = [
+   109→  { value: "join", label: "Join an existing venture" },
+   110→  { value: "cofound", label: "Co-found a new startup" },
+   111→  { value: "pitch", label: "Pitch my own startup idea" },
+   112→  { value: "partner", label: "Partner / collab on a project" },
+   113→] as const;
+   114→
+   115→type IntentValue = (typeof INTENT_OPTIONS)[number]["value"];
+   116→
+   117→const NEW_IDEA = "__new__";
+   118→
+   119→const pitchFormSchema = z.object({
+   120→  intent: z.enum(["join", "cofound", "pitch", "partner"]),
+   121→  venture: z.string().min(1, "Pick a venture (or \"A new idea\")"),
+   122→  name: z.string().min(2, "Enter your name").max(80),
+   123→  email: z.string().email("Enter a valid email").max(160),
+   124→  phone: z.string().max(20).optional().or(z.literal("")),
+   125→  message: z.string().min(10, "Tell us a bit more (min 10 characters)").max(4000),
+   126→});
+   127→
+   128→type PitchFormValues = z.infer<typeof pitchFormSchema>;
+   129→
+   130→interface VenturesResponse {
+   131→  items: VentureDTO[];
+   132→  total: number;
+   133→}
+   134→
+   135→/* ------------------------------------------------------------------ */
+   136→/* venture card                                                        */
+   137→/* ------------------------------------------------------------------ */
+   138→
+   139→function VentureCard({ venture }: { venture: VentureDTO }) {
+   140→  const meta = CATEGORY_META[venture.category] ?? CATEGORY_META.venture;
+   141→  const status = STATUS_META[venture.status] ?? STATUS_META.idea;
+   142→  const visibleHighlights = venture.highlights.slice(0, 4);
+   143→  const extraHighlights = venture.highlights.length - visibleHighlights.length;
+   144→
+   145→  return (
+   146→    <article className="flex h-full flex-col rounded-xl border bg-card p-4 shadow-xs transition-shadow hover:shadow-md sm:p-5">
+   147→      {/* cover image or copper category medallion */}
+   148→      {venture.imageUrl ? (
+   149→        <img
+   150→          src={venture.imageUrl}
+   151→          alt={`${venture.name} cover`}
+   152→          loading="lazy"
+   153→          className="aspect-video w-full rounded-lg border object-cover"
+   154→        />
+   155→      ) : (
+   156→        <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-gold/25 bg-gold/[0.05]">
+   157→          <span
+   158→            aria-hidden="true"
+   159→            className="flex size-12 items-center justify-center rounded-lg border border-gold/30 bg-gold/10 text-gold"
+   160→          >
+   161→            <meta.icon className="size-6" strokeWidth={1.75} />
+   162→          </span>
+   163→        </div>
+   164→      )}
+   165→
+   166→      <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
+   167→        <Badge
+   168→          variant="outline"
+   169→          className={cn("gap-1.5 px-2 py-0 text-[10px] font-medium capitalize", status.badge)}
+   170→        >
+   171→          <span aria-hidden="true" className={cn("size-1.5 rounded-full", status.dot)} />
+   172→          {status.label}
+   173→        </Badge>
+   174→        <Badge variant="outline" className="px-2 py-0 text-[10px] font-medium capitalize text-muted-foreground">
+   175→          {meta.label}
+   176→        </Badge>
+   177→        {venture.isFeatured ? (
+   178→          <Badge variant="outline" className="border-gold/40 px-2 py-0 text-[10px] font-medium text-gold">
+   179→            Featured
+   180→          </Badge>
+   181→        ) : null}
+   182→      </div>
+   183→
+   184→      <h3 className="mt-2.5 text-base font-semibold tracking-tight md:text-lg">
+   185→        {venture.name}
+   186→      </h3>
+   187→      {venture.location ? (
+   188→        <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+   189→          <MapPin className="size-3.5 shrink-0 text-gold/80" aria-hidden="true" />
+   190→          {venture.location}
+   191→        </p>
+   192→      ) : null}
+   193→      {venture.tagline ? (
+   194→        <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground md:text-sm">
+   195→          {venture.tagline}
+   196→        </p>
+   197→      ) : null}
+   198→
+   199→      {visibleHighlights.length > 0 ? (
+   200→        <ul className="mt-3.5 space-y-2">
+   201→          {visibleHighlights.map((item) => (
+   202→            <li key={item} className="flex items-start gap-2.5 text-[13px] leading-relaxed">
+   203→              <span
+   204→                aria-hidden="true"
+   205→                className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary"
+   206→              >
+   207→                <Check className="size-2.5" strokeWidth={2.5} />
+   208→              </span>
+   209→              <span className="text-muted-foreground">{item}</span>
+   210→            </li>
+   211→          ))}
+   212→          {extraHighlights > 0 ? (
+   213→            <li className="pl-[26px] text-xs text-muted-foreground">+{extraHighlights} more</li>
+   214→          ) : null}
+   215→        </ul>
+   216→      ) : null}
+   217→
+   218→      {venture.collabRoles.length > 0 ? (
+   219→        <div className="mt-3.5">
+   220→          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+   221→            Looking for
+   222→          </p>
+   223→          <div className="mt-1.5 flex flex-wrap gap-1.5">
+   224→            {venture.collabRoles.map((role) => (
+   225→              <Badge
+   226→                key={role}
+   227→                variant="outline"
+   228→                className="border-gold/40 bg-gold/[0.06] px-2 py-0 text-[10px] font-medium text-gold"
+   229→              >
+   230→                {role}
+   231→              </Badge>
+   232→            ))}
+   233→          </div>
+   234→        </div>
+   235→      ) : null}
+   236→
+   237→      {venture.websiteUrl ? (
+   238→        <div className="mt-auto pt-4">
+   239→          <a
+   240→            href={venture.websiteUrl}
+   241→            target="_blank"
+   242→            rel="noopener noreferrer"
+   243→            className="inline-flex h-9 items-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+   244→            aria-label={`Visit the ${venture.name} website`}
+   245→          >
+   246→            <ExternalLink className="size-4" aria-hidden="true" />
+   247→            Visit website
+   248→          </a>
+   249→        </div>
+   250→      ) : null}
+   251→    </article>
+   252→  );
+   253→}
+   254→
+   255→/* ------------------------------------------------------------------ */
+   256→/* view                                                                */
+   257→/* ------------------------------------------------------------------ */
+   258→
+   259→export default function VenturesView() {
+   260→  const [submitted, setSubmitted] = React.useState<InquiryDTO | null>(null);
+   261→  const [submitError, setSubmitError] = React.useState<string | null>(null);
+   262→
+   263→  const venturesQuery = useQuery({
+   264→    queryKey: ["ventures"],
+   265→    queryFn: () => apiFetch<VenturesResponse>("/api/ventures"),
+   266→    staleTime: 60_000,
+   267→    retry: 1,
+   268→  });
+   269→
+   270→  const ventures = venturesQuery.data?.items ?? [];
+   271→
+   272→  const jsonLd = React.useMemo(() => {
+   273→    if (ventures.length === 0) return undefined;
+   274→    return {
+   275→      "@context": "https://schema.org",
+   276→      "@type": "ItemList",
+   277→      name: "MN.KP ventures & business ideas",
+   278→      itemListElement: ventures.map((venture, index) => ({
+   279→        "@type": "ListItem",
+   280→        position: index + 1,
+   281→        item: {
+   282→          "@type": "Organization",
+   283→          name: venture.name,
+   284→          description: venture.tagline ?? undefined,
+   285→          url: venture.websiteUrl ?? `${SITE.url}/ventures`,
+   286→          ...(venture.location
+   287→            ? {
+   288→                location: {
+   289→                  "@type": "Place",
+   290→                  name: venture.location,
+   291→                },
+   292→              }
+   293→            : {}),
+   294→        },
+   295→      })),
+   296→    };
+   297→  }, [ventures]);
+   298→
+   299→  const {
+   300→    register,
+   301→    handleSubmit,
+   302→    reset,
+   303→    setValue,
+   304→    control,
+   305→    formState: { errors, isSubmitting },
+   306→  } = useForm<PitchFormValues>({
+   307→    resolver: zodResolver(pitchFormSchema),
+   308→    defaultValues: {
+   309→      intent: "pitch",
+   310→      venture: NEW_IDEA,
+   311→      name: "",
+   312→      email: "",
+   313→      phone: "",
+   314→      message: "",
+   315→    },
+   316→  });
+   317→
+   318→  // Radix Selects mirror their value into local state + the RHF fields.
+   319→  const [intentValue, setIntentValue] = React.useState<IntentValue>("pitch");
+   320→  const [ventureValue, setVentureValue] = React.useState<string>(NEW_IDEA);
+   321→
+   322→  const submitMutation = useMutation({
+   323→    mutationFn: (values: PitchFormValues) => {
+   324→      const intentLabel =
+   325→        INTENT_OPTIONS.find((o) => o.value === values.intent)?.label ?? "Startup idea";
+   326→      const ventureName =
+   327→        values.venture === NEW_IDEA
+   328→          ? "A new idea"
+   329→          : (ventures.find((v) => v.id === values.venture)?.name ?? "A new idea");
+   330→      return apiFetch<InquiryDTO>("/api/inquiries", {
+   331→        method: "POST",
+   332→        body: JSON.stringify({
+   333→          type: "venture",
+   334→          subject: `${intentLabel} — ${ventureName}`,
+   335→          name: values.name,
+   336→          email: values.email,
+   337→          phone: values.phone,
+   338→          message: values.message,
+   339→        }),
+   340→      });
+   341→    },
+   342→    onSuccess: (inquiry) => {
+   343→      setSubmitted(inquiry);
+   344→      setSubmitError(null);
+   345→      reset({ intent: "pitch", venture: NEW_IDEA, name: "", email: "", phone: "", message: "" });
+   346→      setIntentValue("pitch");
+   347→      setVentureValue(NEW_IDEA);
+   348→      toast({
+   349→        title: "Pitch received",
+   350→        description: "Your startup idea landed — expect a reply within 24 hours.",
+   351→      });
+   352→    },
+   353→    onError: (e: Error) => {
+   354→      setSubmitError(e.message);
+   355→      toast({
+   356→        title: "Could not send your pitch",
+   357→        description: e.message,
+   358→        variant: "destructive",
+   359→      });
+   360→    },
+   361→  });
+   362→
+   363→  const onSubmit = (values: PitchFormValues) => {
+   364→    setSubmitError(null);
+   365→    void submitMutation.mutateAsync(values);
+   366→  };
+   367→
+   368→  const sendAnother = () => {
+   369→    setSubmitted(null);
+   370→    setSubmitError(null);
+   371→    setIntentValue("pitch");
+   372→    setVentureValue(NEW_IDEA);
+   373→  };
+   374→
+   375→  const scrollToForm = () => {
+   376→    document.getElementById("pitch-your-idea")?.scrollIntoView({ behavior: "smooth", block: "start" });
+   377→  };
+   378→
+   379→  // useWatch (single call, whole values) instead of form.watch — satisfies
+   380→  // react-hooks/incompatible-library; defaults are complete so the cast is safe.
+   381→  const watched = useWatch({ control }) as PitchFormValues;
+   382→  const currentIntent = watched.intent;
+   383→
+   384→  return (
+   385→    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 md:py-14 lg:px-8">
+   386→      <SEOHead
+   387→        title="Ventures & Business Ideas — Calicut Store, Chaliyam Connect & More | MN.KP"
+   388→        description="Every MN.KP business idea and venture in one place — the Calicut Store, Chaliyam Connect, digital products and long-horizon startup ideas from Calicut, Kerala. Got a startup idea? Join me and build it together."
+   389→        canonicalPath="/ventures"
+   390→        ogImage="/images/brand/og-cover.webp"
+   391→        jsonLd={jsonLd}
+   392→      />
+   393→
+   394→      <Breadcrumbs items={[{ label: "Home", href: "#/" }, { label: "Ventures" }]} />
+   395→
+   396→      <header className="mt-5 md:mt-8">
+   397→        <SectionHeading
+   398→          microLabel="Ventures & business ideas"
+   399→          title="Everything I'm building — on one page"
+   400→          description="From a curated Calicut store to community initiatives and long-horizon startup ideas, these are the ventures I'm actively growing. If one of them speaks to you, there's a seat at the table."
+   401→        />
+   402→      </header>
+   403→
+   404→      {/* ventures grid */}
+   405→      <div className="mt-8 md:mt-12">
+   406→        <DataState query={venturesQuery} skeletonRows={6}>
+   407→          {(data) => (
+   408→            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6">
+   409→              {data.items.map((venture) => (
+   410→                <VentureCard key={venture.id} venture={venture} />
+   411→              ))}
+   412→            </div>
+   413→          )}
+   414→        </DataState>
+   415→      </div>
+   416→
+   417→      {/* join me band */}
+   418→      <section
+   419→        className="mt-10 rounded-xl border border-gold/40 bg-gold/[0.05] p-5 md:mt-16 md:p-8"
+   420→        aria-labelledby="join-me-heading"
+   421→      >
+   422→        <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">Join me</p>
+   423→        <h2 id="join-me-heading" className="mt-2 text-balance text-xl font-semibold tracking-tight md:text-2xl lg:text-3xl">
+   424→          Build the next startup with me
+   425→        </h2>
+   426→        <p className="mt-2.5 max-w-2xl text-pretty text-[13px] leading-relaxed text-muted-foreground md:mt-3 md:text-sm lg:text-base">
+   427→          Every venture above started as a conversation. I partner with operators, investors,
+   428→          creators and local businesses — whether you want to co-found something new, join a
+   429→          live venture, or pitch an idea of your own. Current focus:{" "}
+   430→          <span className="font-medium text-foreground">
+   431→            {ventures[0]?.name ?? "Calicut Store"} collabs
+   432→          </span>
+   433→          .
+   434→        </p>
+   435→        <div className="mt-5 flex flex-wrap items-center gap-2.5 md:mt-6 md:gap-3">
+   436→          <Button size="lg" className="h-10 gap-2 md:h-11" onClick={scrollToForm}>
+   437→            <Lightbulb className="size-4" aria-hidden="true" />
+   438→            Pitch your idea
+   439→          </Button>
+   440→          <ALink href={SITE.whatsappUrl}>
+   441→            <Button
+   442→              size="lg"
+   443→              variant="outline"
+   444→              className="h-10 gap-2 border-gold/50 text-gold hover:bg-gold/10 md:h-11"
+   445→            >
+   446→              <MessageCircle className="size-4" aria-hidden="true" />
+   447→              WhatsApp me
+   448→            </Button>
+   449→          </ALink>
+   450→        </div>
+   451→        <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+   452→          <Users className="size-3.5 text-gold/80" aria-hidden="true" />
+   453→          Collaboration is welcome at every stage — idea, incubation or live.
+   454→        </p>
+   455→      </section>
+   456→
+   457→      {/* startup-idea inquiry form */}
+   458→      <section id="pitch-your-idea" className="mt-10 scroll-mt-24 md:mt-14" aria-labelledby="pitch-form-heading">
+   459→        <SectionHeading
+   460→          microLabel="Startup inquiry"
+   461→          title="Tell me about your idea"
+   462→          description="Two minutes, no pitch deck needed. Serious ideas get a personal reply within 24 hours — usually much sooner over WhatsApp."
+   463→        />
+   464→        <div className="mt-5 md:mt-8">
+   465→          {submitted ? (
+   466→            <div className="rounded-xl border bg-card p-2 shadow-xs">
+   467→              <SuccessState
+   468→                title="Pitch received"
+   469→                description={
+   470→                  <>
+   471→                    Your reference number is{" "}
+   472→                    <span className="font-semibold tabular-nums text-foreground">
+   473→                      {submitted.id.slice(0, 8).toUpperCase()}
+   474→                    </span>
+   475→                    . It lands in the MN.KP inbox as a venture inquiry — expect a response
+   476→                    within 24 hours.
+   477→                  </>
+   478→                }
+   479→                action={
+   480→                  <Button onClick={sendAnother} variant="outline" className="gap-2">
+   481→                    <RotateCcw className="size-4" aria-hidden="true" />
+   482→                    Send another idea
+   483→                  </Button>
+   484→                }
+   485→              />
+   486→            </div>
+   487→          ) : submitError ? (
+   488→            <div className="rounded-xl border bg-card p-2 shadow-xs">
+   489→              <ErrorState
+   490→                message={submitError}
+   491→                onRetry={() => {
+   492→                  setSubmitError(null);
+   493→                }}
+   494→              />
+   495→            </div>
+   496→          ) : (
+   497→            <form
+   498→              onSubmit={handleSubmit(onSubmit)}
+   499→              noValidate
+   500→              className="rounded-2xl border bg-card p-4 shadow-xs sm:p-6 md:p-8"
+   501→            >
+   502→              <p className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.2em] text-gold">
+   503→                <Handshake className="size-3.5" aria-hidden="true" />
+   504→                Join me — startup idea form
+   505→              </p>
+   506→              <div className="gold-rule mt-3 mb-5 w-16 md:mb-6" aria-hidden="true" />
+   507→
+   508→              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+   509→                <div className="space-y-2">
+   510→                  <Label htmlFor="pitch-intent">I want to</Label>
+   511→                  <Select
+   512→                    value={intentValue}
+   513→                    onValueChange={(value) => {
+   514→                      const next = value as IntentValue;
+   515→                      setIntentValue(next);
+   516→                      setValue("intent", next, { shouldValidate: true });
+   517→                    }}
+   518→                  >
+   519→                    <SelectTrigger id="pitch-intent" aria-invalid={errors.intent ? true : undefined}>
+   520→                      <SelectValue placeholder="Choose an intent" />
+   521→                    </SelectTrigger>
+   522→                    <SelectContent>
+   523→                      {INTENT_OPTIONS.map((option) => (
+   524→                        <SelectItem key={option.value} value={option.value}>
+   525→                          {option.label}
+   526→                        </SelectItem>
+   527→                      ))}
+   528→                    </SelectContent>
+   529→                  </Select>
+   530→                  {errors.intent ? (
+   531→                    <p role="alert" className="text-xs text-destructive">
+   532→                      {errors.intent.message}
+   533→                    </p>
+   534→                  ) : null}
+   535→                </div>
+   536→
+   537→                <div className="space-y-2">
+   538→                  <Label htmlFor="pitch-venture">The venture</Label>
+   539→                  <Select
+   540→                    value={ventureValue}
+   541→                    onValueChange={(value) => {
+   542→                      setVentureValue(value);
+   543→                      setValue("venture", value, { shouldValidate: true });
+   544→                    }}
+   545→                  >
+   546→                    <SelectTrigger id="pitch-venture" aria-invalid={errors.venture ? true : undefined}>
+   547→                      <SelectValue placeholder="Pick a venture" />
+   548→                    </SelectTrigger>
+   549→                    <SelectContent>
+   550→                      <SelectItem value={NEW_IDEA}>A new idea</SelectItem>
+   551→                      {ventures.map((venture) => (
+   552→                        <SelectItem key={venture.id} value={venture.id}>
+   553→                          {venture.name}
+   554→                        </SelectItem>
+   555→                      ))}
+   556→                    </SelectContent>
+   557→                  </Select>
+   558→                  {errors.venture ? (
+   559→                    <p role="alert" className="text-xs text-destructive">
+   560→                      {errors.venture.message}
+   561→                    </p>
+   562→                  ) : null}
+   563→                </div>
+   564→
+   565→                <div className="space-y-2">
+   566→                  <Label htmlFor="pitch-name">Name</Label>
+   567→                  <Input
+   568→                    id="pitch-name"
+   569→                    autoComplete="name"
+   570→                    placeholder="Your full name"
+   571→                    aria-invalid={errors.name ? true : undefined}
+   572→                    {...register("name")}
+   573→                  />
+   574→                  {errors.name ? (
+   575→                    <p role="alert" className="text-xs text-destructive">
+   576→                      {errors.name.message}
+   577→                    </p>
+   578→                  ) : null}
+   579→                </div>
+   580→
+   581→                <div className="space-y-2">
+   582→                  <Label htmlFor="pitch-email">Email</Label>
+   583→                  <Input
+   584→                    id="pitch-email"
+   585→                    type="email"
+   586→                    autoComplete="email"
+   587→                    placeholder="you@example.com"
+   588→                    aria-invalid={errors.email ? true : undefined}
+   589→                    {...register("email")}
+   590→                  />
+   591→                  {errors.email ? (
+   592→                    <p role="alert" className="text-xs text-destructive">
+   593→                      {errors.email.message}
+   594→                    </p>
+   595→                  ) : null}
+   596→                </div>
+   597→
+   598→                <div className="space-y-2 sm:col-span-2">
+   599→                  <Label htmlFor="pitch-phone">
+   600→                    Phone <span className="text-muted-foreground">(optional)</span>
+   601→                  </Label>
+   602→                  <Input
+   603→                    id="pitch-phone"
+   604→                    type="tel"
+   605→                    autoComplete="tel"
+   606→                    placeholder="+91 ..."
+   607→                    aria-invalid={errors.phone ? true : undefined}
+   608→                    {...register("phone")}
+   609→                  />
+   610→                  {errors.phone ? (
+   611→                    <p role="alert" className="text-xs text-destructive">
+   612→                      {errors.phone.message}
+   613→                    </p>
+   614→                  ) : null}
+   615→                </div>
+   616→
+   617→                <div className="space-y-2 sm:col-span-2">
+   618→                  <Label htmlFor="pitch-message">
+   619→                    {currentIntent === "pitch" || currentIntent === "cofound"
+   620→                      ? "Your startup idea"
+   621→                      : "Your message"}
+   622→                  </Label>
+   623→                  <Textarea
+   624→                    id="pitch-message"
+   625→                    rows={6}
+   626→                    placeholder="The idea, the problem it solves, what stage you're at and what you'd want from me — whatever you have so far."
+   627→                    aria-invalid={errors.message ? true : undefined}
+   628→                    {...register("message")}
+   629→                  />
+   630→                  {errors.message ? (
+   631→                    <p role="alert" className="text-xs text-destructive">
+   632→                      {errors.message.message}
+   633→                    </p>
+   634→                  ) : null}
+   635→                </div>
+   636→              </div>
+   637→
+   638→              <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+   639→                <p className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+   640→                  <MessageCircle className="size-3.5" aria-hidden="true" />
+   641→                  Serious ideas get a reply within 24 hours · IST (UTC+5:30)
+   642→                </p>
+   643→                <Button type="submit" disabled={isSubmitting || submitMutation.isPending} className="gap-2">
+   644→                  {isSubmitting || submitMutation.isPending ? "Sending..." : "Send my idea"}
+   645→                  <Send className="size-4" aria-hidden="true" />
+   646→                </Button>
+   647→              </div>
+   648→            </form>
+   649→          )}
+   650→        </div>
+   651→      </section>
+   652→
+   653→      {/* related links */}
+   654→      <nav aria-label="Related pages" className="mt-10 md:mt-14">
+   655→        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+   656→          <li>
+   657→            <ALink
+   658→              href="#/services"
+   659→              className="flex items-center justify-between gap-3 rounded-lg border bg-card p-4 text-sm font-medium shadow-xs transition-colors hover:border-gold/50"
+   660→            >
+   661→              Work with me on a project
+   662→              <ArrowRight className="size-4 shrink-0 text-gold" aria-hidden="true" />
+   663→            </ALink>
+   664→          </li>
+   665→          <li>
+   666→            <ALink
+   667→              href="#/store"
+   668→              className="flex items-center justify-between gap-3 rounded-lg border bg-card p-4 text-sm font-medium shadow-xs transition-colors hover:border-gold/50"
+   669→            >
+   670→              Shop the Calicut Store picks
+   671→              <ArrowRight className="size-4 shrink-0 text-gold" aria-hidden="true" />
+   672→            </ALink>
+   673→          </li>
+   674→          <li>
+   675→            <ALink
+   676→              href="#/contact"
+   677→              className="flex items-center justify-between gap-3 rounded-lg border bg-card p-4 text-sm font-medium shadow-xs transition-colors hover:border-gold/50"
+   678→            >
+   679→              General inquiries & contact
+   680→              <ArrowRight className="size-4 shrink-0 text-gold" aria-hidden="true" />
+   681→            </ALink>
+   682→          </li>
+   683→        </ul>
+   684→      </nav>
+   685→    </div>
+   686→  );
+   687→}
+   688→

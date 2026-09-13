@@ -142,6 +142,7 @@ function LegalIndexView() {
 
       <header>
         <SectionHeading
+          as="h1"
           microLabel="COMPLIANCE"
           title="Legal & Policies"
           description="The complete MN.KP registry — privacy, terms, commerce policies and disclosure documents, written in plain language for a platform run from Calicut, Kerala. Every document lists its last-updated date, prints cleanly, and answers to India's DPDP Act 2023 with GDPR and CCPA consideration for international visitors."

@@ -1,12 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Check, Copy, Eye, EyeOff, Info } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Eye, EyeOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ALink } from "@/components/router/link";
-import { toast } from "@/hooks/use-toast";
-import { DEMO_CREDENTIALS } from "@/lib/constants";
 import type { ApiEnvelope } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -210,77 +206,6 @@ export function PasswordInput({ theme, className, ...props }: PasswordInputProps
       >
         {visible ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
       </button>
-    </div>
-  );
-}
-
-/* ========================================================================== */
-/* DemoCredentialsCard — copyable demo hints (BUILD CONTRACT §12)              */
-/* ========================================================================== */
-
-function CopyValue({ value, theme, label }: { value: string; theme: AuthTheme; label: string }) {
-  const t = AUTH_THEMES[theme];
-  const [copied, setCopied] = React.useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      toast({ title: "Copied", description: `${label} copied to clipboard.` });
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      toast({ title: "Could not copy", description: `${label}: ${value}`, variant: "destructive" });
-    }
-  };
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      aria-label={`Copy ${label}: ${value}`}
-      className={cn(
-        "flex min-h-11 items-center gap-1.5 rounded-md px-1.5 py-0.5 text-left font-mono text-xs outline-none transition-colors",
-        t.ghost
-      )}
-    >
-      <span className="break-all">{value}</span>
-      {copied ? (
-        <Check className="size-3.5 shrink-0 text-gold" aria-hidden="true" />
-      ) : (
-        <Copy className="size-3.5 shrink-0 opacity-70" aria-hidden="true" />
-      )}
-    </button>
-  );
-}
-
-export interface DemoCredentialsCardProps {
-  theme: AuthTheme;
-  /** Which seeded account to surface. */
-  account: "user" | "admin";
-  /** Extra note under the credentials. */
-  note?: React.ReactNode;
-}
-
-export function DemoCredentialsCard({ theme, account, note }: DemoCredentialsCardProps) {
-  const t = AUTH_THEMES[theme];
-  const cred =
-    account === "admin" ? DEMO_CREDENTIALS.admin : DEMO_CREDENTIALS.user;
-  return (
-    <div
-      className={cn(
-        "mt-6 rounded-xl border border-dashed px-4 py-3",
-        theme === "graphite" && "border-gold/25 bg-stone-900/60",
-        theme === "amber" && "border-amber-400/30 bg-amber-950/40",
-        theme === "obsidian" && "border-gold/30 bg-zinc-900/60"
-      )}
-    >
-      <p className={cn("flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em]", t.sub)}>
-        <Info className="size-3.5" aria-hidden="true" />
-        Demo credentials — {cred.hint}
-      </p>
-      <div className="mt-2 grid gap-1">
-        <CopyValue theme={theme} label="Email" value={cred.email} />
-        <CopyValue theme={theme} label="Password" value={cred.password} />
-      </div>
-      {note ? <p className={cn("mt-2 text-xs leading-relaxed", t.sub)}>{note}</p> : null}
     </div>
   );
 }

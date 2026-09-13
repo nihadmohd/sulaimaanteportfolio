@@ -92,13 +92,13 @@ export function defaultMedia(): MediaSettings {
     heroMarquee: {
       enabled: true,
       images: [
-        { src: "/images/brand/og-cover.webp", href: "#/about" },
-        { src: "/images/blog/blog-ai-workflow.webp", href: "#/blog" },
-        { src: "/images/store/prod-creator-camera.webp", href: "#/store" },
-        { src: "/images/blog/blog-ai-tools.webp", href: "#/blog" },
-        { src: "/images/store/prod-headphones.webp", href: "#/store" },
-        { src: "/images/blog/blog-kp-foundation.webp", href: "#/blog" },
-        { src: "/images/store/prod-keyboard.webp", href: "#/store" },
+        { src: "/images/brand/marquee-workspace.webp", href: "#/services" },
+        { src: "/images/brand/marquee-webcraft.webp", href: "#/services" },
+        { src: "/images/brand/marquee-photography.webp", href: "#/services" },
+        { src: "/images/brand/marquee-videography.webp", href: "#/services" },
+        { src: "/images/brand/marquee-global.webp", href: "#/about" },
+        { src: "/images/brand/marquee-calicut.webp", href: "#/about" },
+        { src: "/images/brand/og-cover.webp", href: "#/" },
         { src: "/images/brand/portrait.webp", href: "#/about" },
       ],
       messages: [
