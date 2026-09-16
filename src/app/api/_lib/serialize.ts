@@ -69,11 +69,11 @@ export function serializePost(post: PostFull): PostDTO {
     updatedAt: post.updatedAt.toISOString(),
     author: post.author
       ? {
-          id: post.author.id,
-          fullName: post.author.fullName,
-          headline: post.author.headline,
-          avatarUrl: post.author.avatarUrl,
-        }
+        id: post.author.id,
+        fullName: post.author.fullName,
+        headline: post.author.headline,
+        avatarUrl: post.author.avatarUrl,
+      }
       : null,
     category: post.category
       ? { id: post.category.id, name: post.category.name, slug: post.category.slug }
@@ -104,12 +104,38 @@ export function serializeProduct(product: ProductFull): ProductDTO {
     status: product.status as ProductDTO["status"],
     isFeatured: product.isFeatured,
     clicksCount: product.clicksCount,
+    // ---- special offer (Task 14) ----
+    offerActive: product.offerActive,
+    offerTitle: product.offerTitle,
+    offerDescription: product.offerDescription,
+    offerKind: product.offerKind as ProductDTO["offerKind"],
+    offerCode: product.offerCode,
+    offerStartsAt: product.offerStartsAt ? product.offerStartsAt.toISOString() : null,
+    offerEndsAt: product.offerEndsAt ? product.offerEndsAt.toISOString() : null,
     category: product.category
       ? { id: product.category.id, name: product.category.name, slug: product.category.slug }
       : null,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };
+}
+
+/**
+ * Is the product's special offer live RIGHT NOW? (Task 14)
+ * Offer must be switched on and inside its optional window. Status is NOT
+ * checked here — callers filter status=active upstream.
+ */
+export function productOfferLive(product: {
+  status: string;
+  offerActive: boolean;
+  offerStartsAt: Date | null;
+  offerEndsAt: Date | null;
+}): boolean {
+  if (product.status !== "active" || !product.offerActive) return false;
+  const now = Date.now();
+  if (product.offerStartsAt && product.offerStartsAt.getTime() > now) return false;
+  if (product.offerEndsAt && product.offerEndsAt.getTime() < now) return false;
+  return true;
 }
 
 export function serializeCategory(cat: CategoryWithCount): CategoryDTO & {

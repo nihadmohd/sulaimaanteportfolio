@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { ExternalLink, Package } from "lucide-react";
+import { BadgePercent, ExternalLink, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatINR } from "@/components/shared/product-card";
-import { cn } from "@/lib/utils";
+import { cn, isOfferLive } from "@/lib/utils";
 import type { ProductDTO } from "@/types";
 
 /**
@@ -88,7 +88,18 @@ export function StickyBuyBar({ product, onCta, priceCardRef }: StickyBuyBarProps
 
         <div className="min-w-0 max-w-[45%] flex-1">
           <p className="truncate text-sm font-medium leading-tight">{product.name}</p>
-          <p className="mt-0.5 text-sm font-semibold tabular-nums text-gold">{price}</p>
+          <p className="mt-0.5 flex items-center gap-1.5">
+            {isOfferLive(product) ? (
+              <span
+                className="inline-flex items-center gap-0.5 rounded bg-gold/15 px-1 py-px text-[10px] font-semibold text-gold"
+                title={product.offerTitle ?? "Special offer"}
+              >
+                <BadgePercent className="size-3" aria-hidden="true" />
+                {product.offerCode ?? "Offer"}
+              </span>
+            ) : null}
+            <span className="text-sm font-semibold tabular-nums text-gold">{price}</span>
+          </p>
         </div>
 
         <Button

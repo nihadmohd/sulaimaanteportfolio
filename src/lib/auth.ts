@@ -15,11 +15,13 @@ const JWT_SECRET = new TextEncoder().encode(
 export const SESSION_COOKIE = "mnkp_session";
 const SESSION_DAYS = 7;
 
-export type Role = "reader" | "author" | "editor" | "admin";
+export type Role = "reader" | "author" | "editor" | "admin" | "advertiser";
 /** Roles allowed to create/edit own posts. */
 export const AUTHOR_ROLES: Role[] = ["author", "editor", "admin"];
 /** Roles with full Admin & Developer console access. */
 export const STAFF_ROLES: Role[] = ["editor", "admin"];
+/** Roles allowed to submit client ads for review (#/studio, Task 14). */
+export const AD_SUBMIT_ROLES: Role[] = ["advertiser", "editor", "admin"];
 
 export interface SessionUser {
   id: string;

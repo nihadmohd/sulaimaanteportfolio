@@ -9,7 +9,7 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
  * enters throw/retry loops while APIs are still landing.
  */
 
-export type UserRole = "reader" | "author" | "editor" | "admin";
+export type UserRole = "reader" | "author" | "editor" | "admin" | "advertiser";
 
 /** Mirror of the server SessionUser (src/lib/auth.ts) with dates serialized. */
 export interface SessionUser {
@@ -40,6 +40,8 @@ export interface SessionPayload {
 /** Client-side role mirrors of src/lib/auth.ts (kept client-safe on purpose). */
 export const AUTHOR_ROLES: UserRole[] = ["author", "editor", "admin"];
 export const STAFF_ROLES: UserRole[] = ["editor", "admin"];
+/** Roles that can submit client ads for review (#/studio, Task 14). */
+export const AD_SUBMIT_ROLES: UserRole[] = ["advertiser", "editor", "admin"];
 
 export function isAuthor(user: SessionUser | null | undefined): boolean {
   return !!user && AUTHOR_ROLES.includes(user.role);
@@ -47,6 +49,10 @@ export function isAuthor(user: SessionUser | null | undefined): boolean {
 
 export function isStaff(user: SessionUser | null | undefined): boolean {
   return !!user && STAFF_ROLES.includes(user.role);
+}
+
+export function isAdvertiser(user: SessionUser | null | undefined): boolean {
+  return !!user && AD_SUBMIT_ROLES.includes(user.role);
 }
 
 async function fetchSession(): Promise<SessionPayload | null> {

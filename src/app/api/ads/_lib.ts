@@ -22,6 +22,17 @@ export function serializeAd(ad: Ad): AdDTO {
     endAt: ad.endAt?.toISOString() ?? null,
     impressions: ad.impressions,
     clicks: ad.clicks,
+    // ---- client campaigns + review workflow (Task 14) ----
+    source: ad.source as AdDTO["source"],
+    clientName: ad.clientName,
+    clientCompany: ad.clientCompany,
+    clientEmail: ad.clientEmail,
+    monthlyRate: ad.monthlyRate,
+    planCode: ad.planCode,
+    reviewStatus: ad.reviewStatus as AdDTO["reviewStatus"],
+    reviewNote: ad.reviewNote,
+    submittedById: ad.submittedById,
+    reviewedAt: ad.reviewedAt?.toISOString() ?? null,
     createdAt: ad.createdAt.toISOString(),
     updatedAt: ad.updatedAt.toISOString(),
   };

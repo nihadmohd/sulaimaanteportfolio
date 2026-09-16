@@ -38,12 +38,43 @@ export function withApi<Ctx = unknown>(
     } catch (e) {
       if (e instanceof ApiError) return fail(e.status, e.code, e.message);
       if (e instanceof ZodError) {
-        return fail(400, "VALIDATION", e.issues[0]?.message ?? "Invalid input.");
+        return fail(400, "VALIDATION", zodErrorMessage(e));
       }
       console.error("[api-error]", e);
       return fail(500, "SERVER", "Something went wrong on our end. Please try again.");
     }
   };
+}
+
+/**
+ * Human-friendly Zod 4 error text. Default messages like
+ * "Too big: expected string to have <=600 characters" say nothing about
+ * WHERE the problem is — so every issue is prefixed with a readable field
+ * label ("Pros #3", "Key specs", "Gallery") built from its path.
+ */
+function pathLabel(path: PropertyKey[]): string {
+  const parts: string[] = [];
+  for (const seg of path) {
+    if (typeof seg === "number") {
+      parts[parts.length - 1] = `${parts[parts.length - 1] ?? "item"} #${seg + 1}`;
+    } else {
+      const words = String(seg)
+        .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+        .replace(/_/g, " ")
+        .toLowerCase();
+      parts.push(words);
+    }
+  }
+  if (parts.length === 0) return "";
+  return parts.join(" → ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function zodErrorMessage(error: ZodError): string {
+  const issue = error.issues[0];
+  if (!issue) return "Invalid input.";
+  const message = issue.message || "Invalid value.";
+  const label = pathLabel(issue.path);
+  return label ? `${label}: ${message}` : message;
 }
 
 export function pagination(searchParams: URLSearchParams, defLimit = 12) {

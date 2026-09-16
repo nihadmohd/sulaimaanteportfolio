@@ -11,7 +11,7 @@ import type { SessionUser } from "@/lib/auth";
 export type AuditAction = "create" | "update" | "delete" | "toggle" | "undo" | "redo" | "import";
 
 /** Entities whose snapshots can be automatically restored (undo/redo). */
-export const RESTORABLE_ENTITIES = new Set(["setting", "ad", "post", "product", "venture"]);
+export const RESTORABLE_ENTITIES = new Set(["setting", "ad", "post", "product", "venture", "ad_plan"]);
 
 export interface WriteAuditInput {
   user: Pick<SessionUser, "id" | "fullName" | "email"> | null;
@@ -66,6 +66,32 @@ interface AdRow {
   endAt?: string | null;
   impressions?: number;
   clicks?: number;
+  // client campaign + review fields (Task 14)
+  source?: string;
+  clientName?: string | null;
+  clientCompany?: string | null;
+  clientEmail?: string | null;
+  monthlyRate?: number | null;
+  planCode?: string | null;
+  reviewStatus?: string;
+  reviewNote?: string | null;
+  submittedById?: string | null;
+  reviewedAt?: string | null;
+  createdAt?: string;
+}
+
+interface AdPlanRow {
+  id?: string;
+  code?: string;
+  name?: string;
+  description?: string | null;
+  priceMonthly?: number;
+  currency?: string;
+  features?: string;
+  placements?: string;
+  isActive?: boolean;
+  isFeatured?: boolean;
+  sortOrder?: number;
   createdAt?: string;
 }
 
@@ -114,6 +140,14 @@ interface ProductRow {
   isFeatured?: boolean;
   clicksCount?: number;
   categoryId?: string | null;
+  // special offer fields (Task 14)
+  offerActive?: boolean;
+  offerTitle?: string | null;
+  offerDescription?: string | null;
+  offerKind?: string;
+  offerCode?: string | null;
+  offerStartsAt?: string | null;
+  offerEndsAt?: string | null;
   createdAt?: string;
 }
 
@@ -158,6 +192,31 @@ function adRowToData(row: AdRow) {
     endAt: reviveDate(row.endAt),
     impressions: row.impressions ?? 0,
     clicks: row.clicks ?? 0,
+    source: row.source ?? "owner",
+    clientName: row.clientName ?? null,
+    clientCompany: row.clientCompany ?? null,
+    clientEmail: row.clientEmail ?? null,
+    monthlyRate: row.monthlyRate ?? null,
+    planCode: row.planCode ?? null,
+    reviewStatus: row.reviewStatus ?? "approved",
+    reviewNote: row.reviewNote ?? null,
+    submittedById: row.submittedById ?? null,
+    reviewedAt: reviveDate(row.reviewedAt),
+  };
+}
+
+function adPlanRowToData(row: AdPlanRow) {
+  return {
+    code: row.code ?? `restored-plan-${Date.now().toString(36)}`,
+    name: row.name ?? "Restored plan",
+    description: row.description ?? null,
+    priceMonthly: row.priceMonthly ?? 0,
+    currency: row.currency ?? "INR",
+    features: typeof row.features === "string" ? row.features : JSON.stringify(row.features ?? []),
+    placements: typeof row.placements === "string" ? row.placements : JSON.stringify(row.placements ?? []),
+    isActive: row.isActive ?? true,
+    isFeatured: row.isFeatured ?? false,
+    sortOrder: row.sortOrder ?? 0,
   };
 }
 
@@ -224,6 +283,13 @@ function productRowToData(row: ProductRow) {
     isFeatured: row.isFeatured ?? false,
     clicksCount: row.clicksCount ?? 0,
     categoryId: row.categoryId ?? null,
+    offerActive: row.offerActive ?? false,
+    offerTitle: row.offerTitle ?? null,
+    offerDescription: row.offerDescription ?? null,
+    offerKind: row.offerKind ?? "deal",
+    offerCode: row.offerCode ?? null,
+    offerStartsAt: reviveDate(row.offerStartsAt),
+    offerEndsAt: reviveDate(row.offerEndsAt),
   };
 }
 
@@ -291,6 +357,17 @@ export async function applySnapshot(entity: string, entityId: string | null, sna
       // id / createdAt / updatedAt are stripped — only content fields are written.
       const data = ventureRowToData(row);
       await db.venture.upsert({ where: { id: entityId }, update: data, create: { id: entityId, ...data } });
+      return { id: entityId };
+    }
+    case "ad_plan": {
+      if (!entityId) throw new ApiError(400, "VALIDATION", "Ad plan snapshot has no entity id.");
+      if (!snapshot) {
+        await db.adPlan.deleteMany({ where: { id: entityId } });
+        return { id: entityId, deleted: true };
+      }
+      const row = JSON.parse(snapshot) as AdPlanRow;
+      const data = adPlanRowToData(row);
+      await db.adPlan.upsert({ where: { id: entityId }, update: data, create: { id: entityId, ...data } });
       return { id: entityId };
     }
     default:

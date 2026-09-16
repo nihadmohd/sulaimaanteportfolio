@@ -28,7 +28,7 @@ export const GET = withApi(async (req: Request) => {
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
 
-    const [newInquiries, newSubscribers, maintenanceRow] = await Promise.all([
+    const [newInquiries, newSubscribers, maintenanceRow, pendingAds] = await Promise.all([
       db.inquiry.findMany({
         where: { status: "new" },
         orderBy: { createdAt: "desc" },
@@ -40,6 +40,11 @@ export const GET = withApi(async (req: Request) => {
         take: 10,
       }),
       db.siteSetting.findUnique({ where: { key: "maintenance" } }),
+      db.ad.findMany({
+        where: { reviewStatus: "pending" },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      }),
     ]);
 
     for (const inq of newInquiries) {
@@ -50,6 +55,16 @@ export const GET = withApi(async (req: Request) => {
         body: inq.subject || inq.message.slice(0, 80),
         time: inq.createdAt.toISOString(),
         href: "#/admin/inquiries",
+      });
+    }
+    for (const ad of pendingAds) {
+      items.push({
+        id: `adrev-${ad.id}`,
+        type: "ad_review",
+        title: `Ad submission awaiting review — ${ad.name}`,
+        body: ad.clientName || ad.clientEmail || "A client submitted an ad for approval.",
+        time: ad.createdAt.toISOString(),
+        href: "#/admin/ads",
       });
     }
     for (const sub of newSubscribers) {

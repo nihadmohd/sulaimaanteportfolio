@@ -16,6 +16,8 @@ export const viewRegistry: Record<string, React.LazyExoticComponent<ComponentTyp
   store: lazy(() => import("@/components/views/store/store-view")),
   "store-product": lazy(() => import("@/components/views/store/product-view")),
   ventures: lazy(() => import("@/components/views/ventures/ventures-view")),
+  advertise: lazy(() => import("@/components/views/advertise/advertise-view")),
+  studio: lazy(() => import("@/components/views/studio/advertiser-studio-view")),
   support: lazy(() => import("@/components/views/support/support-view")),
   legal: lazy(() => import("@/components/views/legal/legal-view")),
   "legal-doc": lazy(() => import("@/components/views/legal/legal-view")),

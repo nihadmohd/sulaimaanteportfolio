@@ -19,7 +19,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -37,7 +37,7 @@ model User {
   location            String?
   websiteUrl          String?
   socials             String    @default("{}") // JSON object: {platform:url}
-  role                String    @default("reader") // reader|author|editor|admin
+  role                String    @default("reader") // reader|author|editor|admin|advertiser
   onboardingCompleted Boolean   @default(false)
   onboardingStep      Int       @default(0) // 0..4
   marketingOptIn      Boolean   @default(true)
@@ -59,6 +59,7 @@ model User {
   affiliateClicks     AffiliateClick[]
   visitorSessions     VisitorSession[]
   settingsUpdated     SiteSetting[]
+  adsSubmitted        Ad[]
 }
 
 // ----------------------------------------------------------------------------
@@ -137,6 +138,15 @@ model Product {
   status         String   @default("active") // active|draft|archived
   isFeatured     Boolean  @default(false)
   clicksCount    Int      @default(0) // maintained on affiliate_clicks insert (API layer)
+  // ---- special offer (Task 14): buyer-facing promo the owner runs on
+  // this product. Copy is always written from the BUYER's perspective.
+  offerActive      Boolean   @default(false)
+  offerTitle       String?
+  offerDescription String?
+  offerKind        String    @default("deal") // deal|cashback|coupon|bundle|giveaway
+  offerCode        String? // coupon / claim code shown with a copy button
+  offerStartsAt    DateTime?
+  offerEndsAt      DateTime?
   categoryId     String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -147,6 +157,7 @@ model Product {
   @@index([categoryId])
   @@index([price])
   @@index([status, isFeatured])
+  @@index([status, offerActive])
 }
 
 // ----------------------------------------------------------------------------
@@ -257,12 +268,50 @@ model Ad {
   endAt       DateTime? // schedule window end (null = forever)
   impressions Int       @default(0)
   clicks      Int       @default(0)
+  // ---- client campaigns + review workflow (Task 14) ----
+  source        String    @default("owner") // owner|client — who this ad is for
+  clientName    String? // contact person at the paying client
+  clientCompany String?
+  clientEmail   String?
+  monthlyRate   Float? // agreed monthly charge (INR)
+  planCode      String? // AdPlan.code this campaign belongs to
+  reviewStatus  String    @default("approved") // pending|approved|rejected
+  reviewNote    String? // approval note / rejection reason shown to the client
+  submittedById String? // advertiser account that submitted (client ads)
+  reviewedAt    DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  submittedBy User? @relation(fields: [submittedById], references: [id], onDelete: SetNull)
 
   @@index([placement, active])
   @@index([active, priority(sort: Desc)])
   @@index([createdAt(sort: Desc)])
+  @@index([reviewStatus])
+  @@index([submittedById])
+}
+
+// ----------------------------------------------------------------------------
+//  AD PLANS — monthly placement packages sold on the public #/advertise
+//  page (Task 14). The owner edits prices/features from the Ad Manager;
+//  prospective clients inquire via the advertising inquiry form.
+// ----------------------------------------------------------------------------
+model AdPlan {
+  id           String   @id @default(uuid())
+  code         String   @unique // e.g. 'starter' — referenced by Ad.planCode
+  name         String
+  description  String?
+  priceMonthly Float    @default(0)
+  currency     String   @default("INR")
+  features     String   @default("[]") // JSON array of strings — selling points
+  placements   String   @default("[]") // JSON array of AdPlacement codes
+  isActive     Boolean  @default(true)
+  isFeatured   Boolean  @default(false) // highlighted on #/advertise
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
 }
 
 // ----------------------------------------------------------------------------

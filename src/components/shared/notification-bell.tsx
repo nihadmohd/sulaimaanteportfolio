@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, Info, Mail, Users, type LucideIcon } from "lucide-react";
+import { Bell, Info, Mail, Megaphone, Users, type LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +47,7 @@ const TYPE_ICONS: Record<string, LucideIcon> = {
   inquiry: Mail,
   subscriber: Users,
   system: Info,
+  ad_review: Megaphone,
 };
 
 function readSeen(): string[] {
@@ -201,9 +202,8 @@ export function NotificationBell() {
                     <button
                       type="button"
                       onClick={() => item.href && navigate(item.href)}
-                      className={`flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:bg-accent ${
-                        isSeen ? "opacity-70" : ""
-                      }`}
+                      className={`flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:bg-accent ${isSeen ? "opacity-70" : ""
+                        }`}
                     >
                       <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-gold/30 bg-gold/10 text-gold">
                         <ItemIcon className="size-3.5" aria-hidden="true" />

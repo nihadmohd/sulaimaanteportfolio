@@ -3,6 +3,9 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  BadgeCheck,
+  Check,
+  Clock,
   Eye,
   FileText,
   GalleryHorizontal,
@@ -21,12 +24,15 @@ import {
   Rows3,
   ShoppingBag,
   Sticker,
+  Tag,
   Trash2,
   X,
+  XCircle,
   type LucideIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -46,18 +52,18 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { DataState, ForbiddenState, LoadingState } from "@/components/states";
 import { EmptyState } from "@/components/states/empty";
 import { SEOHead } from "@/components/shared/seo-head";
 import { SingleImageField } from "@/components/shared/image-uploader";
 import { toast } from "@/hooks/use-toast";
-import { AD_PLACEMENTS } from "@/lib/validation";
+import { AD_IMAGES_MAX, AD_PLACEMENTS } from "@/lib/validation";
 import { cn } from "@/lib/utils";
-import type { AdDTO, AdPlacement, AdStatsDTO, AdType } from "@/types";
+import type { AdDTO, AdPlacement, AdPlanDTO, AdSource, AdStatsDTO, AdType } from "@/types";
 import { AdminShell } from "./_shell";
-import { apiFetch, ConfirmAction, formatCompact, ToneBadge, useAdminGuard } from "./_shared";
+import { apiFetch, ConfirmAction, formatCompact, formatINR, ToneBadge, useAdminGuard } from "./_shared";
 
 /**
  * Ad Manager (#/admin/ads — route key "admin-ads").
@@ -120,6 +126,13 @@ interface AdFormState {
   startAt: string;
   endAt: string;
   active: boolean;
+  // client campaign fields (Task 14)
+  source: AdSource;
+  clientName: string;
+  clientCompany: string;
+  clientEmail: string;
+  monthlyRate: string;
+  planCode: string;
 }
 
 const BLANK_FORM: AdFormState = {
@@ -137,6 +150,12 @@ const BLANK_FORM: AdFormState = {
   startAt: "",
   endAt: "",
   active: true,
+  source: "owner",
+  clientName: "",
+  clientCompany: "",
+  clientEmail: "",
+  monthlyRate: "",
+  planCode: "",
 };
 
 function formFromAd(ad: AdDTO): AdFormState {
@@ -155,6 +174,12 @@ function formFromAd(ad: AdDTO): AdFormState {
     startAt: isoToLocalInput(ad.startAt),
     endAt: isoToLocalInput(ad.endAt),
     active: ad.active,
+    source: ad.source,
+    clientName: ad.clientName ?? "",
+    clientCompany: ad.clientCompany ?? "",
+    clientEmail: ad.clientEmail ?? "",
+    monthlyRate: ad.monthlyRate != null ? String(ad.monthlyRate) : "",
+    planCode: ad.planCode ?? "",
   };
 }
 
@@ -203,13 +228,58 @@ function buildAdBody(form: AdFormState): Record<string, unknown> {
     body: form.body.trim(),
     imageUrl: form.imageUrl.trim(),
     imageAlt: form.imageAlt.trim(),
-    images: form.type === "marquee" ? form.images.slice(0, 16) : [],
+    images: form.type === "marquee" ? form.images.slice(0, AD_IMAGES_MAX) : [],
     linkUrl: form.linkUrl.trim(),
     linkLabel: form.linkLabel.trim() || "Learn more",
     priority: Math.min(100, Math.max(0, Math.round(Number(form.priority) || 0))),
     startAt: localInputToIso(form.startAt),
     endAt: localInputToIso(form.endAt),
     active: form.active,
+    source: form.source,
+    clientName: form.clientName.trim(),
+    clientCompany: form.clientCompany.trim(),
+    clientEmail: form.clientEmail.trim(),
+    monthlyRate: form.monthlyRate ? Number(form.monthlyRate) : null,
+    planCode: form.planCode && form.planCode !== "none" ? form.planCode : "",
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* ad plan form (Task 14 — plans manager tab)                          */
+/* ------------------------------------------------------------------ */
+
+interface PlanFormState {
+  name: string;
+  priceMonthly: string;
+  description: string;
+  featuresText: string; // one selling point per line
+  placements: AdPlacement[];
+  isActive: boolean;
+  isFeatured: boolean;
+  sortOrder: string;
+}
+
+const BLANK_PLAN_FORM: PlanFormState = {
+  name: "",
+  priceMonthly: "",
+  description: "",
+  featuresText: "",
+  placements: [],
+  isActive: true,
+  isFeatured: false,
+  sortOrder: "0",
+};
+
+function planFormFromPlan(plan: AdPlanDTO): PlanFormState {
+  return {
+    name: plan.name,
+    priceMonthly: String(plan.priceMonthly),
+    description: plan.description ?? "",
+    featuresText: plan.features.join("\n"),
+    placements: plan.placements,
+    isActive: plan.isActive,
+    isFeatured: plan.isFeatured,
+    sortOrder: String(plan.sortOrder),
   };
 }
 
@@ -222,16 +292,29 @@ interface AdsAllResponse {
   stats?: AdStatsDTO;
 }
 
+type ViewTab = "campaigns" | "review" | "plans";
+
 export default function AdsView() {
   const { isLoading, allowed } = useAdminGuard();
   const queryClient = useQueryClient();
 
+  const [viewTab, setViewTab] = React.useState<ViewTab>("campaigns");
   const [placementFilter, setPlacementFilter] = React.useState<"all" | AdPlacement>("all");
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<AdDTO | null>(null);
   const [form, setForm] = React.useState<AdFormState>(BLANK_FORM);
   const [marqueeInput, setMarqueeInput] = React.useState("");
   const [saving, setSaving] = React.useState(false);
+
+  // review queue (Task 14)
+  const [rejecting, setRejecting] = React.useState<AdDTO | null>(null);
+  const [rejectNote, setRejectNote] = React.useState("");
+
+  // plans manager (Task 14)
+  const [planDialogOpen, setPlanDialogOpen] = React.useState(false);
+  const [editingPlan, setEditingPlan] = React.useState<AdPlanDTO | null>(null);
+  const [planForm, setPlanForm] = React.useState<PlanFormState>(BLANK_PLAN_FORM);
+  const [savingPlan, setSavingPlan] = React.useState(false);
 
   const statsQuery = useQuery({
     queryKey: ["admin-ads-stats"],
@@ -254,10 +337,27 @@ export default function AdsView() {
     return placementFilter === "all" ? items : items.filter((a) => a.placement === placementFilter);
   }, [adsQuery.data, placementFilter]);
 
+  const pendingAds = React.useMemo(
+    () => (adsQuery.data?.items ?? []).filter((a) => a.reviewStatus === "pending"),
+    [adsQuery.data]
+  );
+
+  const plansQuery = useQuery({
+    queryKey: ["admin-ad-plans"],
+    queryFn: () => apiFetch<{ items: AdPlanDTO[] }>("/api/ad-plans?all=1"),
+    enabled: allowed,
+    staleTime: 30_000,
+    retry: 1,
+  });
+
   const invalidateAll = () => {
     void queryClient.invalidateQueries({ queryKey: ["admin-ads"] });
     void queryClient.invalidateQueries({ queryKey: ["admin-ads-stats"] });
     void queryClient.invalidateQueries({ queryKey: ["ads"] });
+  };
+
+  const invalidatePlans = () => {
+    void queryClient.invalidateQueries({ queryKey: ["admin-ad-plans"] });
   };
 
   const createMutation = useMutation({
@@ -317,6 +417,104 @@ export default function AdsView() {
       toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
   });
 
+  /* ---- review workflow (Task 14) ---- */
+
+  const reviewMutation = useMutation({
+    mutationFn: ({
+      id,
+      reviewStatus,
+      reviewNote,
+      active,
+    }: {
+      id: string;
+      reviewStatus: "approved" | "rejected";
+      reviewNote?: string;
+      active?: boolean;
+    }) =>
+      apiFetch<AdDTO>(`/api/ads/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          reviewStatus,
+          ...(reviewNote != null ? { reviewNote } : {}),
+          ...(active != null ? { active } : {}),
+        }),
+      }),
+    onSuccess: (ad) => {
+      toast({
+        title: ad.reviewStatus === "approved" ? "Submission approved" : "Submission rejected",
+        description:
+          ad.reviewStatus === "approved"
+            ? `${ad.name} is live in the ${PLACEMENT_META[ad.placement].label.toLowerCase()} slot.`
+            : `${ad.name} was rejected — the client sees your note in their studio.`,
+      });
+      setRejecting(null);
+      setRejectNote("");
+      invalidateAll();
+    },
+    onError: (e: Error) =>
+      toast({ title: "Review failed", description: e.message, variant: "destructive" }),
+  });
+
+  /* ---- plans manager (Task 14) ---- */
+
+  const planSaveMutation = useMutation({
+    mutationFn: ({ id, state }: { id: string | null; state: PlanFormState }) => {
+      const body = {
+        name: state.name.trim(),
+        priceMonthly: Number(state.priceMonthly || 0),
+        description: state.description.trim(),
+        features: state.featuresText
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean),
+        placements: state.placements,
+        isActive: state.isActive,
+        isFeatured: state.isFeatured,
+        sortOrder: Math.min(999, Math.max(0, Math.round(Number(state.sortOrder) || 0))),
+      };
+      return id
+        ? apiFetch<AdPlanDTO>(`/api/ad-plans/${id}`, { method: "PATCH", body: JSON.stringify(body) })
+        : apiFetch<AdPlanDTO>("/api/ad-plans", { method: "POST", body: JSON.stringify(body) });
+    },
+    onSuccess: (plan) => {
+      toast({
+        title: editingPlan ? "Plan saved" : "Plan created",
+        description: `${plan.name} — ${formatINR(plan.priceMonthly)}/month.`,
+      });
+      closePlanDialog();
+      invalidatePlans();
+    },
+    onError: (e: Error) =>
+      toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+  });
+
+  const planToggleMutation = useMutation({
+    mutationFn: (plan: AdPlanDTO) =>
+      apiFetch<AdPlanDTO>(`/api/ad-plans/${plan.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ isActive: !plan.isActive }),
+      }),
+    onSuccess: (plan) => {
+      toast({ title: plan.isActive ? "Plan visible" : "Plan hidden", description: plan.name });
+      invalidatePlans();
+    },
+    onError: (e: Error) =>
+      toast({ title: "Toggle failed", description: e.message, variant: "destructive" }),
+  });
+
+  const planDeleteMutation = useMutation({
+    mutationFn: (plan: AdPlanDTO) => apiFetch(`/api/ad-plans/${plan.id}`, { method: "DELETE" }),
+    onSuccess: (_data, plan) => {
+      toast({
+        title: "Plan deleted",
+        description: `${plan.name} removed — recoverable from Activity & Undo.`,
+      });
+      invalidatePlans();
+    },
+    onError: (e: Error) =>
+      toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+  });
+
   if (isLoading) return <LoadingState variant="spinner" label="Loading ad manager" />;
   if (!allowed) return <ForbiddenState />;
 
@@ -341,9 +539,45 @@ export default function AdsView() {
     setMarqueeInput("");
   };
 
+  const openCreatePlan = () => {
+    setEditingPlan(null);
+    setPlanForm(BLANK_PLAN_FORM);
+    setPlanDialogOpen(true);
+  };
+
+  const openEditPlan = (plan: AdPlanDTO) => {
+    setEditingPlan(plan);
+    setPlanForm(planFormFromPlan(plan));
+    setPlanDialogOpen(true);
+  };
+
+  const closePlanDialog = () => {
+    setPlanDialogOpen(false);
+    setEditingPlan(null);
+    setPlanForm(BLANK_PLAN_FORM);
+  };
+
+  const submitPlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (planForm.name.trim().length < 2) {
+      toast({ title: "Name required", description: "Give the plan a name (2+ characters).", variant: "destructive" });
+      return;
+    }
+    if (planForm.priceMonthly.trim() && Number.isNaN(Number(planForm.priceMonthly))) {
+      toast({ title: "Invalid price", description: "Monthly price must be a number.", variant: "destructive" });
+      return;
+    }
+    setSavingPlan(true);
+    try {
+      await planSaveMutation.mutateAsync({ id: editingPlan?.id ?? null, state: planForm });
+    } finally {
+      setSavingPlan(false);
+    }
+  };
+
   const addMarqueeImage = () => {
     const url = marqueeInput.trim();
-    if (!url || form.images.includes(url) || form.images.length >= 16) return;
+    if (!url || form.images.includes(url) || form.images.length >= AD_IMAGES_MAX) return;
     setForm({ ...form, images: [...form.images, url] });
     setMarqueeInput("");
   };
@@ -381,7 +615,7 @@ export default function AdsView() {
   return (
     <AdminShell
       title="Ad Manager"
-      description="Create ads, pick placements, schedule and switch them on or off."
+      description="Your ads, the client review queue and the monthly plans sold on #/advertise."
       actions={
         <Button size="sm" className="h-9 gap-2" onClick={openCreate}>
           <Plus className="size-4" aria-hidden="true" />
@@ -396,6 +630,7 @@ export default function AdsView() {
         {[
           { label: "Total", value: stats ? String(stats.totalAds) : "—", icon: Layers },
           { label: "Active", value: stats ? String(stats.activeAds) : "—", icon: Power },
+          { label: "Pending", value: stats?.pendingReview != null ? String(stats.pendingReview) : "—", icon: Clock },
           { label: "Impressions", value: stats ? formatCompact(stats.impressions) : "—", icon: Eye },
           { label: "Clicks", value: stats ? formatCompact(stats.clicks) : "—", icon: MousePointerClick },
           { label: "CTR", value: stats ? `${stats.ctr.toFixed(2)}%` : "—", icon: Percent },
@@ -417,155 +652,391 @@ export default function AdsView() {
         ))}
       </div>
 
-      {/* placement filter tabs */}
-      <div className="mb-4">
-        <Tabs
-          value={placementFilter}
-          onValueChange={(v) => setPlacementFilter(v as "all" | AdPlacement)}
-          aria-label="Filter by placement"
-        >
-          <TabsList className="h-10 w-full justify-start overflow-x-auto sm:w-auto">
-            <TabsTrigger value="all" className="h-8">All</TabsTrigger>
-            {AD_PLACEMENTS.map((p) => (
-              <TabsTrigger key={p} value={p} className="h-8 whitespace-nowrap">
-                {PLACEMENT_META[p].label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
+      {/* section tabs: campaigns / review queue / plans (Task 14) */}
+      <Tabs value={viewTab} onValueChange={(v) => setViewTab(v as ViewTab)} aria-label="Ad manager sections">
+        <TabsList className="mb-4 h-10 w-full justify-start overflow-x-auto sm:w-auto">
+          <TabsTrigger value="campaigns" className="h-8">Campaigns</TabsTrigger>
+          <TabsTrigger value="review" className="h-8 gap-1.5">
+            Review queue
+            {pendingAds.length > 0 ? (
+              <Badge className="bg-amber-500 text-[10px] text-white">{pendingAds.length}</Badge>
+            ) : null}
+          </TabsTrigger>
+          <TabsTrigger value="plans" className="h-8 gap-1.5">
+            <Tag className="size-3.5" aria-hidden="true" />
+            Plans
+          </TabsTrigger>
+        </TabsList>
 
-      <DataState query={adsQuery} empty={false} skeletonRows={6}>
-        {(data) =>
-          data.items.length === 0 ? (
-            <EmptyState
-              title="No ads yet"
-              description="Create your first ad — pick a type, choose exactly where it appears, and flip it on when you're ready."
-              action={
-                <Button onClick={openCreate} className="gap-2">
-                  <Plus className="size-4" aria-hidden="true" />
-                  Create your first ad
-                </Button>
-              }
-            />
-          ) : (
-            <div className="space-y-4">
-              {ads.length === 0 ? (
-                <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-                  No ads in this placement yet — switch the filter back to All.
-                </p>
+        <TabsContent value="campaigns" className="mt-0">
+          {/* placement filter tabs */}
+          <div className="mb-4">
+            <Tabs
+              value={placementFilter}
+              onValueChange={(v) => setPlacementFilter(v as "all" | AdPlacement)}
+              aria-label="Filter by placement"
+            >
+              <TabsList className="h-10 w-full justify-start overflow-x-auto sm:w-auto">
+                <TabsTrigger value="all" className="h-8">All</TabsTrigger>
+                {AD_PLACEMENTS.map((p) => (
+                  <TabsTrigger key={p} value={p} className="h-8 whitespace-nowrap">
+                    {PLACEMENT_META[p].label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
+
+          <DataState query={adsQuery} empty={false} skeletonRows={6}>
+            {(data) =>
+              data.items.length === 0 ? (
+                <EmptyState
+                  title="No ads yet"
+                  description="Create your first ad — pick a type, choose exactly where it appears, and flip it on when you're ready."
+                  action={
+                    <Button onClick={openCreate} className="gap-2">
+                      <Plus className="size-4" aria-hidden="true" />
+                      Create your first ad
+                    </Button>
+                  }
+                />
               ) : (
-                <div className="overflow-hidden rounded-xl border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[30%] min-w-[220px]">Ad</TableHead>
-                        <TableHead className="text-center">On</TableHead>
-                        <TableHead className="text-right">Priority</TableHead>
-                        <TableHead className="text-right">Impr.</TableHead>
-                        <TableHead className="text-right">Clicks</TableHead>
-                        <TableHead className="text-right">CTR</TableHead>
-                        <TableHead>Schedule</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {ads.map((ad) => {
-                        const sched = scheduleChip(ad);
-                        return (
-                          <TableRow key={ad.id}>
-                            <TableCell>
-                              <div className="flex min-w-0 items-center gap-2.5">
-                                <span
-                                  aria-hidden="true"
-                                  className="flex size-9 shrink-0 items-center justify-center rounded-md bg-gold/10 text-gold"
-                                >
-                                  {React.createElement(PLACEMENT_META[ad.placement].icon, { className: "size-4" })}
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="truncate font-medium">{ad.name}</p>
-                                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                                    <ToneBadge tone={TYPE_TONE[ad.type]} className="px-1.5 py-0 text-[10px]">
-                                      {ad.type}
-                                    </ToneBadge>
-                                    <Badge variant="outline" className="px-1.5 py-0 text-[10px] text-muted-foreground">
-                                      {PLACEMENT_META[ad.placement].label}
-                                    </Badge>
+                <div className="space-y-4">
+                  {ads.length === 0 ? (
+                    <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                      No ads in this placement yet — switch the filter back to All.
+                    </p>
+                  ) : (
+                    <div className="overflow-hidden rounded-xl border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[30%] min-w-[220px]">Ad</TableHead>
+                            <TableHead className="text-center">On</TableHead>
+                            <TableHead className="text-right">Priority</TableHead>
+                            <TableHead className="text-right">Impr.</TableHead>
+                            <TableHead className="text-right">Clicks</TableHead>
+                            <TableHead className="text-right">CTR</TableHead>
+                            <TableHead>Schedule</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {ads.map((ad) => {
+                            const sched = scheduleChip(ad);
+                            return (
+                              <TableRow key={ad.id}>
+                                <TableCell>
+                                  <div className="flex min-w-0 items-center gap-2.5">
+                                    <span
+                                      aria-hidden="true"
+                                      className="flex size-9 shrink-0 items-center justify-center rounded-md bg-gold/10 text-gold"
+                                    >
+                                      {React.createElement(PLACEMENT_META[ad.placement].icon, { className: "size-4" })}
+                                    </span>
+                                    <div className="min-w-0">
+                                      <p className="truncate font-medium">{ad.name}</p>
+                                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                                        <ToneBadge tone={TYPE_TONE[ad.type]} className="px-1.5 py-0 text-[10px]">
+                                          {ad.type}
+                                        </ToneBadge>
+                                        <Badge variant="outline" className="px-1.5 py-0 text-[10px] text-muted-foreground">
+                                          {PLACEMENT_META[ad.placement].label}
+                                        </Badge>
+                                        {ad.source === "client" ? (
+                                          <Badge variant="outline" className="border-gold/40 bg-gold/10 px-1.5 py-0 text-[10px] text-gold">
+                                            Client{ad.monthlyRate ? ` · ${formatINR(ad.monthlyRate)}/mo` : ""}
+                                          </Badge>
+                                        ) : null}
+                                        {ad.reviewStatus === "pending" ? (
+                                          <ToneBadge tone="amber" className="px-1.5 py-0 text-[10px]">Awaiting review</ToneBadge>
+                                        ) : ad.reviewStatus === "rejected" ? (
+                                          <ToneBadge tone="red" className="px-1.5 py-0 text-[10px]">Rejected</ToneBadge>
+                                        ) : null}
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex min-h-11 items-center justify-center">
-                                <Switch
-                                  checked={ad.active}
-                                  disabled={toggleMutation.isPending && toggleMutation.variables?.id === ad.id}
-                                  onCheckedChange={() => toggleMutation.mutate(ad)}
-                                  aria-label={`${ad.active ? "Switch off" : "Switch on"} ${ad.name}`}
-                                />
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
-                              {ad.priority}
-                            </TableCell>
-                            <TableCell className="text-right text-sm tabular-nums">
-                              {formatCompact(ad.impressions)}
-                            </TableCell>
-                            <TableCell className="text-right text-sm tabular-nums">
-                              {formatCompact(ad.clicks)}
-                            </TableCell>
-                            <TableCell className="text-right text-sm tabular-nums">{ctrText(ad)}</TableCell>
-                            <TableCell>
-                              {sched.label === "—" ? (
-                                <span className="text-sm text-muted-foreground">—</span>
-                              ) : (
-                                <ToneBadge tone={sched.tone} className="px-1.5 py-0 text-[10px]">
-                                  {sched.label}
-                                </ToneBadge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="size-9"
-                                  onClick={() => openEdit(ad)}
-                                  aria-label={`Edit ${ad.name}`}
-                                >
-                                  <Pencil className="size-4" aria-hidden="true" />
-                                </Button>
-                                <ConfirmAction
-                                  trigger={
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <div className="flex min-h-11 items-center justify-center">
+                                    <Switch
+                                      checked={ad.active}
+                                      disabled={toggleMutation.isPending && toggleMutation.variables?.id === ad.id}
+                                      onCheckedChange={() => toggleMutation.mutate(ad)}
+                                      aria-label={`${ad.active ? "Switch off" : "Switch on"} ${ad.name}`}
+                                    />
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                                  {ad.priority}
+                                </TableCell>
+                                <TableCell className="text-right text-sm tabular-nums">
+                                  {formatCompact(ad.impressions)}
+                                </TableCell>
+                                <TableCell className="text-right text-sm tabular-nums">
+                                  {formatCompact(ad.clicks)}
+                                </TableCell>
+                                <TableCell className="text-right text-sm tabular-nums">{ctrText(ad)}</TableCell>
+                                <TableCell>
+                                  {sched.label === "—" ? (
+                                    <span className="text-sm text-muted-foreground">—</span>
+                                  ) : (
+                                    <ToneBadge tone={sched.tone} className="px-1.5 py-0 text-[10px]">
+                                      {sched.label}
+                                    </ToneBadge>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center justify-end gap-1">
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="size-9 text-muted-foreground hover:text-destructive"
-                                      aria-label={`Delete ${ad.name}`}
+                                      className="size-9"
+                                      onClick={() => openEdit(ad)}
+                                      aria-label={`Edit ${ad.name}`}
                                     >
-                                      <Trash2 className="size-4" aria-hidden="true" />
+                                      <Pencil className="size-4" aria-hidden="true" />
                                     </Button>
-                                  }
-                                  title="Delete this ad?"
-                                  description={`"${ad.name}" will stop serving immediately. You can bring it back from Activity & Undo.`}
-                                  onConfirm={() => deleteMutation.mutateAsync(ad)}
-                                />
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                                    <ConfirmAction
+                                      trigger={
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="size-9 text-muted-foreground hover:text-destructive"
+                                          aria-label={`Delete ${ad.name}`}
+                                        >
+                                          <Trash2 className="size-4" aria-hidden="true" />
+                                        </Button>
+                                      }
+                                      title="Delete this ad?"
+                                      description={`"${ad.name}" will stop serving immediately. You can bring it back from Activity & Undo.`}
+                                      onConfirm={() => deleteMutation.mutateAsync(ad)}
+                                    />
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Priority 0–100 — higher shows first · links accept https:// URLs or in-app routes like #/store
+                  </p>
                 </div>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Priority 0–100 — higher shows first · links accept https:// URLs or in-app routes like #/store
+              )
+            }
+          </DataState>
+        </TabsContent>
+
+        {/* ---- review queue (Task 14) ---- */}
+        <TabsContent value="review" className="mt-0">
+          {pendingAds.length === 0 ? (
+            <div className="rounded-xl border border-dashed p-8 text-center">
+              <BadgeCheck className="mx-auto size-7 text-primary" aria-hidden="true" />
+              <p className="mt-2 text-sm font-medium">Review queue is clear</p>
+              <p className="mx-auto mt-1 max-w-md text-sm leading-relaxed text-muted-foreground">
+                When an advertising client submits an ad from their studio, it waits here —
+                nothing a client sends ever goes live until you approve it.
               </p>
             </div>
-          )
-        }
-      </DataState>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Client submissions waiting for your decision. Approving switches the ad on
+                immediately in its chosen placement.
+              </p>
+              {pendingAds.map((ad) => (
+                <Card key={ad.id}>
+                  <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center">
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      {ad.imageUrl ? (
+                        <img
+                          src={ad.imageUrl}
+                          alt={ad.imageAlt ?? ad.name}
+                          loading="lazy"
+                          className="h-16 w-28 shrink-0 rounded-lg border object-cover"
+                        />
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          className="grid h-16 w-28 shrink-0 place-items-center rounded-lg border bg-muted text-muted-foreground"
+                        >
+                          <FileText className="size-5" />
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{ad.name}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <ToneBadge tone={TYPE_TONE[ad.type]} className="px-1.5 py-0 text-[10px]">
+                            {ad.type}
+                          </ToneBadge>
+                          <Badge variant="outline" className="px-1.5 py-0 text-[10px] text-muted-foreground">
+                            {PLACEMENT_META[ad.placement].label}
+                          </Badge>
+                          {ad.submittedById ? (
+                            <Badge variant="outline" className="px-1.5 py-0 text-[10px] text-muted-foreground">
+                              Submitted via studio
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <p className="mt-1.5 truncate text-xs text-muted-foreground">
+                          {[ad.clientName, ad.clientCompany, ad.clientEmail].filter(Boolean).join(" · ") ||
+                            "Client campaign"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={() => openEdit(ad)}>
+                        <Pencil className="size-3.5" aria-hidden="true" />
+                        Inspect
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-9 gap-1.5"
+                        disabled={reviewMutation.isPending && reviewMutation.variables?.id === ad.id}
+                        onClick={() => reviewMutation.mutate({ id: ad.id, reviewStatus: "approved", active: true })}
+                      >
+                        <Check className="size-3.5" aria-hidden="true" />
+                        Approve
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => {
+                          setRejecting(ad);
+                          setRejectNote("");
+                        }}
+                      >
+                        <XCircle className="size-3.5" aria-hidden="true" />
+                        Reject
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ---- plans manager (Task 14) ---- */}
+        <TabsContent value="plans" className="mt-0">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="max-w-xl text-sm text-muted-foreground">
+              Monthly packages sold on the public Advertise page. Edit prices and perks any
+              time — changes appear on #/advertise instantly.
+            </p>
+            <Button size="sm" className="h-9 gap-2" onClick={openCreatePlan}>
+              <Plus className="size-4" aria-hidden="true" />
+              New plan
+            </Button>
+          </div>
+          <DataState query={plansQuery} empty={false} skeletonRows={3}>
+            {(data) =>
+              data.items.length === 0 ? (
+                <EmptyState
+                  title="No ad plans yet"
+                  description="Create the monthly packages agencies and businesses can buy on the Advertise page."
+                  action={
+                    <Button onClick={openCreatePlan} className="gap-2">
+                      <Plus className="size-4" aria-hidden="true" />
+                      Create the first plan
+                    </Button>
+                  }
+                />
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {data.items.map((plan) => (
+                    <Card
+                      key={plan.id}
+                      className={cn("flex flex-col", plan.isFeatured && "border-gold/50 bg-gold/[0.03]")}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                              {plan.name}
+                              {plan.isFeatured ? (
+                                <Badge className="bg-gold text-[10px] text-gold-foreground">Popular</Badge>
+                              ) : null}
+                            </CardTitle>
+                            <p className="mt-1 text-lg font-semibold tabular-nums text-primary">
+                              {formatINR(plan.priceMonthly)}
+                              <span className="text-xs font-normal text-muted-foreground">/month</span>
+                            </p>
+                          </div>
+                          <Switch
+                            checked={plan.isActive}
+                            disabled={planToggleMutation.isPending && planToggleMutation.variables?.id === plan.id}
+                            onCheckedChange={() => planToggleMutation.mutate(plan)}
+                            aria-label={`${plan.isActive ? "Hide" : "Show"} plan ${plan.name}`}
+                          />
+                        </div>
+                        {plan.description ? (
+                          <CardDescription className="mt-2 line-clamp-2">{plan.description}</CardDescription>
+                        ) : null}
+                      </CardHeader>
+                      <CardContent className="flex flex-1 flex-col gap-3">
+                        {plan.features.length > 0 ? (
+                          <ul className="space-y-1.5" aria-label={`${plan.name} selling points`}>
+                            {plan.features.slice(0, 5).map((feature) => (
+                              <li key={feature} className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                                <Check className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                                {feature}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {plan.placements.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {plan.placements.map((p) => (
+                              <Badge
+                                key={p}
+                                variant="outline"
+                                className="px-1.5 py-0 text-[10px] text-muted-foreground"
+                              >
+                                {PLACEMENT_META[p]?.label ?? p}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : null}
+                        <div className="mt-auto flex gap-2 pt-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 flex-1 gap-1.5"
+                            onClick={() => openEditPlan(plan)}
+                          >
+                            <Pencil className="size-3.5" aria-hidden="true" />
+                            Edit
+                          </Button>
+                          <ConfirmAction
+                            trigger={
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="size-8 text-muted-foreground hover:text-destructive"
+                                aria-label={`Delete plan ${plan.name}`}
+                              >
+                                <Trash2 className="size-3.5" aria-hidden="true" />
+                              </Button>
+                            }
+                            title="Delete this plan?"
+                            description={`"${plan.name}" disappears from the Advertise page. Recoverable from Activity & Undo.`}
+                            onConfirm={() => planDeleteMutation.mutateAsync(plan)}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )
+            }
+          </DataState>
+        </TabsContent>
+      </Tabs>
 
       {/* create / edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => (open ? null : closeDialog())}>
@@ -586,7 +1057,7 @@ export default function AdsView() {
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   required
                   minLength={2}
-                  maxLength={80}
+                  maxLength={160}
                   placeholder="Pro plan — hero push"
                 />
               </div>
@@ -685,7 +1156,7 @@ export default function AdsView() {
                     id="ad-title"
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    maxLength={120}
+                    maxLength={200}
                     placeholder="Upgrade to Pro"
                   />
                 </div>
@@ -695,7 +1166,7 @@ export default function AdsView() {
                     id="ad-body"
                     value={form.body}
                     onChange={(e) => setForm({ ...form, body: e.target.value })}
-                    maxLength={600}
+                    maxLength={2000}
                     rows={2}
                     placeholder="One or two punchy lines of copy"
                   />
@@ -705,7 +1176,8 @@ export default function AdsView() {
 
             {form.type === "marquee" ? (
               <div className="space-y-2">
-                <Label htmlFor="ad-marquee">Marquee images (max 16)</Label>
+                <Label htmlFor="ad-marquee">Marquee images</Label>
+                <p className="text-xs text-muted-foreground">Add as many as you need (up to {AD_IMAGES_MAX}).</p>
                 <div className="flex gap-2">
                   <Input
                     id="ad-marquee"
@@ -775,6 +1247,95 @@ export default function AdsView() {
               </div>
             </div>
 
+            {/* client campaign (Task 14) */}
+            <div className="space-y-4 rounded-lg border border-gold/25 bg-gold/[0.04] p-3.5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Runs for</Label>
+                  <Select
+                    value={form.source}
+                    onValueChange={(v) => setForm({ ...form, source: v as AdSource })}
+                  >
+                    <SelectTrigger className="h-10 w-full" aria-label="Campaign owner">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="owner">My own site promo</SelectItem>
+                      <SelectItem value="client">A paying client</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Client campaigns track who pays you and how much, monthly.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Plan</Label>
+                  <Select
+                    value={form.planCode}
+                    onValueChange={(v) => setForm({ ...form, planCode: v })}
+                  >
+                    <SelectTrigger className="h-10 w-full" aria-label="Ad plan">
+                      <SelectValue placeholder="No plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No plan</SelectItem>
+                      {(plansQuery.data?.items ?? []).map((plan) => (
+                        <SelectItem key={plan.id} value={plan.code}>
+                          {plan.name} — {formatINR(plan.priceMonthly)}/mo
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {form.source === "client" ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="ad-client-name">Client name</Label>
+                    <Input
+                      id="ad-client-name"
+                      value={form.clientName}
+                      onChange={(e) => setForm({ ...form, clientName: e.target.value })}
+                      maxLength={120}
+                      placeholder="Priya Sharma"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ad-client-company">Company / brand</Label>
+                    <Input
+                      id="ad-client-company"
+                      value={form.clientCompany}
+                      onChange={(e) => setForm({ ...form, clientCompany: e.target.value })}
+                      maxLength={160}
+                      placeholder="Sharma Studios"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ad-client-email">Client email</Label>
+                    <Input
+                      id="ad-client-email"
+                      type="email"
+                      value={form.clientEmail}
+                      onChange={(e) => setForm({ ...form, clientEmail: e.target.value })}
+                      maxLength={160}
+                      placeholder="priya@example.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ad-client-rate">Monthly rate (INR)</Label>
+                    <Input
+                      id="ad-client-rate"
+                      value={form.monthlyRate}
+                      onChange={(e) => setForm({ ...form, monthlyRate: e.target.value })}
+                      inputMode="numeric"
+                      placeholder="1499"
+                    />
+                    <p className="text-xs text-muted-foreground">Internal only — never shown publicly.</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
             {/* priority + schedule + active */}
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
@@ -826,6 +1387,200 @@ export default function AdsView() {
               </Button>
               <Button type="submit" disabled={saving}>
                 {saving ? "Saving..." : editing ? "Save ad" : "Create ad"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* reject dialog (Task 14) */}
+      <Dialog
+        open={rejecting != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRejecting(null);
+            setRejectNote("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject “{rejecting?.name}”?</DialogTitle>
+            <DialogDescription>
+              The client sees this note in their Advertiser Studio and can edit and
+              resubmit. A kind, specific reason works best.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="reject-note">Note to the client</Label>
+            <Textarea
+              id="reject-note"
+              value={rejectNote}
+              onChange={(e) => setRejectNote(e.target.value)}
+              rows={4}
+              maxLength={2000}
+              placeholder="The logo gets cropped at this size — please upload a 16:9 version (1200px or wider) and resubmit."
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setRejecting(null);
+                setRejectNote("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={reviewMutation.isPending}
+              onClick={() => {
+                if (!rejecting) return;
+                reviewMutation.mutate({
+                  id: rejecting.id,
+                  reviewStatus: "rejected",
+                  reviewNote: rejectNote.trim(),
+                  active: false,
+                });
+              }}
+            >
+              {reviewMutation.isPending ? "Rejecting..." : "Reject submission"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* plan create / edit dialog (Task 14) */}
+      <Dialog open={planDialogOpen} onOpenChange={(open) => (open ? null : closePlanDialog())}>
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingPlan ? `Edit plan — ${editingPlan.name}` : "New ad plan"}</DialogTitle>
+            <DialogDescription>
+              Monthly packages sold on the public Advertise page (#/advertise).
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitPlan} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="plan-name">Plan name</Label>
+                <Input
+                  id="plan-name"
+                  value={planForm.name}
+                  onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
+                  required
+                  minLength={2}
+                  maxLength={120}
+                  placeholder="Growth"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="plan-price">Monthly price (INR)</Label>
+                <Input
+                  id="plan-price"
+                  value={planForm.priceMonthly}
+                  onChange={(e) => setPlanForm({ ...planForm, priceMonthly: e.target.value })}
+                  inputMode="numeric"
+                  placeholder="1499"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-desc">Short description</Label>
+              <Textarea
+                id="plan-desc"
+                value={planForm.description}
+                onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })}
+                rows={2}
+                maxLength={2000}
+                placeholder="Header banner + blog inline placements on every page."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-features">Selling points (one per line)</Label>
+              <Textarea
+                id="plan-features"
+                value={planForm.featuresText}
+                onChange={(e) => setPlanForm({ ...planForm, featuresText: e.target.value })}
+                rows={4}
+                placeholder={"Slim header banner on all pages\nMid-article inline block"}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Included placements</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {AD_PLACEMENTS.map((p) => {
+                  const selected = planForm.placements.includes(p);
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() =>
+                        setPlanForm({
+                          ...planForm,
+                          placements: selected
+                            ? planForm.placements.filter((x) => x !== p)
+                            : [...planForm.placements, p],
+                        })
+                      }
+                      className={cn(
+                        "min-h-9 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                        selected
+                          ? "border-gold bg-gold/10 text-gold"
+                          : "text-muted-foreground hover:bg-muted/50"
+                      )}
+                    >
+                      {PLACEMENT_META[p].label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium">Visible</p>
+                  <p className="text-xs text-muted-foreground">Shown on #/advertise</p>
+                </div>
+                <Switch
+                  checked={planForm.isActive}
+                  onCheckedChange={(v) => setPlanForm({ ...planForm, isActive: v })}
+                  aria-label="Plan visible on the advertise page"
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium">Highlight</p>
+                  <p className="text-xs text-muted-foreground">“Most popular” styling</p>
+                </div>
+                <Switch
+                  checked={planForm.isFeatured}
+                  onCheckedChange={(v) => setPlanForm({ ...planForm, isFeatured: v })}
+                  aria-label="Highlight this plan"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-sort">Sort order</Label>
+              <Input
+                id="plan-sort"
+                value={planForm.sortOrder}
+                onChange={(e) => setPlanForm({ ...planForm, sortOrder: e.target.value })}
+                inputMode="numeric"
+                placeholder="0"
+                className="sm:max-w-[140px]"
+              />
+              <p className="text-xs text-muted-foreground">Lower numbers appear first.</p>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closePlanDialog}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={savingPlan}>
+                {savingPlan ? "Saving..." : editingPlan ? "Save plan" : "Create plan"}
               </Button>
             </DialogFooter>
           </form>

@@ -54,4 +54,4 @@ export function serializeUser(user: DbUserRow): SafeUser {
   };
 }
 
-export const USER_ROLES: UserRole[] = ["reader", "author", "editor", "admin"];
+export const USER_ROLES: UserRole[] = ["reader", "author", "editor", "admin", "advertiser"];

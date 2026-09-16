@@ -40,7 +40,7 @@ export interface Paginated<T> {
 /* users                                                               */
 /* ------------------------------------------------------------------ */
 
-export type UserRole = "reader" | "author" | "editor" | "admin";
+export type UserRole = "reader" | "author" | "editor" | "admin" | "advertiser";
 
 /** User row stripped of passwordHash / verificationToken / resetToken. */
 export interface SafeUser {
@@ -128,6 +128,9 @@ export interface CategorySummary {
 
 export type ProductStatus = "active" | "draft" | "archived";
 
+/** Special-offer flavor — drives the badge + icon on public surfaces. */
+export type OfferKind = "deal" | "cashback" | "coupon" | "bundle" | "giveaway";
+
 export interface ProductDTO {
   id: string;
   slug: string;
@@ -155,6 +158,14 @@ export interface ProductDTO {
   isFeatured: boolean;
   clicksCount: number;
   category: CategorySummary | null;
+  // ---- special offer (Task 14) ----
+  offerActive: boolean;
+  offerTitle: string | null;
+  offerDescription: string | null;
+  offerKind: OfferKind;
+  offerCode: string | null;
+  offerStartsAt: string | null;
+  offerEndsAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -215,7 +226,8 @@ export type NotificationType =
   | "inquiry"
   | "subscriber"
   | "system"
-  | "mention";
+  | "mention"
+  | "ad_review";
 
 /** GET /api/notifications item. */
 export interface NotificationItem {
@@ -427,6 +439,11 @@ export type AdPlacement =
   | "marquee"
   | "sticker";
 
+/** Who the ad is for: the site owner, or a paying monthly client. */
+export type AdSource = "owner" | "client";
+/** Client submissions wait for owner approval before going live. */
+export type AdReviewStatus = "pending" | "approved" | "rejected";
+
 export interface AdDTO {
   id: string;
   name: string;
@@ -445,6 +462,18 @@ export interface AdDTO {
   endAt: string | null;
   impressions: number;
   clicks: number;
+  // ---- client campaigns + review workflow (Task 14) ----
+  source: AdSource;
+  clientName: string | null;
+  clientCompany: string | null;
+  clientEmail: string | null;
+  monthlyRate: number | null;
+  planCode: string | null;
+  reviewStatus: AdReviewStatus;
+  reviewNote: string | null;
+  /** Advertiser account id when the client submitted it themselves. */
+  submittedById: string | null;
+  reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -455,6 +484,27 @@ export interface AdStatsDTO {
   impressions: number;
   clicks: number;
   ctr: number;
+  /** Pending client submissions awaiting owner review (Task 14). */
+  pendingReview?: number;
+}
+
+/** Monthly placement package sold on #/advertise (Task 14). */
+export interface AdPlanDTO {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  priceMonthly: number;
+  currency: string;
+  /** Parsed JSON column (parseJsonArray) — selling points. */
+  features: string[];
+  /** Parsed JSON column (parseJsonArray) — AdPlacement codes included. */
+  placements: AdPlacement[];
+  isActive: boolean;
+  isFeatured: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /* ------------------------------------------------------------------ */

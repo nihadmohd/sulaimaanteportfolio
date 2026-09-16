@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRight, MousePointerClick, Package, Star } from "lucide-react";
+import { ArrowRight, MousePointerClick, Package, Percent, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ALink } from "@/components/router/link";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,8 @@ export interface ProductCardData {
   rating?: number | null;
   clicks?: number | null;
   merchant?: string | null;
+  /** Live special-offer label (Task 14) — renders a gold badge on the card. */
+  offerLabel?: string | null;
 }
 
 /** INR currency formatting: 29990 → "₹29,990". */
@@ -114,6 +116,12 @@ export function ProductCard({ product, size = "default", className }: ProductCar
       >
         <div className="relative aspect-square w-full overflow-hidden bg-muted">
           {imageBlock("size-full transition-transform duration-300 group-hover:scale-[1.04]")}
+          {product.offerLabel ? (
+            <Badge className="absolute left-2 top-2 gap-1 bg-gold text-gold-foreground">
+              <Percent className="size-3" aria-hidden="true" />
+              Offer
+            </Badge>
+          ) : null}
           {discount > 0 ? (
             <Badge className="absolute right-2 top-2 bg-gold text-gold-foreground">
               -{discount}%
@@ -145,6 +153,12 @@ export function ProductCard({ product, size = "default", className }: ProductCar
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
         {imageBlock("size-full transition-transform duration-300 group-hover:scale-[1.03]")}
+        {product.offerLabel ? (
+          <Badge className="absolute left-3 top-3 gap-1 bg-gold text-gold-foreground">
+            <Percent className="size-3" aria-hidden="true" />
+            {product.offerLabel}
+          </Badge>
+        ) : null}
         {discount > 0 ? (
           <Badge className="absolute right-3 top-3 bg-gold text-gold-foreground">
             -{discount}% off

@@ -81,6 +81,21 @@ export const ROUTES: RouteEntry[] = [
       "Explore MN.KP ventures and startup ideas from Calicut, Kerala — live projects, incubating ideas and open calls to collaborate. Pitch yours and build it with me.",
   },
   {
+    key: "advertise",
+    pattern: "/advertise",
+    title: "Advertise on MN.KP — Monthly Ad Plans & Placements | MN.KP",
+    description:
+      "Run your brand on MN.KP — simple monthly ad plans, placements across every page, and reviewed, quality-first campaigns. Agencies and businesses welcome.",
+  },
+  {
+    key: "studio",
+    pattern: "/studio",
+    title: "Advertiser Studio | MN.KP",
+    description: "Submit ads, track impressions and clicks, and manage your MN.KP ad campaigns.",
+    noindex: true,
+    guard: "auth",
+  },
+  {
     key: "contact",
     pattern: "/contact",
     title: "Contact & Inquiries — Hire an AI Developer in Calicut | MN.KP",

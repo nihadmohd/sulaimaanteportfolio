@@ -274,6 +274,30 @@ export function slugify(input: string): string {
 }
 
 /* ------------------------------------------------------------------ */
+/* datetime-local helpers (offer windows, ad schedules)                 */
+/* ------------------------------------------------------------------ */
+
+/** ISO string → datetime-local input value ("YYYY-MM-DDTHH:mm"), local tz. */
+export function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch {
+    return "";
+  }
+}
+
+/** datetime-local input value → ISO string, or null when empty/invalid. */
+export function localInputToIso(v: string): string | null {
+  if (!v) return null;
+  const t = new Date(v).getTime();
+  return Number.isNaN(t) ? null : new Date(t).toISOString();
+}
+
+/* ------------------------------------------------------------------ */
 /* status / priority / role badges                                     */
 /* ------------------------------------------------------------------ */
 
@@ -341,7 +365,15 @@ export function PriorityBadge({ priority }: { priority: string }) {
 
 export function RoleBadge({ role }: { role: string }) {
   const tone: BadgeTone =
-    role === "admin" ? "gold" : role === "editor" ? "teal" : role === "author" ? "emerald" : "muted";
+    role === "admin"
+      ? "gold"
+      : role === "editor"
+        ? "teal"
+        : role === "author"
+          ? "emerald"
+          : role === "advertiser"
+            ? "amber"
+            : "muted";
   const label = role === "admin" ? "Admin" : role.charAt(0).toUpperCase() + role.slice(1);
   return <ToneBadge tone={tone}>{label}</ToneBadge>;
 }

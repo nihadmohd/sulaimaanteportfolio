@@ -6,6 +6,7 @@ import { productCreateSchema } from "@/lib/validation";
 import { toJson } from "@/types";
 import {
   productInclude,
+  productOfferLive,
   serializeProduct,
   uniqueSlugForProduct,
 } from "@/app/api/_lib/serialize";
@@ -73,6 +74,14 @@ export const GET = withApi(async (req: Request) => {
     where.isFeatured = true;
   }
 
+  // Task 14 — special offers feed: only products whose offer is switched on
+  // AND inside its optional schedule window. The window check needs row
+  // values, so it is applied after the query (bounded by the page limit).
+  const wantsOffers = sp.get("offer") === "1";
+  if (wantsOffers) {
+    where.offerActive = true;
+  }
+
   const sort = sp.get("sort");
   const orderBy: Prisma.ProductOrderByWithRelationInput[] =
     sort === "popular"
@@ -88,7 +97,9 @@ export const GET = withApi(async (req: Request) => {
     db.product.findMany({ where, orderBy, skip, take: limit, include: productInclude }),
   ]);
 
-  return ok({ items: products.map(serializeProduct), total, page, limit });
+  const items = wantsOffers ? products.filter(productOfferLive) : products;
+
+  return ok({ items: items.map(serializeProduct), total, page, limit });
 });
 
 export const POST = withApi(async (req: Request) => {
@@ -126,6 +137,14 @@ export const POST = withApi(async (req: Request) => {
       status: body.status,
       isFeatured: body.isFeatured,
       categoryId: body.categoryId ?? null,
+      // ---- special offer (Task 14) ----
+      offerActive: body.offerActive,
+      offerTitle: body.offerTitle || null,
+      offerDescription: body.offerDescription || null,
+      offerKind: body.offerKind,
+      offerCode: body.offerCode || null,
+      offerStartsAt: body.offerStartsAt ? new Date(body.offerStartsAt) : null,
+      offerEndsAt: body.offerEndsAt ? new Date(body.offerEndsAt) : null,
     },
     include: productInclude,
   });

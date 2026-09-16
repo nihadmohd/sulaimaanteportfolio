@@ -3,13 +3,20 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  BadgePercent,
+  Check,
+  Copy,
   ExternalLink,
   FileQuestion,
+  Gift,
   Info,
   MousePointerClick,
   ShieldCheck,
+  Sparkles,
   ThumbsDown,
   ThumbsUp,
+  Ticket,
+  Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +40,8 @@ import { navigate } from "@/hooks/use-router";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch, ApiClientError } from "@/lib/api-client";
 import { SITE } from "@/lib/constants";
-import type { Paginated, ProductDTO } from "@/types";
+import { isOfferLive } from "@/lib/utils";
+import type { OfferKind, Paginated, ProductDTO } from "@/types";
 
 /**
  * ProductView — route key "store-product" (#/store/:slug).
@@ -74,7 +82,101 @@ function toProductCard(p: ProductDTO): ProductCardData {
     rating: p.rating,
     clicks: p.clicksCount,
     merchant: p.merchant,
+    offerLabel: isOfferLive(p) ? p.offerTitle || "Special offer" : null,
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* special offer banner (Task 14)                                      */
+/* ------------------------------------------------------------------ */
+
+const OFFER_KIND_META: Record<OfferKind, { label: string; icon: typeof BadgePercent }> = {
+  deal: { label: "Special deal", icon: BadgePercent },
+  cashback: { label: "Cashback", icon: Wallet },
+  coupon: { label: "Coupon offer", icon: Ticket },
+  bundle: { label: "Bundle bonus", icon: Gift },
+  giveaway: { label: "Giveaway", icon: Sparkles },
+};
+
+function offerCountdown(endsAt: string | null): string | null {
+  if (!endsAt) return null;
+  const ms = new Date(endsAt).getTime() - Date.now();
+  if (Number.isNaN(ms) || ms <= 0) return null;
+  const hours = Math.floor(ms / 3_600_000);
+  if (hours >= 24) return `Ends in ${Math.floor(hours / 24)}d ${hours % 24}h`;
+  if (hours >= 1) return `Ends in ${hours}h ${Math.floor((ms % 3_600_000) / 60_000)}m`;
+  return `Ends in ${Math.max(1, Math.floor(ms / 60_000))}m`;
+}
+
+function SpecialOfferBanner({ product }: { product: ProductDTO }) {
+  const { toast } = useToast();
+  const [copied, setCopied] = React.useState(false);
+
+  if (!isOfferLive(product)) return null;
+
+  const meta = OFFER_KIND_META[product.offerKind] ?? OFFER_KIND_META.deal;
+  const Icon = meta.icon;
+  const countdown = offerCountdown(product.offerEndsAt);
+
+  const copyCode = async () => {
+    if (!product.offerCode) return;
+    try {
+      await navigator.clipboard.writeText(product.offerCode);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+      toast({ title: "Code copied", description: `“${product.offerCode}” is on your clipboard.` });
+    } catch {
+      toast({ title: "Could not copy", description: "Long-press the code to copy it manually.", variant: "destructive" });
+    }
+  };
+
+  return (
+    <aside
+      aria-label="Special offer"
+      className="relative mt-6 overflow-hidden rounded-2xl border border-gold/40 bg-gradient-to-br from-gold/[0.14] via-gold/[0.07] to-transparent p-5"
+    >
+      <div className="flex items-start gap-3.5">
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-gold text-gold-foreground shadow-sm">
+          <Icon className="size-5" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-gold">
+              {meta.label} · MN.KP exclusive
+            </span>
+            {countdown ? (
+              <Badge variant="outline" className="border-gold/40 bg-gold/10 text-[11px] text-gold">
+                {countdown}
+              </Badge>
+            ) : null}
+          </p>
+          <p className="mt-1 text-pretty text-base font-semibold leading-snug text-foreground md:text-lg">
+            {product.offerTitle || "Special offer for MN.KP readers"}
+          </p>
+          {product.offerDescription ? (
+            <p className="mt-1.5 text-pretty text-sm leading-relaxed text-muted-foreground">
+              {product.offerDescription}
+            </p>
+          ) : null}
+          {product.offerCode ? (
+            <button
+              type="button"
+              onClick={copyCode}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border-2 border-dashed border-gold/50 bg-background/70 px-3.5 py-2 font-mono text-sm font-bold tracking-widest text-foreground transition-colors hover:border-gold hover:bg-gold/10"
+              aria-label={`Copy coupon code ${product.offerCode}`}
+            >
+              {product.offerCode}
+              {copied ? (
+                <Check className="size-4 text-primary" aria-hidden="true" />
+              ) : (
+                <Copy className="size-4 text-muted-foreground" aria-hidden="true" />
+              )}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </aside>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -88,8 +190,8 @@ function ProductDetail({ product }: { product: ProductDTO }) {
 
   const discount =
     product.price != null &&
-    product.compareAtPrice != null &&
-    product.compareAtPrice > product.price
+      product.compareAtPrice != null &&
+      product.compareAtPrice > product.price
       ? Math.round((1 - product.price / product.compareAtPrice) * 100)
       : 0;
 
@@ -183,12 +285,12 @@ function ProductDetail({ product }: { product: ProductDTO }) {
     },
     ...(product.reviewCount > 0
       ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: product.rating,
-            reviewCount: product.reviewCount,
-          },
-        }
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: product.rating,
+          reviewCount: product.reviewCount,
+        },
+      }
       : {}),
   };
 
@@ -269,6 +371,9 @@ function ProductDetail({ product }: { product: ProductDTO }) {
             </span>
           </div>
 
+          {/* special offer (Task 14) */}
+          <SpecialOfferBanner product={product} />
+
           {/* price block */}
           <div ref={priceCardRef} className="mt-6 rounded-2xl border bg-card p-5 shadow-xs">
             <div className="flex flex-wrap items-baseline gap-3">
@@ -282,8 +387,8 @@ function ProductDetail({ product }: { product: ProductDTO }) {
                 </span>
               )}
               {product.compareAtPrice != null &&
-              product.price != null &&
-              product.compareAtPrice > product.price ? (
+                product.price != null &&
+                product.compareAtPrice > product.price ? (
                 <>
                   <span className="text-base tabular-nums text-muted-foreground line-through">
                     {formatINR(product.compareAtPrice)}

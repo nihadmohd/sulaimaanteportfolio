@@ -27,6 +27,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -48,6 +49,14 @@ import { toast } from "@/hooks/use-toast";
 import { useHashParams } from "@/hooks/use-hash-params";
 import { navigate } from "@/hooks/use-router";
 import type { ProductDTO } from "@/types";
+import {
+  PRO_CON_ITEM_MAX,
+  PRO_CON_MAX,
+  PRODUCT_GALLERY_MAX,
+  SPEC_LABEL_MAX,
+  SPEC_ROW_MAX,
+  SPEC_VALUE_MAX,
+} from "@/lib/validation";
 import { AdminShell } from "./_shell";
 import {
   apiFetch,
@@ -55,6 +64,8 @@ import {
   fmtDate,
   formatCompact,
   formatINR,
+  isoToLocalInput,
+  localInputToIso,
   slugify,
   useAdminGuard,
   useCategories,
@@ -87,6 +98,38 @@ const STORE_IMAGES = [
 ];
 
 const MERCHANT_SUGGESTIONS = ["Amazon", "Flipkart", "MN.KP Digital", "Croma", "Myntra", "Noise"];
+
+/* ---------------- special offer (Task 14) ---------------- */
+
+type OfferKind = "deal" | "cashback" | "coupon" | "bundle" | "giveaway";
+
+const OFFER_KINDS: Array<{ value: OfferKind; label: string; hint: string }> = [
+  { value: "deal", label: "Deal", hint: "A straight special price for MN.KP readers" },
+  { value: "cashback", label: "Cashback", hint: "Money back after the purchase" },
+  { value: "coupon", label: "Coupon", hint: "A claim code buyers apply at checkout" },
+  { value: "bundle", label: "Bundle", hint: "Extra item or service included" },
+  { value: "giveaway", label: "Giveaway", hint: "A chance to win the product free" },
+];
+
+interface OfferState {
+  active: boolean;
+  title: string;
+  description: string;
+  kind: OfferKind;
+  code: string;
+  startsAt: string; // datetime-local
+  endsAt: string; // datetime-local
+}
+
+const BLANK_OFFER: OfferState = {
+  active: false,
+  title: "",
+  description: "",
+  kind: "deal",
+  code: "",
+  startsAt: "",
+  endsAt: "",
+};
 
 const productFormSchema = z.object({
   name: z.string().min(3, "Product name is required").max(140),
@@ -129,6 +172,7 @@ interface ProductDraftData {
   cons: string[];
   keySpecs: SpecRow[];
   rating: number;
+  offer: OfferState;
 }
 
 export default function ProductEditView() {
@@ -143,6 +187,7 @@ export default function ProductEditView() {
   const [cons, setCons] = React.useState<string[]>([]);
   const [keySpecs, setKeySpecs] = React.useState<SpecRow[]>([]);
   const [rating, setRating] = React.useState(0);
+  const [offer, setOffer] = React.useState<OfferState>(BLANK_OFFER);
   const [slugTouched, setSlugTouched] = React.useState(false);
   const [descTab, setDescTab] = React.useState<"write" | "preview">("write");
   const [extraDirty, setExtraDirty] = React.useState(false);
@@ -198,6 +243,15 @@ export default function ProductEditView() {
     setCons(p.cons);
     setKeySpecs(Object.entries(p.keySpecs).map(([key, value]) => ({ key, value })));
     setRating(p.rating);
+    setOffer({
+      active: p.offerActive,
+      title: p.offerTitle ?? "",
+      description: p.offerDescription ?? "",
+      kind: p.offerKind,
+      code: p.offerCode ?? "",
+      startsAt: isoToLocalInput(p.offerStartsAt),
+      endsAt: isoToLocalInput(p.offerEndsAt),
+    });
     setSlugTouched(true);
     setExtraDirty(false);
   }, [productQuery.data, form]);
@@ -221,8 +275,8 @@ export default function ProductEditView() {
     key: draftKey,
     ready: isNew || !!productQuery.data,
     isDirty,
-    tick: JSON.stringify([watched, gallery, pros, cons, keySpecs, rating]),
-    capture: () => ({ values: form.getValues(), gallery, pros, cons, keySpecs, rating }),
+    tick: JSON.stringify([watched, gallery, pros, cons, keySpecs, rating, offer]),
+    capture: () => ({ values: form.getValues(), gallery, pros, cons, keySpecs, rating, offer }),
     differs: (snap) => {
       const data = snap.data;
       if (!data || typeof data !== "object" || typeof data.values !== "object" || !data.values) {
@@ -241,7 +295,9 @@ export default function ProductEditView() {
         (data.values.description ?? "") !== (p.description ?? "") ||
         data.values.status !== p.status ||
         JSON.stringify(data.pros ?? []) !== JSON.stringify(p.pros) ||
-        JSON.stringify(data.cons ?? []) !== JSON.stringify(p.cons)
+        JSON.stringify(data.cons ?? []) !== JSON.stringify(p.cons) ||
+        (data.offer?.active ?? false) !== p.offerActive ||
+        (data.offer?.title ?? "") !== (p.offerTitle ?? "")
       );
     },
     onRestore: (data) => {
@@ -267,6 +323,7 @@ export default function ProductEditView() {
       setCons(Array.isArray(data.cons) ? data.cons : []);
       setKeySpecs(Array.isArray(data.keySpecs) ? data.keySpecs : []);
       setRating(typeof data.rating === "number" ? data.rating : 0);
+      setOffer({ ...BLANK_OFFER, ...(data.offer ?? {}) });
       setSlugTouched(true);
       setExtraDirty(true);
       toast({ title: "Local draft restored", description: "Review it and save when you are ready." });
@@ -297,6 +354,14 @@ export default function ProductEditView() {
         description: values.description || undefined,
         brand: values.brand || undefined,
         merchant: values.merchant || undefined,
+        // ---- special offer (Task 14) ----
+        offerActive: offer.active,
+        offerTitle: offer.title.trim(),
+        offerDescription: offer.description.trim(),
+        offerKind: offer.kind,
+        offerCode: offer.code.trim(),
+        offerStartsAt: localInputToIso(offer.startsAt) ?? "",
+        offerEndsAt: localInputToIso(offer.endsAt) ?? "",
       };
       if (slugTouched && values.slug) body.slug = slugify(values.slug);
       return isNew
@@ -342,7 +407,78 @@ export default function ProductEditView() {
     );
   }
 
-  const onSubmit = (values: ProductFormValues) => saveMutation.mutate(values);
+  const onSubmit = (values: ProductFormValues) => {
+    /* ---- friendly pre-flight checks (Task 14 "Too Big" fix) ---- */
+    const longPro = pros.findIndex((s) => s.trim().length > PRO_CON_ITEM_MAX);
+    if (longPro >= 0) {
+      toast({
+        title: `Pro point ${longPro + 1} is too long`,
+        description: `Keep each point under ${PRO_CON_ITEM_MAX} characters — split long ones into two.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    if (pros.filter((s) => s.trim()).length > PRO_CON_MAX) {
+      toast({
+        title: "Too many pros",
+        description: `Up to ${PRO_CON_MAX} points per product.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    const longCon = cons.findIndex((s) => s.trim().length > PRO_CON_ITEM_MAX);
+    if (longCon >= 0) {
+      toast({
+        title: `Con point ${longCon + 1} is too long`,
+        description: `Keep each point under ${PRO_CON_ITEM_MAX} characters — split long ones into two.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    if (cons.filter((s) => s.trim()).length > PRO_CON_MAX) {
+      toast({
+        title: "Too many cons",
+        description: `Up to ${PRO_CON_MAX} points per product.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    const longSpecKey = keySpecs.findIndex((row) => row.key.trim().length > SPEC_LABEL_MAX);
+    if (longSpecKey >= 0) {
+      toast({
+        title: `Spec label ${longSpecKey + 1} is too long`,
+        description: `Labels must stay under ${SPEC_LABEL_MAX} characters.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    const longSpecValue = keySpecs.findIndex((row) => row.value.trim().length > SPEC_VALUE_MAX);
+    if (longSpecValue >= 0) {
+      toast({
+        title: `Spec value ${longSpecValue + 1} is too long`,
+        description: `Values must stay under ${SPEC_VALUE_MAX} characters.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    if (keySpecs.filter((row) => row.key.trim()).length > SPEC_ROW_MAX) {
+      toast({
+        title: "Too many spec rows",
+        description: `Up to ${SPEC_ROW_MAX} spec rows per product.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    if (offer.active && offer.startsAt && offer.endsAt && new Date(offer.startsAt) >= new Date(offer.endsAt)) {
+      toast({
+        title: "Invalid offer window",
+        description: "The offer start must come before its end.",
+        variant: "destructive",
+      });
+      return;
+    }
+    saveMutation.mutate(values);
+  };
 
   /**
    * Amazon URL normalizer — one click turns any messy Amazon link (search
@@ -786,6 +922,142 @@ export default function ProductEditView() {
               </CardContent>
             </Card>
 
+            {/* Special offer (Task 14) */}
+            <Card className="border-gold/30">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <CardTitle className="text-base">Special offer</CardTitle>
+                    <CardDescription>
+                      Shown as a gold banner on the product page, a badge on cards
+                      and a scrolling chip in the offers ticker — like an ad.
+                    </CardDescription>
+                  </div>
+                  <Switch
+                    checked={offer.active}
+                    onCheckedChange={(v) => {
+                      setOffer({ ...offer, active: v });
+                      setExtraDirty(true);
+                    }}
+                    aria-label="Run a special offer on this product"
+                  />
+                </div>
+              </CardHeader>
+              {offer.active ? (
+                <CardContent className="space-y-5">
+                  <div className="rounded-lg border border-gold/30 bg-gold/[0.06] p-3 text-xs leading-relaxed text-muted-foreground">
+                    Write the benefit from the <span className="font-semibold text-foreground">buyer's perspective</span> —
+                    for example “Extra ₹500 off for MN.KP readers”. Never mention
+                    commissions or margins; the offer simply reads as your gift to
+                    buyers.
+                  </div>
+
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Offer type</Label>
+                      <Select
+                        value={offer.kind}
+                        onValueChange={(v) => {
+                          setOffer({ ...offer, kind: v as OfferKind });
+                          setExtraDirty(true);
+                        }}
+                      >
+                        <SelectTrigger className="h-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {OFFER_KINDS.map((k) => (
+                            <SelectItem key={k.value} value={k.value}>
+                              {k.label} — {k.hint}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="offer-code">Coupon / claim code (optional)</Label>
+                      <Input
+                        id="offer-code"
+                        value={offer.code}
+                        onChange={(e) => {
+                          setOffer({ ...offer, code: e.target.value });
+                          setExtraDirty(true);
+                        }}
+                        placeholder="MNKP500"
+                        className="h-10 font-mono uppercase"
+                        maxLength={80}
+                      />
+                      {offer.code ? (
+                        <p className="text-xs text-muted-foreground">Buyers get a one-tap copy button on the product page.</p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="offer-title">Headline</Label>
+                    <Input
+                      id="offer-title"
+                      value={offer.title}
+                      onChange={(e) => {
+                        setOffer({ ...offer, title: e.target.value });
+                        setExtraDirty(true);
+                      }}
+                      placeholder="Extra ₹500 off for MN.KP readers"
+                      className="h-10"
+                      maxLength={200}
+                    />
+                    <p className="text-xs text-muted-foreground">{offer.title.length}/200 characters</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="offer-description">Details (optional)</Label>
+                    <Textarea
+                      id="offer-description"
+                      value={offer.description}
+                      onChange={(e) => {
+                        setOffer({ ...offer, description: e.target.value });
+                        setExtraDirty(true);
+                      }}
+                      placeholder="How the offer works, when it applies, how buyers claim it..."
+                      rows={3}
+                      maxLength={2000}
+                    />
+                    <p className="text-xs text-muted-foreground">{offer.description.length}/2000 characters</p>
+                  </div>
+
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="offer-starts">Starts (optional)</Label>
+                      <Input
+                        id="offer-starts"
+                        type="datetime-local"
+                        value={offer.startsAt}
+                        onChange={(e) => {
+                          setOffer({ ...offer, startsAt: e.target.value });
+                          setExtraDirty(true);
+                        }}
+                        className="h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="offer-ends">Ends (optional)</Label>
+                      <Input
+                        id="offer-ends"
+                        type="datetime-local"
+                        value={offer.endsAt}
+                        onChange={(e) => {
+                          setOffer({ ...offer, endsAt: e.target.value });
+                          setExtraDirty(true);
+                        }}
+                        className="h-10"
+                      />
+                      <p className="text-xs text-muted-foreground">Empty start/end = runs until you switch it off.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              ) : null}
+            </Card>
+
             {/* Media — direct uploads (Task 13-a) + quick picks */}
             <Card>
               <CardHeader className="pb-3">
@@ -824,9 +1096,8 @@ export default function ProductEditView() {
                               setExtraDirty(true);
                             }}
                             aria-label={`Use image ${src}`}
-                            className={`size-14 overflow-hidden rounded-md border-2 transition-transform hover:scale-105 ${
-                              field.value === src ? "border-gold" : "border-transparent"
-                            }`}
+                            className={`size-14 overflow-hidden rounded-md border-2 transition-transform hover:scale-105 ${field.value === src ? "border-gold" : "border-transparent"
+                              }`}
                           >
                             <img src={src} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
                           </button>
@@ -842,7 +1113,8 @@ export default function ProductEditView() {
                   <p className="text-xs text-muted-foreground">
                     Visitors swipe through these on the product page (pinch-zoom
                     lightbox included). Drag thumbnails to reorder; the star button
-                    promotes an image to the main slot.
+                    promotes an image to the main slot. Add as many as you need —
+                    up to {PRODUCT_GALLERY_MAX}.
                   </p>
                   <GalleryField
                     value={gallery}
@@ -850,7 +1122,7 @@ export default function ProductEditView() {
                       setGallery(urls);
                       setExtraDirty(true);
                     }}
-                    max={8}
+                    max={PRODUCT_GALLERY_MAX}
                     onMakeMain={(url) => {
                       form.setValue("imageUrl", url, { shouldDirty: true });
                       setGallery(gallery.filter((s) => s !== url));
@@ -1088,6 +1360,7 @@ export default function ProductEditView() {
                   compareAtPrice: compareNum || null,
                   rating,
                   merchant: watched.merchant || null,
+                  offerLabel: offer.active ? offer.title || "Special offer" : null,
                 }}
               />
             </div>

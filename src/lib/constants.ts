@@ -90,6 +90,7 @@ export const FOOTER_DEFAULT: {
       links: [
         { label: "Contact", href: "#/contact" },
         { label: "Support & Help", href: "#/support" },
+        { label: "Advertise With Us", href: "#/advertise" },
         { label: "WhatsApp", href: "https://api.whatsapp.com/send?phone=919846750898&text=Hello...!" },
         { label: "LinkedIn", href: "https://www.linkedin.com/in/mohammed-nihad-kp-71b6b6339" },
         { label: "View CV", href: "https://drive.google.com/file/d/1wzvYQdy3LTLekoCOhytPM5m0AGO0n9nr/preview" },

@@ -16,6 +16,7 @@ import {
   useAdsForPlacement,
 } from "@/components/shared/affiliate-ad-slot";
 import { LiveVisitorBadge } from "@/components/shared/live-visitor-badge";
+import { OffersTicker } from "@/components/shared/offers-ticker";
 import { PostCard, type PostCardData } from "@/components/shared/post-card";
 import { ProductCard, formatINR, type ProductCardData } from "@/components/shared/product-card";
 import { SectionHeading } from "@/components/shared/section-heading";
@@ -408,9 +409,9 @@ function HeroMarquee() {
     | { kind: "ad"; ad: AdDTO; track: boolean }
     | { kind: "message"; message: HeroMessage }
   > = [
-    ...heroAds.map((ad) => ({ kind: "ad" as const, ad, track: true })),
-    ...messages.map((message) => ({ kind: "message" as const, message })),
-  ];
+      ...heroAds.map((ad) => ({ kind: "ad" as const, ad, track: true })),
+      ...messages.map((message) => ({ kind: "message" as const, message })),
+    ];
   const laneLoop = [
     ...laneItems,
     ...laneItems.map((item) => (item.kind === "ad" ? { ...item, track: false } : item)),
@@ -634,6 +635,8 @@ export default function HomeView() {
 
       <HeroSection />
       <HeroMarquee />
+      {/* ad-like scrolling offers strip (Task 14) — auto-hides when no offers run */}
+      <OffersTicker />
       <StatBand />
 
       {/* services */}

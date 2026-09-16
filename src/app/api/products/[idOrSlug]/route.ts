@@ -80,6 +80,14 @@ export const PATCH = withApi<Ctx>(async (req, ctx) => {
   if (body.status !== undefined) data.status = body.status;
   if (body.isFeatured !== undefined) data.isFeatured = body.isFeatured;
   if (body.categoryId !== undefined) data.categoryId = body.categoryId ?? null;
+  // ---- special offer (Task 14) ----
+  if (body.offerActive !== undefined) data.offerActive = body.offerActive;
+  if (body.offerTitle !== undefined) data.offerTitle = body.offerTitle || null;
+  if (body.offerDescription !== undefined) data.offerDescription = body.offerDescription || null;
+  if (body.offerKind !== undefined) data.offerKind = body.offerKind;
+  if (body.offerCode !== undefined) data.offerCode = body.offerCode || null;
+  if (body.offerStartsAt !== undefined) data.offerStartsAt = body.offerStartsAt ? new Date(body.offerStartsAt) : null;
+  if (body.offerEndsAt !== undefined) data.offerEndsAt = body.offerEndsAt ? new Date(body.offerEndsAt) : null;
 
   if (Object.keys(data).length === 0) {
     return ok(serializeProduct(product));

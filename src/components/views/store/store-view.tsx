@@ -26,11 +26,12 @@ import { ProductCard, type ProductCardData } from "@/components/shared/product-c
 import { AffiliateAdSlot } from "@/components/shared/affiliate-ad-slot";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { SEOHead } from "@/components/shared/seo-head";
+import { OffersTicker } from "@/components/shared/offers-ticker";
 import { DataState, EmptyState, NoResultsState } from "@/components/states";
 import { navigate, useRouter } from "@/hooks/use-router";
 import { apiFetch } from "@/lib/api-client";
 import { SITE } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { cn, isOfferLive } from "@/lib/utils";
 import type { Paginated, ProductDTO } from "@/types";
 
 /**
@@ -66,6 +67,7 @@ function toProductCard(p: ProductDTO): ProductCardData {
     rating: p.rating,
     clicks: p.clicksCount,
     merchant: p.merchant,
+    offerLabel: isOfferLive(p) ? p.offerTitle || "Special offer" : null,
   };
 }
 
@@ -153,6 +155,19 @@ export default function StoreView() {
     retry: 1,
     refetchOnWindowFocus: false,
   });
+
+  // Live special offers rail (Task 14) — hidden when nothing is running.
+  const offersQuery = useQuery({
+    queryKey: ["store-offers"],
+    queryFn: () => apiFetch<Paginated<ProductDTO>>("/api/products?offer=1&limit=8"),
+    staleTime: 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+  const liveOffers = React.useMemo(
+    () => (offersQuery.data?.items ?? []).filter(isOfferLive),
+    [offersQuery.data]
+  );
 
   const withParam = (overrides: Record<string, string | null>): string => {
     const merged: Record<string, string> = {};
@@ -254,6 +269,27 @@ export default function StoreView() {
           </span>
         </p>
       </header>
+
+      {/* ad-like scrolling offers strip (Task 14) */}
+      <div className="mt-6 -mx-4 sm:-mx-6 lg:-mx-8">
+        <OffersTicker compact />
+      </div>
+
+      {/* Live offers rail */}
+      {liveOffers.length > 0 ? (
+        <section aria-label="Live special offers" className="mt-10">
+          <SectionHeading
+            microLabel="Limited-time"
+            title="Live special offers"
+            description="Exclusive offers for MN.KP readers — running right now, while they last."
+          />
+          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
+            {liveOffers.slice(0, 8).map((p) => (
+              <ProductCard key={p.slug} product={toProductCard(p)} size="compact" className="sm:aspect-auto" />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className="mt-6 grid grid-cols-1 gap-10 sm:mt-8 lg:grid-cols-[minmax(0,1fr)_300px]">
         {/* main column */}

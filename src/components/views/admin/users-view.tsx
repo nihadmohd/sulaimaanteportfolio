@@ -47,9 +47,9 @@ import {
  * last-login time-ago.
  */
 
-type RoleTab = "all" | "reader" | "author" | "editor" | "admin";
+type RoleTab = "all" | "reader" | "author" | "editor" | "admin" | "advertiser";
 const PAGE_SIZE = 20;
-const ROLE_VALUES: UserRole[] = ["reader", "author", "editor", "admin"];
+const ROLE_VALUES: UserRole[] = ["reader", "author", "editor", "admin", "advertiser"];
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).slice(0, 2);
@@ -74,8 +74,8 @@ export default function UsersView() {
     queryFn: () =>
       apiFetch<Paginated<SafeUser>>(
         `/api/users?page=${page}&limit=${PAGE_SIZE}` +
-          `${role !== "all" ? `&role=${role}` : ""}` +
-          `${q ? `&q=${encodeURIComponent(q)}` : ""}`
+        `${role !== "all" ? `&role=${role}` : ""}` +
+        `${q ? `&q=${encodeURIComponent(q)}` : ""}`
       ),
     enabled: allowed,
     staleTime: 30_000,
@@ -134,6 +134,7 @@ export default function UsersView() {
             <TabsTrigger value="author" className="h-8">Authors</TabsTrigger>
             <TabsTrigger value="editor" className="h-8">Editors</TabsTrigger>
             <TabsTrigger value="admin" className="h-8">Admins</TabsTrigger>
+            <TabsTrigger value="advertiser" className="h-8">Advertisers</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>

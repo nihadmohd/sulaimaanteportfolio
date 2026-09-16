@@ -33,7 +33,7 @@ create table if not exists public.profiles (
   website_url          text,
   socials              jsonb       not null default '{}'::jsonb,   -- {twitter,linkedin,github,instagram,youtube}
   role                 text        not null default 'reader'
-                         check (role in ('reader','author','editor','admin')),
+                         check (role in ('reader','author','editor','admin','advertiser')),
   onboarding_completed boolean     not null default false,
   onboarding_step      smallint    not null default 0,             -- 0..4
   marketing_opt_in     boolean     not null default true,
@@ -189,10 +189,20 @@ create table if not exists public.products (
                      check (status in ('active','draft','archived')),
   is_featured      boolean not null default false,
   clicks_count     integer not null default 0,          -- maintained by trigger §10
+  -- special offer (Task 14): buyer-facing promo columns
+  offer_active      boolean not null default false,
+  offer_title       text,
+  offer_description text,
+  offer_kind        text not null default 'deal'
+                     check (offer_kind in ('deal','cashback','coupon','bundle','giveaway')),
+  offer_code        text,                              -- coupon / claim code
+  offer_starts_at   timestamptz,
+  offer_ends_at     timestamptz,
   category_id      uuid references public.categories (id) on delete set null,
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
 );
+create index if not exists products_status_offer_idx on public.products (status, offer_active);
 
 drop trigger if exists trg_products_updated_at on public.products;
 create trigger trg_products_updated_at
@@ -483,7 +493,7 @@ create table if not exists public.ads (
   name        text not null,
   type        text not null default 'image' check (type in ('image','gif','sticker','text','marquee')),
   placement   text not null default 'blog-inline'
-              check (placement in ('header-banner','blog-inline','blog-sidebar','between-cards','home-strip','store-side','footer-banner','product-inline','marquee','sticker')),
+              check (placement in ('header-banner','blog-inline','blog-sidebar','between-cards','home-strip','hero-marquee','store-side','footer-banner','product-inline','marquee','sticker')),
   title       text,
   body        text,
   image_url   text,
@@ -497,12 +507,26 @@ create table if not exists public.ads (
   end_at      timestamptz,
   impressions int not null default 0,
   clicks      int not null default 0,
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
+  -- client campaigns + review workflow (Task 14)
+  source         text not null default 'owner' check (source in ('owner','client')),
+  client_name    text,
+  client_company text,
+  client_email   text,
+  monthly_rate   numeric(12,2),
+  plan_code      text,
+  review_status  text not null default 'approved'
+                  check (review_status in ('pending','approved','rejected')),
+  review_note    text,
+  submitted_by_id uuid references public.profiles (id) on delete set null,
+  reviewed_at    timestamptz,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
 );
 create index if not exists ads_placement_active_idx on public.ads (placement, active);
 create index if not exists ads_active_priority_idx on public.ads (active, priority desc);
 create index if not exists ads_created_at_idx on public.ads (created_at desc);
+create index if not exists ads_review_status_idx on public.ads (review_status);
+create index if not exists ads_submitted_by_idx on public.ads (submitted_by_id);
 
 alter table public.ads enable row level security;
 create policy "ads public read active" on public.ads for select using (true);
@@ -585,3 +609,77 @@ create policy "ventures staff read all" on public.ventures for select
 create policy "ventures staff write" on public.ventures for all
   using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('editor','admin')))
   with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('editor','admin')));
+
+-- ============================================================================
+--  AD PLANS — monthly placement packages (Task 14). Sold on the public
+--  #/advertise page; the owner manages prices/features in the Ad Manager.
+-- ============================================================================
+create table if not exists public.ad_plans (
+  id            uuid primary key default gen_random_uuid(),
+  code          text not null unique,               -- e.g. 'starter'
+  name          text not null,
+  description   text,
+  price_monthly numeric(12,2) not null default 0,
+  currency      text not null default 'INR',
+  features      jsonb not null default '[]'::jsonb,  -- selling points
+  placements    jsonb not null default '[]'::jsonb,  -- AdPlacement codes
+  is_active     boolean not null default true,
+  is_featured   boolean not null default false,      -- highlighted on #/advertise
+  sort_order    int not null default 0,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+create index if not exists ad_plans_active_sort_idx on public.ad_plans (is_active, sort_order);
+
+drop trigger if exists trg_ad_plans_updated_at on public.ad_plans;
+create trigger trg_ad_plans_updated_at
+  before update on public.ad_plans
+  for each row execute function public.set_updated_at();
+
+alter table public.ad_plans enable row level security;
+create policy "ad plans public read active" on public.ad_plans for select
+  using (is_active or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('editor','admin')));
+create policy "ad plans staff write" on public.ad_plans for all
+  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('editor','admin')))
+  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role in ('editor','admin')));
+
+-- Starter plan catalog — the owner customizes prices from the Ad Manager.
+insert into public.ad_plans (code, name, description, price_monthly, features, placements, is_featured, sort_order) values
+  ('starter', 'Starter', 'Marquee mention + between-cards placement across the blog.', 499,
+   '["Scrolling marquee mention","Between-cards ad slot","Monthly performance email"]'::jsonb,
+   '["marquee","between-cards"]'::jsonb, false, 1),
+  ('growth', 'Growth', 'Header banner + blog inline placements on every page.', 1499,
+   '["Slim header banner on all pages","Mid-article inline block","Click + impression reporting","Priority email support"]'::jsonb,
+   '["header-banner","blog-inline","between-cards"]'::jsonb, true, 2),
+  ('brand', 'Brand', 'Premium homepage strip + hero marquee — maximum reach.', 4999,
+   '["Full-width homepage strip","Premium hero marquee lane","Store sidebar placement","Dedicated account manager","Custom creatives made for you"]'::jsonb,
+   '["home-strip","hero-marquee","store-side","footer-banner","header-banner"]'::jsonb, false, 3)
+on conflict (code) do nothing;
+
+-- ============================================================================
+--  UPGRADE PATH (Task 14) — additive columns for databases created before
+--  this wave. Safe to re-run: every statement is guarded.
+-- ============================================================================
+alter table public.products add column if not exists offer_active      boolean not null default false;
+alter table public.products add column if not exists offer_title       text;
+alter table public.products add column if not exists offer_description text;
+alter table public.products add column if not exists offer_kind        text not null default 'deal';
+alter table public.products add column if not exists offer_code        text;
+alter table public.products add column if not exists offer_starts_at   timestamptz;
+alter table public.products add column if not exists offer_ends_at     timestamptz;
+
+alter table public.ads add column if not exists source          text not null default 'owner';
+alter table public.ads add column if not exists client_name     text;
+alter table public.ads add column if not exists client_company  text;
+alter table public.ads add column if not exists client_email    text;
+alter table public.ads add column if not exists monthly_rate    numeric(12,2);
+alter table public.ads add column if not exists plan_code       text;
+alter table public.ads add column if not exists review_status   text not null default 'approved';
+alter table public.ads add column if not exists review_note     text;
+alter table public.ads add column if not exists submitted_by_id uuid references public.profiles (id) on delete set null;
+alter table public.ads add column if not exists reviewed_at     timestamptz;
+
+-- widen the profiles role check for advertiser accounts (drop + re-add)
+alter table public.profiles drop constraint if exists profiles_role_check;
+alter table public.profiles add constraint profiles_role_check
+  check (role in ('reader','author','editor','admin','advertiser'));
