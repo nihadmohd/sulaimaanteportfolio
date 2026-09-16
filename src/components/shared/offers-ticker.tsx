@@ -91,7 +91,7 @@ export function OffersTicker({ compact = false }: { compact?: boolean }) {
 
     return (
         <section
-      aria - label= "Live special offers"
+      aria-label="Live special offers"
     className = {
         cn(
         "relative isolate overflow-hidden border-y border-gold/25 bg-gradient-to-r from-gold/[0.08] via-gold/[0.14] to-gold/[0.08]",
@@ -99,7 +99,7 @@ export function OffersTicker({ compact = false }: { compact?: boolean }) {
         )
     }
         >
-        <div className="mnkp-offers-track" aria - hidden="true" >
+        <div className="mnkp-offers-track" aria-hidden="true">
             <ul className="flex w-max items-center gap-3 pr-3" >
             {
                 chips.map((offer, i) => {
@@ -113,7 +113,7 @@ export function OffersTicker({ compact = false }: { compact?: boolean }) {
     className = "group flex items-center gap-2.5 rounded-full border border-gold/30 bg-background/80 py-1.5 pl-2.5 pr-3.5 shadow-xs backdrop-blur-sm transition-colors hover:border-gold hover:bg-gold/10"
         >
         <span className="grid size-6 shrink-0 place-items-center rounded-full bg-gold/15 text-gold" >
-            <Icon className="size-3.5" aria - hidden="true" />
+            <Icon className="size-3.5" aria-hidden="true" />
                 </span>
                 < span className = "flex flex-col" >
                     <span className="max-w-[220px] truncate text-xs font-semibold leading-tight text-foreground group-hover:text-primary sm:max-w-none" >
@@ -133,7 +133,7 @@ export function OffersTicker({ compact = false }: { compact?: boolean }) {
     }
     <ArrowRight
                     className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-gold"
-    aria - hidden="true"
+    aria-hidden="true"
         />
         </ALink>
         </li>
