@@ -2,7 +2,7 @@
 
 Welcome to the **MOHAMMED NIHAD KP Portfolio & Admin** platform — an AI-powered, high-performance web application built for MOHAMMED NIHAD KP. 
 
-## App Architecture Overview
+## App Architecture Overvieww
 
 This platform is a Next.js (v16) application utilizing a **Single Page Application (SPA)** architecture mounted on a Next.js Server-Side Catch-All route (`src/app/[[...slug]]/page.tsx`). It provides an ultra-fast client-side experience with perfect Search Engine Optimization (SEO) capabilities.
 
