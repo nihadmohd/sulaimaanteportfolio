@@ -363,7 +363,7 @@ function SeoHealthCard({ seo, loading }: { seo?: SeoSettings; loading: boolean }
           {loading ? "Checking SEO defaults…" : seo ? `${passing} / 5 checks passing` : "SEO settings unavailable"}
         </CardDescription>
         <CardAction>
-          <ALink href="#/admin/settings">
+          <ALink href="/admin/settings">
             <Button variant="outline" size="sm" className="h-9 gap-1.5">
               <Settings className="size-3.5" aria-hidden="true" />
               Open SEO settings
@@ -681,7 +681,7 @@ export default function MarketingView() {
                     : `${allAds.length} ${allAds.length === 1 ? "ad" : "ads"}, sorted by clicks`}
                 </CardDescription>
                 <CardAction>
-                  <ALink href="#/admin/ads">
+                  <ALink href="/admin/ads">
                     <Button variant="outline" size="sm" className="h-9 gap-1.5">
                       Ad Manager
                       <ArrowRight className="size-3.5" aria-hidden="true" />
@@ -701,7 +701,7 @@ export default function MarketingView() {
                     <p className="text-sm text-muted-foreground">
                       No ads yet — create your first one in the Ad Manager.
                     </p>
-                    <ALink href="#/admin/ads">
+                    <ALink href="/admin/ads">
                       <Button variant="outline" size="sm" className="h-9 gap-1.5">
                         <Megaphone className="size-3.5" aria-hidden="true" />
                         Create ad
@@ -792,25 +792,25 @@ export default function MarketingView() {
 
             {/* 7 · quick actions */}
             <section aria-label="Quick actions" className="flex flex-wrap items-center gap-2">
-              <ALink href="#/admin/ads">
+              <ALink href="/admin/ads">
                 <Button variant="outline" size="sm" className="h-9 gap-1.5">
                   <Megaphone className="size-3.5" aria-hidden="true" />
                   Ad Manager
                 </Button>
               </ALink>
-              <ALink href="#/admin/import">
+              <ALink href="/admin/import">
                 <Button variant="outline" size="sm" className="h-9 gap-1.5">
                   <Upload className="size-3.5" aria-hidden="true" />
                   Import &amp; Export
                 </Button>
               </ALink>
-              <ALink href="#/admin/subscribers">
+              <ALink href="/admin/subscribers">
                 <Button variant="outline" size="sm" className="h-9 gap-1.5">
                   <Users className="size-3.5" aria-hidden="true" />
                   Subscribers
                 </Button>
               </ALink>
-              <ALink href="#/admin/settings">
+              <ALink href="/admin/settings">
                 <Button variant="outline" size="sm" className="h-9 gap-1.5">
                   <Settings className="size-3.5" aria-hidden="true" />
                   SEO settings

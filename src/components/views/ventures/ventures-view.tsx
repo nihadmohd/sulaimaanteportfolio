@@ -501,7 +501,7 @@ function EmptyBoardPanel({ onPitch }: { onPitch: () => void }) {
               <Lightbulb className="size-4" aria-hidden="true" />
               Pitch your idea
             </Button>
-            <ALink href="#/services">
+            <ALink href="/services">
               <Button
                 size="lg"
                 variant="outline"
@@ -692,7 +692,7 @@ export default function VenturesView() {
           jsonLd={jsonLd}
         />
 
-        <Breadcrumbs items={[{ label: "Home", href: "#/" }, { label: "Ventures" }]} />
+        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Ventures" }]} />
 
         {/* ------------------------------------------------ hero band */}
         <section className="relative isolate mt-5 overflow-hidden rounded-2xl border border-gold/25 bg-gradient-to-b from-stone-950 via-stone-900 to-stone-950 px-4 py-8 text-stone-100 shadow-sm sm:px-7 sm:py-10 md:mt-8 md:px-10 md:py-12 lg:px-12">
@@ -900,7 +900,7 @@ export default function VenturesView() {
           />
           <p className="mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground md:text-base">
             It&rsquo;s the same discipline I bring to{" "}
-            <ALink href="#/services" className="font-medium text-primary underline-offset-2 hover:underline">
+            <ALink href="/services" className="font-medium text-primary underline-offset-2 hover:underline">
               client work
             </ALink>{" "}
             — just aimed at ventures we co-own instead of invoices you pay.
@@ -963,11 +963,11 @@ export default function VenturesView() {
           />
           <p className="mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground md:text-base">
             New here? Read{" "}
-            <ALink href="#/about" className="font-medium text-primary underline-offset-2 hover:underline">
+            <ALink href="/about" className="font-medium text-primary underline-offset-2 hover:underline">
               who I am
             </ALink>{" "}
             or see{" "}
-            <ALink href="#/services" className="font-medium text-primary underline-offset-2 hover:underline">
+            <ALink href="/services" className="font-medium text-primary underline-offset-2 hover:underline">
               how I work with clients
             </ALink>{" "}
             — the short version: I answer everything, I put terms in writing, and I ship.
@@ -1182,7 +1182,7 @@ export default function VenturesView() {
                     <MessageCircle className="size-3.5 shrink-0" aria-hidden="true" />
                     Every message gets a personal reply within 24 hours · IST — anything else?{" "}
                     <ALink
-                      href="#/contact"
+                      href="/contact"
                       className="font-medium text-primary underline-offset-2 hover:underline"
                     >
                       The contact page
@@ -1218,7 +1218,7 @@ export default function VenturesView() {
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <li>
               <ALink
-                href="#/services"
+                href="/services"
                 className="flex items-center justify-between gap-3 rounded-lg border bg-card p-4 text-sm font-medium shadow-xs transition-colors hover:border-gold/50"
               >
                 Work with me on a project
@@ -1227,7 +1227,7 @@ export default function VenturesView() {
             </li>
             <li>
               <ALink
-                href="#/store"
+                href="/store"
                 className="flex items-center justify-between gap-3 rounded-lg border bg-card p-4 text-sm font-medium shadow-xs transition-colors hover:border-gold/50"
               >
                 Shop the Calicut Store picks
@@ -1236,7 +1236,7 @@ export default function VenturesView() {
             </li>
             <li>
               <ALink
-                href="#/contact"
+                href="/contact"
                 className="flex items-center justify-between gap-3 rounded-lg border bg-card p-4 text-sm font-medium shadow-xs transition-colors hover:border-gold/50"
               >
                 General inquiries &amp; contact

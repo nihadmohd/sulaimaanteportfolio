@@ -38,25 +38,25 @@ const ROLE_LABELS: Record<string, string> = {
 
 const QUICK_LINKS = [
   {
-    href: "#/blog",
+    href: "/blog",
     icon: Newspaper,
     title: "Blog",
     blurb: "AI workflows, freelancing and growth notes.",
   },
   {
-    href: "#/store",
+    href: "/store",
     icon: ShoppingBag,
     title: "Affiliate Store",
     blurb: "Honestly reviewed tech and creator gear.",
   },
   {
-    href: "#/support",
+    href: "/support",
     icon: MessageCircle,
     title: "Support",
     blurb: "FAQs plus fast ways to reach the team.",
   },
   {
-    href: "#/account/settings",
+    href: "/account/settings",
     icon: Settings,
     title: "Settings",
     blurb: "Profile, interests and privacy controls.",
@@ -106,7 +106,7 @@ export default function DashboardView() {
         noindex
       />
       <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
-        <Breadcrumbs items={[{ label: "Home", href: "#/" }, { label: "Account" }]} />
+        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Account" }]} />
 
         {/* greeting */}
         <header className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -143,7 +143,7 @@ export default function DashboardView() {
             </div>
           </div>
           <Button asChild variant="outline" className="h-11 gap-2">
-            <ALink href="#/account/settings">
+            <ALink href="/account/settings">
               <Settings className="size-4" aria-hidden="true" />
               Edit profile
             </ALink>
@@ -173,7 +173,7 @@ export default function DashboardView() {
               </Button>
             ) : (
               <Button asChild size="sm" variant="outline" className="h-10">
-                <ALink href="#/support">Need help? Contact support</ALink>
+                <ALink href="/support">Need help? Contact support</ALink>
               </Button>
             )}
           </div>
@@ -220,7 +220,7 @@ export default function DashboardView() {
                 </div>
               ) : null}
               <Button asChild variant="outline" className="mt-2 h-11 w-full gap-2">
-                <ALink href="#/account/settings">
+                <ALink href="/account/settings">
                   Edit profile
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </ALink>
@@ -269,13 +269,13 @@ export default function DashboardView() {
               </p>
               <div className="flex flex-wrap gap-3">
                 <Button asChild className="h-11 gap-2">
-                  <ALink href="#/account/settings">
+                  <ALink href="/account/settings">
                     Manage preferences
                     <ArrowRight className="size-4" aria-hidden="true" />
                   </ALink>
                 </Button>
                 <Button asChild variant="outline" className="h-11 gap-2">
-                  <ALink href="#/blog">Latest on the blog</ALink>
+                  <ALink href="/blog">Latest on the blog</ALink>
                 </Button>
               </div>
             </CardContent>

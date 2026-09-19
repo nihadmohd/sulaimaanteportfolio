@@ -104,7 +104,7 @@ export default function AdminLoginView() {
         footer={
           <p className="text-center text-xs text-zinc-500">
             Not staff?{" "}
-            <ALink href="#/auth/login" className="text-gold underline-offset-2 hover:underline">
+            <ALink href="/auth/login" className="text-gold underline-offset-2 hover:underline">
               Use the member sign-in
             </ALink>
           </p>
@@ -132,10 +132,10 @@ export default function AdminLoginView() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" asChild className="h-10 border-red-400/40 bg-transparent text-red-200 hover:bg-red-500/10 hover:text-red-100">
-                <ALink href="#/account">Go to my account</ALink>
+                <ALink href="/account">Go to my account</ALink>
               </Button>
               <Button variant="ghost" asChild className="h-10 text-zinc-400 hover:bg-white/10 hover:text-zinc-100">
-                <ALink href="#/auth/login">Member sign-in</ALink>
+                <ALink href="/auth/login">Member sign-in</ALink>
               </Button>
             </div>
           </div>
@@ -209,7 +209,7 @@ export default function AdminLoginView() {
               This website has no owner account yet. Create yours to unlock the
               full Admin &amp; Developer console.
             </p>
-            <ALink href="#/setup" className="mt-3 block">
+            <ALink href="/setup" className="mt-3 block">
               <Button className="h-10 w-full gap-2 bg-gold font-medium text-gold-foreground hover:bg-gold/90">
                 <Sparkles className="size-4" aria-hidden="true" />
                 Set up your website

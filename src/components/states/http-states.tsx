@@ -39,13 +39,13 @@ export function NotFoundState({ path, className }: NotFoundStateProps) {
             <Compass className="size-4" aria-hidden="true" />
             Search the site
           </Button>
-          <ALink href="#/" className="hover:text-primary">
+          <ALink href="/" className="hover:text-primary">
             <Button variant="default">Back home</Button>
           </ALink>
-          <ALink href="#/blog">
+          <ALink href="/blog">
             <Button variant="ghost">Browse the blog</Button>
           </ALink>
-          <ALink href="#/store">
+          <ALink href="/store">
             <Button variant="ghost">Visit the store</Button>
           </ALink>
         </>
@@ -79,10 +79,10 @@ export function ForbiddenState({
       className={className}
       actions={
         <>
-          <ALink href="#/">
+          <ALink href="/">
             <Button variant="default">Back home</Button>
           </ALink>
-          <ALink href="#/auth/login">
+          <ALink href="/auth/login">
             <Button variant="outline">Sign in with another account</Button>
           </ALink>
         </>
@@ -288,7 +288,7 @@ export function SessionExpiredState({ next, className }: SessionExpiredStateProp
           <Button onClick={signIn} variant="default" className="gap-2">
             Sign in again
           </Button>
-          <ALink href="#/">
+          <ALink href="/">
             <Button variant="ghost">Back home</Button>
           </ALink>
         </>
@@ -349,7 +349,7 @@ export function PaymentState({ status, message, onRetry, action, className }: Pa
             </Button>
           ) : null}
           {action}
-          <ALink href="#/support">
+          <ALink href="/support">
             <Button variant="ghost">Get help</Button>
           </ALink>
         </>

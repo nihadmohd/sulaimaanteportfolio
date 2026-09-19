@@ -205,7 +205,7 @@ export default function BlogView() {
         jsonLd={BLOG_JSON_LD}
       />
 
-      <Breadcrumbs items={[{ label: "Home", href: "#/" }, { label: "Blog" }]} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog" }]} />
 
       <header className="mt-6 sm:mt-8">
         <SectionHeading
@@ -391,11 +391,11 @@ export default function BlogView() {
       {/* reading next links (internal linking SEO) */}
       <p className="mt-12 text-center text-sm text-muted-foreground">
         Looking for something specific?{" "}
-        <ALink href="#/contact" className="font-medium text-primary hover:underline">
+        <ALink href="/contact" className="font-medium text-primary hover:underline">
           Ask me to write about it
         </ALink>{" "}
         — or browse the{" "}
-        <ALink href="#/services" className="font-medium text-primary hover:underline">
+        <ALink href="/services" className="font-medium text-primary hover:underline">
           services
         </ALink>{" "}
         these posts come from.

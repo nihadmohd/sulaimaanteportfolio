@@ -83,7 +83,7 @@ export default function ServicesView() {
         jsonLd={SERVICES_JSON_LD}
       />
 
-      <Breadcrumbs items={[{ label: "Home", href: "#/" }, { label: "Services" }]} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Services" }]} />
 
       <header className="mt-5 md:mt-8">
         <SectionHeading
@@ -219,7 +219,7 @@ export default function ServicesView() {
           fastest way to reach me from Calicut or anywhere else.
         </p>
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 md:mt-6 md:gap-3">
-          <ALink href="#/contact">
+          <ALink href="/contact">
             <Button size="lg" className="h-10 gap-2 md:h-11">
               Request a free quote
               <ArrowRight className="size-4" aria-hidden="true" />

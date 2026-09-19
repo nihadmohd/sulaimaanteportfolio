@@ -102,7 +102,7 @@ export default function RegisterView() {
         footer={
           <p className="text-center text-xs text-amber-100/60">
             Already registered?{" "}
-            <ALink href="#/auth/login" className="text-gold underline-offset-2 hover:underline">
+            <ALink href="/auth/login" className="text-gold underline-offset-2 hover:underline">
               Sign in instead
             </ALink>
           </p>
@@ -236,14 +236,14 @@ export default function RegisterView() {
                         <label htmlFor="register-terms" className="cursor-pointer select-none">
                           I agree to the{" "}
                           <ALink
-                            href="#/legal/terms-of-service"
+                            href="/legal/terms-of-service"
                             className="font-medium text-gold underline-offset-2 hover:underline"
                           >
                             Terms of Service
                           </ALink>{" "}
                           and{" "}
                           <ALink
-                            href="#/legal/privacy-policy"
+                            href="/legal/privacy-policy"
                             className="font-medium text-gold underline-offset-2 hover:underline"
                           >
                             Privacy Policy

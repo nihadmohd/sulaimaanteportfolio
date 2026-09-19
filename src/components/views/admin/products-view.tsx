@@ -121,7 +121,7 @@ export default function ProductsView() {
       title="Products"
       description="The affiliate store catalog — prices in INR, clicks tracked."
       actions={
-        <ALink href="#/admin/products/new">
+        <ALink href="/admin/products/new">
           <Button size="sm" className="h-9 gap-2">
             <PlusCircle className="size-4" aria-hidden="true" />
             Add product

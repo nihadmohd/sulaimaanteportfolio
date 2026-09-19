@@ -210,7 +210,7 @@ export function SiteFooter() {
             <a href="/llms.txt" className="transition-colors hover:text-primary">
               llms.txt
             </a>
-            <ALink href="#/legal" className="transition-colors hover:text-primary">
+            <ALink href="/legal" className="transition-colors hover:text-primary">
               Policies
             </ALink>
           </nav>

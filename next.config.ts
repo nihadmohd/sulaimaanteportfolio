@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -12,8 +13,6 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          // HTTPS enforcement — browsers cache this for 2 years (prod is TLS
-          // terminated at Vercel; the sandbox gateway mirrors the same origin).
           {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
@@ -31,4 +30,13 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // For all available options, see:
+  // https://github.com/getsentry/sentry-webpack-plugin#options
+  silent: true,
+  org: "mohdnihadkp",
+  project: "mohdnihadkp-portfolio",
+  widenClientFileUpload: true,
+  disableLogger: true,
+  automaticVercelMonitors: true,
+});

@@ -227,7 +227,7 @@ export default function ContactView() {
         jsonLd={CONTACT_JSON_LD}
       />
 
-      <Breadcrumbs items={[{ label: "Home", href: "#/" }, { label: "Contact" }]} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Contact" }]} />
 
       <header className="mt-8">
         <SectionHeading

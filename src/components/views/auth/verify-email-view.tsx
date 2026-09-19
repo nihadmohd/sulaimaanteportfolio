@@ -76,11 +76,11 @@ export default function VerifyEmailView() {
         footer={
           <p className="text-center text-xs text-stone-500">
             Stuck?{" "}
-            <ALink href="#/support" className="underline-offset-2 hover:underline">
+            <ALink href="/support" className="underline-offset-2 hover:underline">
               Contact support
             </ALink>{" "}
             ·{" "}
-            <ALink href="#/auth/login" className="underline-offset-2 hover:underline">
+            <ALink href="/auth/login" className="underline-offset-2 hover:underline">
               Back to sign in
             </ALink>
           </p>
@@ -109,7 +109,7 @@ export default function VerifyEmailView() {
                   asChild
                   className="h-11 w-full gap-2 bg-gold font-medium text-gold-foreground hover:bg-gold/90"
                 >
-                  <ALink href="#/account">
+                  <ALink href="/account">
                     Go to my account
                     <ArrowRight className="size-4" aria-hidden="true" />
                   </ALink>
@@ -151,10 +151,10 @@ export default function VerifyEmailView() {
                 asChild
                 className="h-11 w-full gap-2 bg-gold font-medium text-gold-foreground hover:bg-gold/90"
               >
-                <ALink href="#/auth/login">Back to sign in</ALink>
+                <ALink href="/auth/login">Back to sign in</ALink>
               </Button>
               <Button variant="ghost" asChild className={`h-11 w-full ${t.ghost}`}>
-                <ALink href="#/support">Get help verifying your email</ALink>
+                <ALink href="/support">Get help verifying your email</ALink>
               </Button>
             </div>
             <p className="mt-5 text-xs text-stone-500">

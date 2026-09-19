@@ -91,11 +91,11 @@ export default function ResetPasswordView() {
         }
         footer={
           <p className="text-center text-xs text-stone-500">
-            <ALink href="#/auth/login" className="underline-offset-2 hover:underline">
+            <ALink href="/auth/login" className="underline-offset-2 hover:underline">
               Back to sign in
             </ALink>{" "}
             ·{" "}
-            <ALink href="#/auth/forgot-password" className="underline-offset-2 hover:underline">
+            <ALink href="/auth/forgot-password" className="underline-offset-2 hover:underline">
               Request a new link
             </ALink>
           </p>
@@ -117,7 +117,7 @@ export default function ResetPasswordView() {
               asChild
               className="mt-7 h-11 w-full gap-2 bg-gold font-medium text-gold-foreground hover:bg-gold/90"
             >
-              <ALink href="#/auth/forgot-password">Request a reset link</ALink>
+              <ALink href="/auth/forgot-password">Request a reset link</ALink>
             </Button>
           </div>
         ) : done ? (
@@ -140,7 +140,7 @@ export default function ResetPasswordView() {
               asChild
               className={`mt-4 h-11 w-full ${t.ghost}`}
             >
-              <ALink href="#/auth/login">
+              <ALink href="/auth/login">
                 Go to sign in now
                 <ArrowRight className="size-4" aria-hidden="true" />
               </ALink>

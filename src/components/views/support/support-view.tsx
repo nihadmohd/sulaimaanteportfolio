@@ -137,7 +137,7 @@ export default function SupportView() {
         jsonLd={faqJsonLd}
       />
       <Breadcrumbs
-        items={[{ label: "Home", href: "#/" }, { label: "Support" }]}
+        items={[{ label: "Home", href: "/" }, { label: "Support" }]}
         className="mb-8"
       />
 
@@ -182,7 +182,7 @@ export default function SupportView() {
               icon={Send}
               title="Inquiry form"
               body="Project quotes, collaborations and partnerships."
-              href="#/contact"
+              href="/contact"
               cta="Open the form"
               hint="goes to the contact page"
             />
@@ -282,7 +282,7 @@ export default function SupportView() {
             working days. Pro and Business subscribers always get priority.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <ALink href="#/contact">
+            <ALink href="/contact">
               <Button className="gap-2">
                 <Send className="size-4" aria-hidden="true" />
                 Send an inquiry
@@ -339,7 +339,7 @@ export default function SupportView() {
           <Scale className="size-4 shrink-0 text-gold" aria-hidden="true" />
           Looking for something else? Browse{" "}
           <ALink
-            href="#/legal"
+            href="/legal"
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
             all legal and policy documents

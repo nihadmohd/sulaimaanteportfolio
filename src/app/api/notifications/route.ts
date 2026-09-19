@@ -54,7 +54,7 @@ export const GET = withApi(async (req: Request) => {
         title: `New ${inq.type} inquiry — ${inq.name}`,
         body: inq.subject || inq.message.slice(0, 80),
         time: inq.createdAt.toISOString(),
-        href: "#/admin/inquiries",
+        href: "/admin/inquiries",
       });
     }
     for (const ad of pendingAds) {
@@ -64,7 +64,7 @@ export const GET = withApi(async (req: Request) => {
         title: `Ad submission awaiting review — ${ad.name}`,
         body: ad.clientName || ad.clientEmail || "A client submitted an ad for approval.",
         time: ad.createdAt.toISOString(),
-        href: "#/admin/ads",
+        href: "/admin/ads",
       });
     }
     for (const sub of newSubscribers) {
@@ -74,7 +74,7 @@ export const GET = withApi(async (req: Request) => {
         title: "New newsletter subscriber",
         body: sub.email,
         time: (sub.confirmedAt ?? sub.subscribedAt).toISOString(),
-        href: "#/admin/subscribers",
+        href: "/admin/subscribers",
       });
     }
     if (maintenanceRow) {
@@ -89,7 +89,7 @@ export const GET = withApi(async (req: Request) => {
               ? maintenance.message
               : "The public site is under maintenance.",
           time: maintenanceRow.updatedAt.toISOString(),
-          href: "#/admin/settings",
+          href: "/admin/settings",
         });
       }
     }
@@ -101,7 +101,7 @@ export const GET = withApi(async (req: Request) => {
         title: "Verify your email address",
         body: "Confirm your email to secure your MN.KP account.",
         time: user.createdAt.toISOString(),
-        href: "#/account",
+        href: "/account",
       });
     }
   }

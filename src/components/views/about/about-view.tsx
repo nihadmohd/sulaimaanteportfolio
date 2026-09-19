@@ -72,7 +72,7 @@ export default function AboutView() {
         jsonLd={PERSON_JSON_LD}
       />
 
-      <Breadcrumbs items={[{ label: "Home", href: "#/" }, { label: "About" }]} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "About" }]} />
 
       <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[300px_1fr] lg:gap-12">
         {/* portrait — sticky on large screens */}
@@ -288,13 +288,13 @@ export default function AboutView() {
               human judgment — that is exactly what I do.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <ALink href="#/services">
+              <ALink href="/services">
                 <Button className="gap-2">
                   See the services
                   <ArrowUpRight className="size-4" aria-hidden="true" />
                 </Button>
               </ALink>
-              <ALink href="#/contact">
+              <ALink href="/contact">
                 <Button variant="outline" className="gap-2 border-gold/50 text-gold hover:bg-gold/10">
                   Work with me
                 </Button>

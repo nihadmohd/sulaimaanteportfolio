@@ -164,7 +164,7 @@ export function SetupView() {
                 <p className="mt-1 text-xs leading-relaxed text-zinc-400">
                   The setup window closed the moment the first owner was created.
                 </p>
-                <ALink href="#/admin/login">
+                <ALink href="/admin/login">
                   <Button className="mt-5 h-11 w-full gap-2 bg-gold font-medium text-gold-foreground hover:bg-gold/90">
                     <KeyRound className="size-4" aria-hidden="true" />
                     Sign in to the console
@@ -316,7 +316,7 @@ export function SetupView() {
               <ShieldCheck className="size-3.5 text-gold/70" aria-hidden="true" />
               One owner per website — the link self-locks after setup.
               <ALink
-                href="#/"
+                href="/"
                 className="ml-1 inline-flex items-center gap-1 font-medium text-gold underline-offset-2 hover:underline"
               >
                 Back to site

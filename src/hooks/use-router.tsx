@@ -3,17 +3,17 @@
 import * as React from "react";
 
 /**
- * MN.KP hash router core.
+ * MN.KP path router core.
  *
- * All user-facing navigation lives on a single page and is hash-based:
- *   #/blog/my-slug  →  path "/blog/my-slug"
+ * All user-facing navigation lives on a single page via Catch-all route `[[...slug]]/page.tsx`
+ *   /blog/my-slug  →  path "/blog/my-slug"
  *
  * This module owns:
- *   - parseHash()        — pure location parser
- *   - navigate()         — imperative navigation (sets location.hash, scrolls to top)
- *   - RouterProvider     — context provider wired to hashchange + popstate
+ *   - parsePath()        — pure location parser
+ *   - navigate()         — imperative navigation (history.pushState)
+ *   - RouterProvider     — context provider wired to popstate
  *   - useRouter()        — { path, segments, query, raw, navigate }
- *   - isPathActive()     — active-link detection helper (exact or section-prefix)
+ *   - isPathActive()     — active-link detection helper
  */
 
 export interface RouteLocation {
@@ -21,9 +21,9 @@ export interface RouteLocation {
   path: string;
   /** Path segments. e.g. ["blog", "my-slug"] */
   segments: string[];
-  /** Parsed query params of the hash URL. */
+  /** Parsed query params of the URL. */
   query: URLSearchParams;
-  /** Raw hash contents without the leading "#". e.g. "/blog/my-slug?q=ai" */
+  /** Raw pathname + search. e.g. "/blog/my-slug?q=ai" */
   raw: string;
 }
 
@@ -33,62 +33,65 @@ export interface RouterContextValue extends RouteLocation {
 
 const RouterContext = React.createContext<RouterContextValue | null>(null);
 
-/** Parse a raw hash string (with or without "#") into a normalized location. */
-export function parseHash(hash: string): RouteLocation {
-  const raw = hash.replace(/^#/, "");
-  const [pathPart = "", queryPart = ""] = raw.split("?");
+/** Parse a raw URL string into a normalized location. */
+export function parsePath(url: string): RouteLocation {
+  const [pathPart = "", queryPart = ""] = url.split("?");
   let path = pathPart || "/";
   if (!path.startsWith("/")) path = `/${path}`;
   if (path.length > 1) path = path.replace(/\/+$/, "") || "/";
   const query = new URLSearchParams(queryPart || "");
   const segments = path.split("/").filter(Boolean);
-  return { path, segments, query, raw };
+  return { path, segments, query, raw: url };
 }
 
 /**
- * Navigate to a hash route. Accepts "#/blog", "/blog" or "blog".
- * Sets location.hash (which fires hashchange) and scrolls the window to top.
+ * Navigate to a route. Accepts "/blog", "blog".
+ * Uses history.pushState and scrolls to top.
  */
 export function navigate(href: string): void {
   if (typeof window === "undefined") return;
-  let target = href.startsWith("#") ? href.slice(1) : href;
+  let target = href;
+  // If it still has a hash prefix, strip it (for backward compatibility during migration)
+  if (target.startsWith("#")) target = target.slice(1);
   if (!target.startsWith("/")) target = `/${target}`;
-  const current = window.location.hash.replace(/^#/, "") || "/";
+  
+  const current = window.location.pathname + window.location.search;
   if (target === current) {
     window.scrollTo({ top: 0, behavior: "auto" });
     return;
   }
-  window.location.hash = target;
+  
+  window.history.pushState({}, "", target);
+  window.dispatchEvent(new Event("popstate"));
+  
   window.requestAnimationFrame(() => {
     window.scrollTo({ top: 0, behavior: "auto" });
   });
 }
 
 function subscribe(onStoreChange: () => void): () => void {
-  window.addEventListener("hashchange", onStoreChange);
   window.addEventListener("popstate", onStoreChange);
   return () => {
-    window.removeEventListener("hashchange", onStoreChange);
     window.removeEventListener("popstate", onStoreChange);
   };
 }
 
 function getSnapshot(): string {
-  return window.location.hash;
+  return window.location.pathname + window.location.search;
 }
 
 function getServerSnapshot(): string {
-  return "";
+  return "/";
 }
 
-/** Raw hash string subscription — re-renders on every hashchange/popstate. */
-export function useHashLocation(): RouteLocation {
-  const hash = React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  return React.useMemo(() => parseHash(hash || "#/"), [hash]);
+/** Raw URL subscription — re-renders on popstate. */
+export function usePathLocation(): RouteLocation {
+  const url = React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  return React.useMemo(() => parsePath(url || "/"), [url]);
 }
 
 export function RouterProvider({ children }: { children: React.ReactNode }) {
-  const location = useHashLocation();
+  const location = usePathLocation();
   const value = React.useMemo<RouterContextValue>(
     () => ({ ...location, navigate }),
     [location]
@@ -110,7 +113,11 @@ export function useRouter(): RouterContextValue {
  * ("/blog" is active on "/blog/my-slug"); "/" only matches exactly.
  */
 export function isPathActive(href: string, currentPath: string, exact = false): boolean {
-  const target = parseHash(href.startsWith("#") ? href : `#${href}`).path;
+  let rawTarget = href;
+  if (rawTarget.startsWith("#")) rawTarget = rawTarget.slice(1);
+  if (!rawTarget.startsWith("/")) rawTarget = `/${rawTarget}`;
+  
+  const target = parsePath(rawTarget).path;
   if (exact || target === "/") return currentPath === target;
   if (currentPath === target) return true;
   return currentPath.startsWith(`${target}/`);

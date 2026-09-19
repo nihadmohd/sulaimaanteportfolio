@@ -515,7 +515,7 @@ export default function PostEditView() {
               Unsaved changes
             </Badge>
           ) : null}
-          <ALink href="#/admin/posts">
+          <ALink href="/admin/posts">
             <Button variant="outline" size="sm" className="h-9 gap-2">
               <ArrowLeft className="size-4" aria-hidden="true" />
               All posts

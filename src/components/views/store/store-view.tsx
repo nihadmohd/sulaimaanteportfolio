@@ -248,7 +248,7 @@ export default function StoreView() {
         jsonLd={jsonLd}
       />
 
-      <Breadcrumbs items={[{ label: "Home", href: "#/" }, { label: "Store" }]} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Store" }]} />
 
       <header className="mt-6 sm:mt-8">
         <SectionHeading
@@ -262,7 +262,7 @@ export default function StoreView() {
           <span>
             Affiliate disclosure: purchases through these links may earn MN.KP a commission at no
             extra cost to you —{" "}
-            <ALink href="#/legal/affiliate-disclosure" className="underline underline-offset-2 hover:text-gold">
+            <ALink href="/legal/affiliate-disclosure" className="underline underline-offset-2 hover:text-gold">
               read the full disclosure
             </ALink>
             .
@@ -514,7 +514,7 @@ export default function StoreView() {
           <p className="mt-12 text-sm text-muted-foreground">
             <span>
               Want the reasoning behind these picks? Read the{" "}
-              <ALink href="#/blog" className="font-medium text-primary hover:underline">
+              <ALink href="/blog" className="font-medium text-primary hover:underline">
                 buying guides on the blog
               </ALink>{" "}
               — every review links back to real usage.
@@ -535,7 +535,7 @@ export default function StoreView() {
                 stops being the best option, it gets removed — quietly.
               </p>
               <ALink
-                href="#/legal/affiliate-disclosure"
+                href="/legal/affiliate-disclosure"
                 className="mt-3 inline-block text-xs font-medium text-primary underline underline-offset-2 hover:text-gold"
               >
                 How affiliate links work

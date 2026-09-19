@@ -99,12 +99,12 @@ interface MessageDraft {
  * the messages field, so the editor always shows the effective band).
  */
 const DEFAULT_HERO_MESSAGES: MessageDraft[] = [
-  { text: "AI-powered sites from \u20B94,999", href: "#/services" },
-  { text: "Honest gear reviews \u2014 curated in Calicut", href: "#/store" },
-  { text: "Join a venture \u2014 build the next startup with me", href: "#/ventures" },
-  { text: "Free quote within 24 hours", href: "#/contact" },
-  { text: "The 195-country mission", href: "#/about" },
-  { text: "New on the blog \u2014 AI workflows that ship", href: "#/blog" },
+  { text: "AI-powered sites from \u20B94,999", href: "/services" },
+  { text: "Honest gear reviews \u2014 curated in Calicut", href: "/store" },
+  { text: "Join a venture \u2014 build the next startup with me", href: "/ventures" },
+  { text: "Free quote within 24 hours", href: "/contact" },
+  { text: "The 195-country mission", href: "/about" },
+  { text: "New on the blog \u2014 AI workflows that ship", href: "/blog" },
 ];
 
 interface BrandDraft {

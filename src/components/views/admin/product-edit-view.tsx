@@ -632,7 +632,7 @@ export default function ProductEditView() {
               Unsaved changes
             </Badge>
           ) : null}
-          <ALink href="#/admin/products">
+          <ALink href="/admin/products">
             <Button variant="outline" size="sm" className="h-9 gap-2">
               <ArrowLeft className="size-4" aria-hidden="true" />
               All products

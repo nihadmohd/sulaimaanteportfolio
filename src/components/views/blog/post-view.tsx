@@ -312,8 +312,8 @@ function PostArticle({ post }: { post: PostDTO }) {
 
       <Breadcrumbs
         items={[
-          { label: "Home", href: "#/" },
-          { label: "Blog", href: "#/blog" },
+          { label: "Home", href: "/" },
+          { label: "Blog", href: "/blog" },
           { label: post.title },
         ]}
       />
@@ -469,7 +469,7 @@ function PostArticle({ post }: { post: PostDTO }) {
               {post.author?.headline ?? SITE.roleLine}
             </p>
             <ALink
-              href="#/about"
+              href="/about"
               className="mt-2 inline-block text-sm font-medium text-primary underline-offset-2 hover:underline"
             >
               Read more about me
@@ -526,10 +526,10 @@ function PostArticle({ post }: { post: PostDTO }) {
           Scoped quote within 24 hours.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <ALink href="#/services">
+          <ALink href="/services">
             <Button className="gap-2">See the services</Button>
           </ALink>
-          <ALink href="#/contact">
+          <ALink href="/contact">
             <Button variant="outline" className="gap-2 border-gold/50 text-gold hover:bg-gold/10">
               Get a quote
             </Button>
@@ -621,7 +621,7 @@ export default function PostView() {
             noindex
           />
           <Breadcrumbs
-            items={[{ label: "Home", href: "#/" }, { label: "Blog", href: "#/blog" }, { label: "Not found" }]}
+            items={[{ label: "Home", href: "/" }, { label: "Blog", href: "/blog" }, { label: "Not found" }]}
           />
           <StatePage
             icon={FileQuestion}
@@ -632,7 +632,7 @@ export default function PostView() {
             actions={
               <>
                 <Button onClick={() => navigate("/blog")}>Browse the blog</Button>
-                <ALink href="#/">
+                <ALink href="/">
                   <Button variant="outline">Back home</Button>
                 </ALink>
               </>

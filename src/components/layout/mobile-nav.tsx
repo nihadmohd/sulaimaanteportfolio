@@ -32,11 +32,11 @@ import { cn } from "@/lib/utils";
  */
 
 const MORE_LINKS = [
-  { label: "Ventures & Ideas", href: "#/ventures", icon: "rocket" },
-  { label: "About", href: "#/about", icon: "user" },
-  { label: "Contact", href: "#/contact", icon: "mail" },
-  { label: "Support & Help", href: "#/support", icon: "sparkles" },
-  { label: "Legal & Policies", href: "#/legal", icon: "newspaper" },
+  { label: "Ventures & Ideas", href: "/ventures", icon: "rocket" },
+  { label: "About", href: "/about", icon: "user" },
+  { label: "Contact", href: "/contact", icon: "mail" },
+  { label: "Support & Help", href: "/support", icon: "sparkles" },
+  { label: "Legal & Policies", href: "/legal", icon: "newspaper" },
 ];
 
 function MoreSheetThemeToggle() {
@@ -162,19 +162,19 @@ export function MobileNav() {
             </p>
             {user ? (
               <ALink
-                href="#/account"
+                href="/account"
                 className="flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
               >
                 <Icon name="user" className="size-4 text-gold" /> Account
               </ALink>
             ) : (
               <div className="flex gap-2 px-1 pt-1">
-                <ALink href="#/auth/login" className="flex-1">
+                <ALink href="/auth/login" className="flex-1">
                   <Button variant="outline" className="w-full border-gold/50 text-gold hover:bg-gold/10 hover:text-gold">
                     Sign in
                   </Button>
                 </ALink>
-                <ALink href="#/auth/register" className="flex-1">
+                <ALink href="/auth/register" className="flex-1">
                   <Button className="w-full">Register</Button>
                 </ALink>
               </div>

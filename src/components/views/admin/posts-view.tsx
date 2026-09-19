@@ -117,7 +117,7 @@ export default function PostsView() {
       title="Posts"
       description="Every article on the blog — drafts, published and archived."
       actions={
-        <ALink href="#/admin/posts/new">
+        <ALink href="/admin/posts/new">
           <Button size="sm" className="h-9 gap-2">
             <FilePlus2 className="size-4" aria-hidden="true" />
             New post

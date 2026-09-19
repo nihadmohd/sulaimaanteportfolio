@@ -103,7 +103,7 @@ export function CookieConsent() {
               <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                 I use necessary cookies to run the platform, plus optional analytics and
                 marketing cookies.{" "}
-                <ALink href="#/legal/cookie-policy" className="font-medium text-gold hover:underline">
+                <ALink href="/legal/cookie-policy" className="font-medium text-gold hover:underline">
                   Cookie policy
                 </ALink>
               </p>

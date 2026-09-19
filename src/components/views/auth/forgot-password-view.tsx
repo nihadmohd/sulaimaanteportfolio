@@ -66,7 +66,7 @@ export default function ForgotPasswordView() {
         footer={
           <p className="text-center text-xs text-stone-500">
             Remembered it?{" "}
-            <ALink href="#/auth/login" className="text-gold underline-offset-2 hover:underline">
+            <ALink href="/auth/login" className="text-gold underline-offset-2 hover:underline">
               Back to sign in
             </ALink>
           </p>
@@ -104,7 +104,7 @@ export default function ForgotPasswordView() {
             ) : null}
             <div className="mt-6">
               <Button variant="ghost" asChild className={`h-11 w-full ${t.ghost}`}>
-                <ALink href="#/auth/login">
+                <ALink href="/auth/login">
                   Back to sign in
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </ALink>

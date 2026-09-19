@@ -232,7 +232,7 @@ export default function OnboardingView() {
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Button>
               <Button variant="ghost" asChild className="h-11 px-6">
-                <ALink href="#/">Explore the homepage first</ALink>
+                <ALink href="/">Explore the homepage first</ALink>
               </Button>
             </div>
           </motion.div>

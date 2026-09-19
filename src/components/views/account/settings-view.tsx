@@ -258,8 +258,8 @@ export default function SettingsView() {
       <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 md:py-12">
         <Breadcrumbs
           items={[
-            { label: "Home", href: "#/" },
-            { label: "Account", href: "#/account" },
+            { label: "Home", href: "/" },
+            { label: "Account", href: "/account" },
             { label: "Settings" },
           ]}
         />
@@ -492,19 +492,19 @@ export default function SettingsView() {
             <CardContent className="space-y-4 text-sm">
               <ul className="space-y-2">
                 <li>
-                  <ALink href="#/legal/privacy-policy" className="font-medium text-primary underline-offset-2 hover:underline">
+                  <ALink href="/legal/privacy-policy" className="font-medium text-primary underline-offset-2 hover:underline">
                     Privacy Policy
                   </ALink>{" "}
                   — what we collect and why.
                 </li>
                 <li>
-                  <ALink href="#/legal/data-processing-agreement" className="font-medium text-primary underline-offset-2 hover:underline">
+                  <ALink href="/legal/data-processing-agreement" className="font-medium text-primary underline-offset-2 hover:underline">
                     Data Processing Agreement (DPA)
                   </ALink>{" "}
                   — how data is handled on your behalf.
                 </li>
                 <li>
-                  <ALink href="#/legal/cookie-policy" className="font-medium text-primary underline-offset-2 hover:underline">
+                  <ALink href="/legal/cookie-policy" className="font-medium text-primary underline-offset-2 hover:underline">
                     Cookie Policy
                   </ALink>{" "}
                   — the cookies this site sets.

@@ -70,7 +70,7 @@ function AuthArea() {
   if (!user) {
     return (
       <div className="hidden items-center gap-2 sm:flex">
-        <ALink href="#/auth/login">
+        <ALink href="/auth/login">
           <Button
             variant="outline"
             size="sm"
@@ -79,7 +79,7 @@ function AuthArea() {
             Sign in
           </Button>
         </ALink>
-        <ALink href="#/auth/register">
+        <ALink href="/auth/register">
           <Button size="sm">Register</Button>
         </ALink>
       </div>
@@ -168,7 +168,7 @@ export function SiteHeader() {
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 md:h-16 md:px-6">
           {/* Brand */}
           <ALink
-            href="#/"
+            href="/"
             className="flex shrink-0 items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             aria-label={`${SITE.name} — home`}
           >

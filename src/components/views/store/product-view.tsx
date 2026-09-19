@@ -307,8 +307,8 @@ function ProductDetail({ product }: { product: ProductDTO }) {
 
       <Breadcrumbs
         items={[
-          { label: "Home", href: "#/" },
-          { label: "Store", href: "#/store" },
+          { label: "Home", href: "/" },
+          { label: "Store", href: "/store" },
           ...(product.category
             ? [{ label: product.category.name, href: `#/store?category=${product.category.slug}` }]
             : []),
@@ -418,7 +418,7 @@ function ProductDetail({ product }: { product: ProductDTO }) {
               <span>
                 As an affiliate, I may earn a commission at no extra cost to you. Read the{" "}
                 <ALink
-                  href="#/legal/affiliate-disclosure"
+                  href="/legal/affiliate-disclosure"
                   className="underline underline-offset-2 hover:text-gold"
                 >
                   affiliate disclosure
@@ -510,7 +510,7 @@ function ProductDetail({ product }: { product: ProductDTO }) {
           {/* buying-guide cross-link (SEO) */}
           <p className="mt-8 text-sm text-muted-foreground">
             Deciding between options? The{" "}
-            <ALink href="#/blog" className="font-medium text-primary hover:underline">
+            <ALink href="/blog" className="font-medium text-primary hover:underline">
               buying guides on the blog
             </ALink>{" "}
             walk through how this gear fits a real creator workflow.
@@ -620,8 +620,8 @@ export default function ProductView() {
           />
           <Breadcrumbs
             items={[
-              { label: "Home", href: "#/" },
-              { label: "Store", href: "#/store" },
+              { label: "Home", href: "/" },
+              { label: "Store", href: "/store" },
               { label: "Not found" },
             ]}
           />
@@ -634,7 +634,7 @@ export default function ProductView() {
             actions={
               <>
                 <Button onClick={() => navigate("/store")}>Browse the store</Button>
-                <ALink href="#/blog">
+                <ALink href="/blog">
                   <Button variant="outline">Read the buying guides</Button>
                 </ALink>
               </>

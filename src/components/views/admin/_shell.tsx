@@ -204,7 +204,7 @@ export function AdminShell({ title, description, actions, children }: AdminShell
         </div>
       </div>
       <div className="mt-2 flex items-center gap-2">
-        <ALink href="#/" className="flex-1">
+        <ALink href="/" className="flex-1">
           <Button variant="outline" size="sm" className="h-9 w-full gap-2">
             <ExternalLink className="size-3.5" aria-hidden="true" />
             View site

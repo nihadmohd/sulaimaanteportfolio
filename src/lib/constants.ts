@@ -44,20 +44,20 @@ export interface NavItem {
 }
 
 export const NAV_MAIN: NavItem[] = [
-  { label: "Home", href: "#/", icon: "home" },
-  { label: "Blog", href: "#/blog", icon: "newspaper" },
-  { label: "Store", href: "#/store", icon: "shopping-bag" },
-  { label: "Ventures", href: "#/ventures", icon: "rocket" },
-  { label: "Services", href: "#/services", icon: "sparkles" },
-  { label: "About", href: "#/about", icon: "user" },
-  { label: "Contact", href: "#/contact", icon: "mail" },
+  { label: "Home", href: "/", icon: "home" },
+  { label: "Blog", href: "/blog", icon: "newspaper" },
+  { label: "Store", href: "/store", icon: "shopping-bag" },
+  { label: "Ventures", href: "/ventures", icon: "rocket" },
+  { label: "Services", href: "/services", icon: "sparkles" },
+  { label: "About", href: "/about", icon: "user" },
+  { label: "Contact", href: "/contact", icon: "mail" },
 ];
 
 export const MOBILE_TABS: NavItem[] = [
-  { label: "Home", href: "#/", icon: "home" },
-  { label: "Blog", href: "#/blog", icon: "newspaper" },
-  { label: "Store", href: "#/store", icon: "shopping-bag" },
-  { label: "Services", href: "#/services", icon: "sparkles" },
+  { label: "Home", href: "/", icon: "home" },
+  { label: "Blog", href: "/blog", icon: "newspaper" },
+  { label: "Store", href: "/store", icon: "shopping-bag" },
+  { label: "Services", href: "/services", icon: "sparkles" },
 ];
 
 export interface FooterColumn {
@@ -77,20 +77,20 @@ export const FOOTER_DEFAULT: {
     {
       title: "Platform",
       links: [
-        { label: "Home", href: "#/" },
-        { label: "Blog", href: "#/blog" },
-        { label: "Affiliate Store", href: "#/store" },
-        { label: "Ventures & Ideas", href: "#/ventures" },
-        { label: "Services", href: "#/services" },
-        { label: "About", href: "#/about" },
+        { label: "Home", href: "/" },
+        { label: "Blog", href: "/blog" },
+        { label: "Affiliate Store", href: "/store" },
+        { label: "Ventures & Ideas", href: "/ventures" },
+        { label: "Services", href: "/services" },
+        { label: "About", href: "/about" },
       ],
     },
     {
       title: "Connect",
       links: [
-        { label: "Contact", href: "#/contact" },
-        { label: "Support & Help", href: "#/support" },
-        { label: "Advertise With Us", href: "#/advertise" },
+        { label: "Contact", href: "/contact" },
+        { label: "Support & Help", href: "/support" },
+        { label: "Advertise With Us", href: "/advertise" },
         { label: "WhatsApp", href: "https://api.whatsapp.com/send?phone=919846750898&text=Hello...!" },
         { label: "LinkedIn", href: "https://www.linkedin.com/in/mohammed-nihad-kp-71b6b6339" },
         { label: "View CV", href: "https://drive.google.com/file/d/1wzvYQdy3LTLekoCOhytPM5m0AGO0n9nr/preview" },
@@ -99,11 +99,11 @@ export const FOOTER_DEFAULT: {
     {
       title: "Legal",
       links: [
-        { label: "Privacy Policy", href: "#/legal/privacy-policy" },
-        { label: "Terms of Service", href: "#/legal/terms-of-service" },
-        { label: "Cookie Policy", href: "#/legal/cookie-policy" },
-        { label: "Affiliate Disclosure", href: "#/legal/affiliate-disclosure" },
-        { label: "All Policies", href: "#/legal" },
+        { label: "Privacy Policy", href: "/legal/privacy-policy" },
+        { label: "Terms of Service", href: "/legal/terms-of-service" },
+        { label: "Cookie Policy", href: "/legal/cookie-policy" },
+        { label: "Affiliate Disclosure", href: "/legal/affiliate-disclosure" },
+        { label: "All Policies", href: "/legal" },
       ],
     },
   ],

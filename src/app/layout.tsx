@@ -136,6 +136,14 @@ const siteJsonLd = {
       "@id": `${SITE.url}/#website`,
       name: "MN.KP",
       url: SITE.url,
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `${SITE.url}/#/?q={search_term_string}`,
+        },
+        "query-input": "required name=search_term_string",
+      },
     },
     {
       "@type": "Person",
@@ -143,6 +151,7 @@ const siteJsonLd = {
       name: "MOHAMMED NIHAD KP",
       jobTitle: "Freelancer · Businessman · AI-First Developer",
       url: SITE.url,
+      image: `${SITE.url}/images/brand/og-cover.webp`,
       address: {
         "@type": "PostalAddress",
         addressLocality: "Calicut (Kozhikode)",
@@ -152,10 +161,21 @@ const siteJsonLd = {
       sameAs: SOCIALS.map((s) => s.url),
     },
     {
-      "@type": "LocalBusiness",
+      "@type": ["LocalBusiness", "ProfessionalService"],
       "@id": `${SITE.url}/#localbusiness`,
       name: "MN.KP — MOHAMMED NIHAD KP",
       url: SITE.url,
+      image: `${SITE.url}/images/brand/og-cover.webp`,
+      telephone: "+91-0000000000", // Placeholder until provided
+      priceRange: "₹₹",
+      openingHoursSpecification: [
+        {
+          "@type": "OpeningHoursSpecification",
+          dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+          opens: "09:00",
+          closes: "18:00",
+        },
+      ],
       address: {
         "@type": "PostalAddress",
         addressLocality: "Kozhikode",
@@ -170,6 +190,28 @@ const siteJsonLd = {
       areaServed: ["Calicut", "Kozhikode", "Kerala", "India", "Remote — Global"],
       sameAs: SOCIALS.map((s) => s.url),
     },
+    {
+      "@type": "FAQPage",
+      "@id": `${SITE.url}/#faq`,
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "What services does MN.KP offer?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "MN.KP offers AI-powered web and app development, photography, videography, and digital marketing services based in Calicut, Kerala.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Is MN.KP available for remote work?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes, while based in Calicut, MN.KP works with clients globally offering remote AI-first development and design services.",
+          },
+        },
+      ],
+    },
   ],
 };
 
@@ -181,19 +223,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="msvalidate.01" content="336B5ED30780159A713E319A03D13D31" />
-        {/* Google tag (gtag.js) */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-J26EYZM8E4"></script>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'G-J26EYZM8E4');
-            `,
-          }}
-        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}

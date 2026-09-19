@@ -136,7 +136,7 @@ function LegalIndexView() {
         jsonLd={jsonLd}
       />
       <Breadcrumbs
-        items={[{ label: "Home", href: "#/" }, { label: "Legal" }]}
+        items={[{ label: "Home", href: "/" }, { label: "Legal" }]}
         className="mb-8 print:hidden"
       />
 
@@ -217,7 +217,7 @@ function LegalIndexView() {
         </ALink>{" "}
         or visit the{" "}
         <ALink
-          href="#/support"
+          href="/support"
           className="font-medium text-primary underline-offset-4 hover:underline"
         >
           Help Center
@@ -266,8 +266,8 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
       />
       <Breadcrumbs
         items={[
-          { label: "Home", href: "#/" },
-          { label: "Legal", href: "#/legal" },
+          { label: "Home", href: "/" },
+          { label: "Legal", href: "/legal" },
           { label: doc.title },
         ]}
         className="mb-8 print:hidden"
@@ -468,7 +468,7 @@ function LegalDocView({ doc }: { doc: LegalDoc }) {
             </ul>
             <div className="mt-6 border-t pt-4">
               <ALink
-                href="#/legal"
+                href="/legal"
                 className={cn(
                   "inline-flex items-center gap-1.5 text-xs font-medium text-gold",
                   "underline-offset-4 hover:underline"

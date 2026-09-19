@@ -230,7 +230,7 @@ export function NotificationBell() {
         <DropdownMenuSeparator className="m-0" />
         <div className="p-2">
           <ALink
-            href="#/account"
+            href="/account"
             className="block rounded-md px-2 py-1.5 text-center text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             View account activity

@@ -292,7 +292,7 @@ export default function AdvertiseView() {
                 jsonLd={FAQ_JSON_LD}
             />
 
-            <Breadcrumbs items={[{ label: "Home", href: "#/" }, { label: "Advertise" }]} />
+            <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Advertise" }]} />
 
             {/* ------------------------------ hero ------------------------------ */}
             <header className="mt-5 md:mt-8">
@@ -318,7 +318,7 @@ export default function AdvertiseView() {
                         View plans
                         <ArrowRight className="size-4" aria-hidden="true" />
                     </Button>
-                    <ALink href="#/contact" className="w-full sm:w-auto">
+                    <ALink href="/contact" className="w-full sm:w-auto">
                         <Button
                             size="lg"
                             variant="outline"
@@ -638,7 +638,7 @@ export default function AdvertiseView() {
                             Start with an inquiry
                             <ArrowRight className="size-4" aria-hidden="true" />
                         </Button>
-                        <ALink href="#/studio" className="w-full sm:w-auto">
+                        <ALink href="/studio" className="w-full sm:w-auto">
                             <Button
                                 size="lg"
                                 variant="ghost"

@@ -82,19 +82,19 @@ export default function OverviewView() {
       description="The whole platform at a glance — traffic, commerce, inbox and people."
       actions={
         <>
-          <ALink href="#/admin/posts/new">
+          <ALink href="/admin/posts/new">
             <Button size="sm" className="h-9 gap-2">
               <FilePlus2 className="size-4" aria-hidden="true" />
               New post
             </Button>
           </ALink>
-          <ALink href="#/admin/products/new">
+          <ALink href="/admin/products/new">
             <Button size="sm" variant="outline" className="h-9 gap-2">
               <ShoppingBag className="size-4" aria-hidden="true" />
               Add product
             </Button>
           </ALink>
-          <ALink href="#/admin/inquiries">
+          <ALink href="/admin/inquiries">
             <Button size="sm" variant="outline" className="h-9 gap-2">
               <Inbox className="size-4" aria-hidden="true" />
               Inquiries
@@ -211,7 +211,7 @@ export default function OverviewView() {
               )}
             </DataState>
             <ALink
-              href="#/admin/inquiries"
+              href="/admin/inquiries"
               className="mt-3 inline-flex text-xs font-medium text-primary hover:underline"
             >
               Open the full inbox →

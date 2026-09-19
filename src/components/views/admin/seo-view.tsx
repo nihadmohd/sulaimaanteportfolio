@@ -374,7 +374,7 @@ function SearchConsoleCard({
         ) : error ? (
           <p className="rounded-lg border border-destructive/40 bg-destructive/5 p-3.5 text-sm text-destructive">
             Could not read the SEO settings just now — refresh this page, or open{" "}
-            <ALink href="#/admin/settings" className="font-medium underline underline-offset-2">
+            <ALink href="/admin/settings" className="font-medium underline underline-offset-2">
               Settings → SEO
             </ALink>{" "}
             directly to check the verification tokens.
@@ -439,7 +439,7 @@ function SearchConsoleCard({
                     <>
                       In{" "}
                       <ALink
-                        href="#/admin/settings"
+                        href="/admin/settings"
                         className="font-medium underline underline-offset-2 hover:text-primary"
                       >
                         Settings → SEO
@@ -494,7 +494,7 @@ function SearchConsoleCard({
                     If manual: copy the <span className="font-mono">msvalidate.01</span> token and
                     save it under “Bing verification” in{" "}
                     <ALink
-                      href="#/admin/settings"
+                      href="/admin/settings"
                       className="font-medium underline underline-offset-2 hover:text-primary"
                     >
                       Settings → SEO
@@ -798,7 +798,7 @@ function AuditCard({
           Recomputed from your real posts, products and settings every time this page opens.
         </CardDescription>
         <CardAction>
-          <ALink href="#/admin/settings">
+          <ALink href="/admin/settings">
             <Button variant="outline" size="sm" className="h-9 gap-1.5">
               <BadgeCheck className="size-3.5" aria-hidden="true" />
               Open SEO settings
@@ -814,7 +814,7 @@ function AuditCard({
               Publish your first post to activate the content checks — the platform checks below
               are already passing.
             </p>
-            <ALink href="#/admin/posts/new" className="mt-2 inline-block">
+            <ALink href="/admin/posts/new" className="mt-2 inline-block">
               <Button variant="outline" size="sm" className="h-9 gap-1.5">
                 <FileText className="size-3.5" aria-hidden="true" />
                 Write your first post

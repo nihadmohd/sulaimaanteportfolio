@@ -619,10 +619,10 @@ export default function AdvertiserStudioView() {
                                 </p>
                             </div>
                             <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
-                                <ALink href="#/auth/login" className="w-full sm:w-auto">
+                                <ALink href="/auth/login" className="w-full sm:w-auto">
                                     <Button className="h-11 w-full sm:h-10 sm:w-auto">Sign in</Button>
                                 </ALink>
-                                <ALink href="#/advertise" className="w-full sm:w-auto">
+                                <ALink href="/advertise" className="w-full sm:w-auto">
                                     <Button variant="outline" className="h-11 w-full sm:h-10 sm:w-auto">
                                         Want to advertise here?
                                     </Button>
@@ -649,7 +649,7 @@ export default function AdvertiserStudioView() {
                             Advertiser access is granted when your campaign is approved. Inquire at the
                             advertising page.
                         </p>
-                        <ALink href="#/advertise">
+                        <ALink href="/advertise">
                             <Button variant="outline" className="h-11 sm:h-10">
                                 Visit the advertising page
                             </Button>
@@ -792,7 +792,7 @@ export default function AdvertiserStudioView() {
                                             <Plus className="size-4" aria-hidden="true" />
                                             Submit your first ad
                                         </Button>
-                                        <ALink href="#/advertise" className="w-full sm:w-auto">
+                                        <ALink href="/advertise" className="w-full sm:w-auto">
                                             <Button
                                                 variant="outline"
                                                 className="h-11 w-full sm:h-10 sm:w-auto"

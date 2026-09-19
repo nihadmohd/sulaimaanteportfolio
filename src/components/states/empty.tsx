@@ -24,14 +24,14 @@ const EMPTY_COPIES: Record<EmptyVariant, EmptyCopy> = {
     micro: "NOTHING HERE YET",
     title: "No posts published yet",
     description: "Fresh writing is on the way — AI workflows, freelancing notes and business growth from Calicut.",
-    cta: { label: "Explore services", href: "#/services" },
+    cta: { label: "Explore services", href: "/services" },
   },
   products: {
     icon: ShoppingBag,
     micro: "EMPTY SHELF",
     title: "No products in this aisle yet",
     description: "New gear is being curated — honestly reviewed tech and creator essentials, priced in INR.",
-    cta: { label: "Browse the blog", href: "#/blog" },
+    cta: { label: "Browse the blog", href: "/blog" },
   },
   inbox: {
     icon: Inbox,

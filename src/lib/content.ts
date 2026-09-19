@@ -102,7 +102,7 @@ export const BRANDS: Brand[] = [
     role: "Flagship platform",
     description:
       "The all-in-one business platform — every kind of business is born under one roof: services, commerce, community and education.",
-    href: "#/blog/kp-foundation-platform-vision",
+    href: "/blog/kp-foundation-platform-vision",
   },
   {
     name: "Calicut Store",

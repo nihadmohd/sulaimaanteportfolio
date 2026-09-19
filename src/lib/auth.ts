@@ -9,9 +9,14 @@ import { ApiError } from "@/lib/api-helpers";
  * envelope stay identical; only this adapter changes.
  */
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "mnkp-dev-secret-change-in-production-9f8e7d6c5b4a"
-);
+const rawSecret = process.env.JWT_SECRET || (process.env.NODE_ENV !== "production" ? "mnkp-dev-secret-change-in-production-9f8e7d6c5b4a" : null);
+
+if (!rawSecret) {
+  // In production, force the owner to set this in their environment variables
+  throw new Error("CRITICAL: process.env.JWT_SECRET is missing. You must set this in your production environment variables to prevent forged sessions.");
+}
+
+const JWT_SECRET = new TextEncoder().encode(rawSecret);
 export const SESSION_COOKIE = "mnkp_session";
 const SESSION_DAYS = 7;
 

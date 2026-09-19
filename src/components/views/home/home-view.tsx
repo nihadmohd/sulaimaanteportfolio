@@ -175,13 +175,13 @@ function HeroSection() {
         </p>
 
         <div className="mt-7 flex flex-wrap items-center gap-3 sm:mt-9">
-          <ALink href="#/contact">
+          <ALink href="/contact">
             <Button size="lg" className="gap-2">
               Start a project
               <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
           </ALink>
-          <ALink href="#/services">
+          <ALink href="/services">
             <Button size="lg" variant="outline" className="gap-2">
               Explore services
             </Button>
@@ -606,7 +606,7 @@ function NewsletterBand() {
 
         <p className="mt-4 text-xs text-muted-foreground">
           By subscribing you agree to the{" "}
-          <ALink href="#/legal/privacy-policy" className="underline-offset-2 hover:underline">
+          <ALink href="/legal/privacy-policy" className="underline-offset-2 hover:underline">
             privacy policy
           </ALink>
           . Unsubscribe in one click, any time.
@@ -654,7 +654,7 @@ export default function HomeView() {
             >
               <h3 className="text-base font-semibold leading-snug tracking-tight">
                 <ALink
-                  href="#/services"
+                  href="/services"
                   className="transition-colors group-hover:text-primary"
                 >
                   {service.name}
@@ -668,7 +668,7 @@ export default function HomeView() {
               </p>
               <div className="mt-auto flex items-center gap-4 pt-5 text-sm">
                 <ALink
-                  href="#/services"
+                  href="/services"
                   className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
                 >
                   Details
@@ -694,7 +694,7 @@ export default function HomeView() {
               quote within 24 hours.
             </p>
             <ALink
-              href="#/contact"
+              href="/contact"
               className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
             >
               Ask me anything
@@ -714,7 +714,7 @@ export default function HomeView() {
             className="md:max-w-2xl"
           />
           <ALink
-            href="#/blog"
+            href="/blog"
             className="mb-1 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
           >
             View all posts
@@ -749,7 +749,7 @@ export default function HomeView() {
             className="md:max-w-2xl"
           />
           <ALink
-            href="#/store"
+            href="/store"
             className="mb-1 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
           >
             Browse the store
@@ -842,7 +842,7 @@ export default function HomeView() {
             The 195-country mission
           </span>
           <div className="mt-5">
-            <ALink href="#/about">
+            <ALink href="/about">
               <Button variant="outline" className="gap-2">
                 Read my story
                 <ArrowRight className="size-4" aria-hidden="true" />
@@ -868,7 +868,7 @@ export default function HomeView() {
             a scoped quote within 24 hours. No jargon, no delay.
           </p>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <ALink href="#/contact">
+            <ALink href="/contact">
               <Button size="lg" variant="secondary" className="gap-2">
                 Start a project
                 <ArrowRight className="size-4" aria-hidden="true" />
