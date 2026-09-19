@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { SITE, SOCIALS } from "@/lib/constants";
@@ -108,10 +109,10 @@ export async function generateMetadata(): Promise<Metadata> {
       },
     },
     verification: {
-      google: seo.googleVerification || undefined,
-      other: seo.bingVerification
-        ? { "msvalidate.01": seo.bingVerification }
-        : undefined,
+      google: seo.googleVerification || "7Z426Gu_xRpPozrlaMJ2t2-zm_gJTwKiaO415pkv3gg",
+      other: {
+        "msvalidate.01": seo.bingVerification || "336B5ED30780159A713E319A03D13D31",
+      },
     },
   };
 }
@@ -228,6 +229,19 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-2EKRY4RH1P"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-2EKRY4RH1P');
+          `}
+        </Script>
         <script
           id="site-jsonld"
           type="application/ld+json"
