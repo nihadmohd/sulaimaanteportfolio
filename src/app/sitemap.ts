@@ -2,6 +2,9 @@ import type { MetadataRoute } from "next";
 import { LEGAL_DOCS } from "@/lib/legal";
 import { db } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /**
  * Dynamic sitemap for Google Search Console indexing.
  * Origin: change SITE.url in src/lib/constants.ts to the production domain.
