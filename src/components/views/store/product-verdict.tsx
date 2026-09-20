@@ -26,6 +26,7 @@ export function ProductVerdict({ product }: ProductVerdictProps) {
   const [selected, setSelected] = React.useState<Record<string, boolean>>({});
 
   React.useEffect(() => {
+     
     setSelected({});
   }, [product.slug]);
 

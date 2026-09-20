@@ -163,6 +163,7 @@ export function useTts(options: UseTtsOptions): TtsController {
   const utteranceRef = React.useRef<SpeechSynthesisUtterance | null>(null);
 
   React.useEffect(() => {
+     
     setSupported(
       typeof window !== "undefined" &&
         "speechSynthesis" in window &&
@@ -172,6 +173,7 @@ export function useTts(options: UseTtsOptions): TtsController {
 
   // Keep the exposed chunk count in sync when the text changes.
   React.useEffect(() => {
+     
     setState((prev) => (prev.chunkCount === chunks.length ? prev : { ...prev, chunkCount: chunks.length }));
   }, [chunks.length]);
 

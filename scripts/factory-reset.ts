@@ -21,7 +21,7 @@ async function main() {
   console.log("Factory reset — removing all content and accounts…\n");
 
   // Order matters where foreign keys exist (SQLite mirrors the Postgres DDL).
-  const steps: Array<[string, () => Promise<unknown>]> = [
+  const steps: Array<[string, () => Promise<{ count: number }>]> = [
     ["affiliate clicks", () => db.affiliateClick.deleteMany()],
     ["visitor sessions", () => db.visitorSession.deleteMany()],
     ["audit logs", () => db.auditLog.deleteMany()],

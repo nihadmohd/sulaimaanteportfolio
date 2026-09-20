@@ -49,6 +49,7 @@ export function WishlistButton({ slug }: WishlistButtonProps) {
   const [saved, setSaved] = React.useState(false);
 
   React.useEffect(() => {
+     
     setSaved(readWishlist().includes(slug));
   }, [slug]);
 

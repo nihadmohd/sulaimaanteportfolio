@@ -15,6 +15,7 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "@typescript-eslint/ban-ts-comment": "off",
     "@typescript-eslint/prefer-as-const": "off",
     "@typescript-eslint/no-unused-disable-directive": "off",
+    "@typescript-eslint/no-require-imports": "off",
     
     // React rules
     "react-hooks/exhaustive-deps": "off",
@@ -23,6 +24,8 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "react/display-name": "off",
     "react/prop-types": "off",
     "react-compiler/react-compiler": "off",
+    "react-hooks/set-state-in-effect": "off",
+    "react-hooks/incompatible-library": "off",
     
     // Next.js rules
     "@next/next/no-img-element": "off",

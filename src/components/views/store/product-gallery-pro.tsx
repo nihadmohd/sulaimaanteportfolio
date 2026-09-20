@@ -124,6 +124,7 @@ function GalleryLightbox({ images, name, active, onSelect, onClose }: GalleryLig
 
   /* Reset zoom whenever the shown image changes. */
   React.useEffect(() => {
+     
     commit(RESET_TRANSFORM, true);
   }, [active]);
 
@@ -490,6 +491,7 @@ export function ProductGalleryPro({ product }: ProductGalleryProProps) {
 
   /* Reset when navigating between products. */
   React.useEffect(() => {
+     
     setActive(0);
     setDragX(0);
     setLightboxOpen(false);

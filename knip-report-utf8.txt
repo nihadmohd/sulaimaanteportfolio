@@ -1,0 +1,194 @@
+﻿Unused files (30)
+examples/websocket/frontend.tsx        
+examples/websocket/server.ts           
+mini-services/presence-service/index.ts
+prisma/seed.ts                         
+scripts/convert-webp.ts                
+scripts/factory-reset.ts               
+scripts/gen-icons.ts                   
+scripts/migrate-image-webp.ts          
+scripts/replace-hash.js                
+src/components/shared/stat-chip.tsx    
+src/components/ui/alert.tsx            
+src/components/ui/aspect-ratio.tsx     
+src/components/ui/breadcrumb.tsx       
+src/components/ui/calendar.tsx         
+src/components/ui/carousel.tsx         
+src/components/ui/chart.tsx            
+src/components/ui/context-menu.tsx     
+src/components/ui/drawer.tsx           
+src/components/ui/hover-card.tsx       
+src/components/ui/input-otp.tsx        
+src/components/ui/menubar.tsx          
+src/components/ui/navigation-menu.tsx  
+src/components/ui/radio-group.tsx      
+src/components/ui/resizable.tsx        
+src/components/ui/scroll-area.tsx      
+src/components/ui/sidebar.tsx          
+src/components/ui/sonner.tsx           
+src/components/ui/toggle-group.tsx     
+src/components/ui/toggle.tsx           
+src/hooks/use-mobile.ts                
+Unused dependencies (26)
+@dnd-kit/core                    package.json:14:6
+@dnd-kit/sortable                package.json:15:6
+@dnd-kit/utilities               package.json:16:6
+@mdxeditor/editor                package.json:18:6
+@radix-ui/react-aspect-ratio     package.json:22:6
+@radix-ui/react-context-menu     package.json:26:6
+@radix-ui/react-hover-card       package.json:29:6
+@radix-ui/react-menubar          package.json:31:6
+@radix-ui/react-navigation-menu  package.json:32:6
+@radix-ui/react-radio-group      package.json:35:6
+@radix-ui/react-scroll-area      package.json:36:6
+@radix-ui/react-toggle           package.json:44:6
+@radix-ui/react-toggle-group     package.json:45:6
+@reactuses/core                  package.json:47:6
+@tanstack/react-table            package.json:50:6
+embla-carousel-react             package.json:57:6
+input-otp                        package.json:59:6
+next-auth                        package.json:63:6
+next-intl                        package.json:64:6
+react-day-picker                 package.json:68:6
+react-resizable-panels           package.json:72:6
+react-syntax-highlighter         package.json:73:6
+sharp                            package.json:76:6
+socket.io                        package.json:77:6
+sonner                           package.json:79:6
+vaul                             package.json:83:6
+Unused devDependencies (3)
+@types/bcryptjs  package.json:90:6
+bun-types        package.json:93:6
+playwright-core  package.json:96:6
+Unused exports (79)
+slugify                   function  src/app/api/_lib/serialize.ts:182:17                 
+parseOptionalDate         function  src/app/api/_lib/serialize.ts:272:17                 
+RESTORABLE_ENTITIES                 src/app/api/audit/_lib.ts:14:14                      
+TextAdCard                function  src/components/shared/affiliate-ad-slot.tsx:192:17   
+MarqueeAdStrip            function  src/components/shared/affiliate-ad-slot.tsx:266:17   
+ICON_MAP                            src/components/shared/lucide-icon.tsx:33:14          
+default                   function  src/components/shared/site-stickers.tsx:80:16        
+PaymentState              function  src/components/states/http-states.tsx:312:17         
+ServerErrorState                    src/components/states/index.ts:10:3                  
+MaintenanceState                    src/components/states/index.ts:11:3                  
+OfflineState                        src/components/states/index.ts:12:3                  
+SessionExpiredState                 src/components/states/index.ts:15:3                  
+PaymentState                        src/components/states/index.ts:16:3                  
+AlertDialogPortal                   src/components/ui/alert-dialog.tsx:147:3             
+AlertDialogOverlay                  src/components/ui/alert-dialog.tsx:148:3             
+badgeVariants                       src/components/ui/badge.tsx:46:17                    
+CardFooter                          src/components/ui/card.tsx:87:3                      
+Command                             src/components/ui/command.tsx:175:3                  
+CommandShortcut                     src/components/ui/command.tsx:182:3                  
+DialogClose                         src/components/ui/dialog.tsx:134:3                   
+DialogOverlay                       src/components/ui/dialog.tsx:139:3                   
+DialogPortal                        src/components/ui/dialog.tsx:140:3                   
+DialogTrigger                       src/components/ui/dialog.tsx:142:3                   
+DropdownMenuPortal                  src/components/ui/dropdown-menu.tsx:243:3            
+DropdownMenuGroup                   src/components/ui/dropdown-menu.tsx:246:3            
+DropdownMenuCheckboxItem            src/components/ui/dropdown-menu.tsx:249:3            
+DropdownMenuRadioGroup              src/components/ui/dropdown-menu.tsx:250:3            
+DropdownMenuRadioItem               src/components/ui/dropdown-menu.tsx:251:3            
+DropdownMenuShortcut                src/components/ui/dropdown-menu.tsx:253:3            
+DropdownMenuSub                     src/components/ui/dropdown-menu.tsx:254:3            
+DropdownMenuSubTrigger              src/components/ui/dropdown-menu.tsx:255:3            
+DropdownMenuSubContent              src/components/ui/dropdown-menu.tsx:256:3            
+useFormField                        src/components/ui/form.tsx:159:3                     
+PaginationEllipsis                  src/components/ui/pagination.tsx:126:3               
+PopoverAnchor                       src/components/ui/popover.tsx:48:51                  
+SelectGroup                         src/components/ui/select.tsx:177:3                   
+SelectLabel                         src/components/ui/select.tsx:179:3                   
+SelectScrollDownButton              src/components/ui/select.tsx:180:3                   
+SelectScrollUpButton                src/components/ui/select.tsx:181:3                   
+SelectSeparator                     src/components/ui/select.tsx:182:3                   
+SheetTrigger                        src/components/ui/sheet.tsx:132:3                    
+SheetClose                          src/components/ui/sheet.tsx:133:3                    
+SheetFooter                         src/components/ui/sheet.tsx:136:3                    
+TableFooter                         src/components/ui/table.tsx:111:3                    
+TableCaption                        src/components/ui/table.tsx:115:3                    
+ToastAction                         src/components/ui/toast.tsx:128:3                    
+chipsToString             function  src/components/views/account/_shared.tsx:46:17       
+chipsEqual                function  src/components/views/account/_shared.tsx:61:17       
+AdminCharts               function  src/components/views/admin/_charts.tsx:42:17         
+insertMarkdown            function  src/components/views/admin/markdown-toolbar.tsx:92:17
+SetupView                 function  src/components/views/setup/setup-view.tsx:69:17      
+childText                 function  src/components/views/shared/markdown.tsx:29:17       
+parsePath                 function  src/hooks/use-router.tsx:37:17                       
+usePathLocation           function  src/hooks/use-router.tsx:88:17                       
+AUTHOR_ROLES                        src/hooks/use-session.ts:41:14                       
+AD_SUBMIT_ROLES                     src/hooks/use-session.ts:44:14                       
+isAuthor                  function  src/hooks/use-session.ts:46:17                       
+useIsAuthor               function  src/hooks/use-session.ts:96:17                       
+useIsStaff                function  src/hooks/use-session.ts:102:17                      
+contactInfo               function  src/hooks/use-settings.ts:138:17                     
+reducer                             src/hooks/use-toast.ts:77:14                         
+splitIntoChunks           function  src/hooks/use-tts.ts:66:17                           
+TTS_RATES                           src/hooks/use-tts.ts:100:14                          
+zodErrorMessage           function  src/lib/api-helpers.ts:72:17                         
+SESSION_COOKIE                      src/lib/auth.ts:20:14                                
+sanitizeUser              function  src/lib/auth.ts:59:17                                
+readSessionToken          function  src/lib/auth.ts:80:23                                
+parseCookies              function  src/lib/auth.ts:90:17                                
+sessionCookieHeader       function  src/lib/auth.ts:102:17                               
+clearSessionCookieHeader  function  src/lib/auth.ts:106:17                               
+PRESENCE_SOCKET_QUERY               src/lib/constants.ts:122:14                          
+prepareImageForUpload     function  src/lib/image-tools.ts:56:23                         
+AD_REVIEW_STATUSES                  src/lib/validation.ts:354:14                         
+AD_SOURCES                          src/lib/validation.ts:355:14                         
+VENTURE_CATEGORIES                  src/lib/validation.ts:468:14                         
+VENTURE_STATUSES                    src/lib/validation.ts:477:14                         
+ROUTES                              src/router/routes.ts:26:14                           
+normalizePath             function  src/router/routes.ts:354:17                          
+routeByKey                function  src/router/routes.ts:375:17                          
+Unused exported types (47)
+AuditAction               type       src/app/api/audit/_lib.ts:11:13                      
+BreadcrumbItem            interface  src/components/shared/breadcrumbs.tsx:14:18          
+NotificationItem          interface  src/components/shared/notification-bell.tsx:32:18    
+PostCardAuthor            interface  src/components/shared/post-card.tsx:16:18            
+PaymentStateProps         interface  src/components/states/http-states.tsx:304:18         
+StatePageProps            type       src/components/states/index.ts:5:26                  
+StateTone                 type       src/components/states/index.ts:5:47                  
+LoadingStateProps         type       src/components/states/index.ts:6:29                  
+NotFoundStateProps        type       src/components/states/index.ts:17:8                  
+ForbiddenStateProps       type       src/components/states/index.ts:18:8                  
+ServerErrorStateProps     type       src/components/states/index.ts:19:8                  
+MaintenanceStateProps     type       src/components/states/index.ts:20:8                  
+OfflineStateProps         type       src/components/states/index.ts:21:8                  
+ErrorStateProps           type       src/components/states/index.ts:22:8                  
+SuccessStateProps         type       src/components/states/index.ts:23:8                  
+SessionExpiredStateProps  type       src/components/states/index.ts:24:8                  
+PaymentStateProps         type       src/components/states/index.ts:25:8                  
+EmptyStateProps           type       src/components/states/index.ts:30:8                  
+NoResultsStateProps       type       src/components/states/index.ts:31:8                  
+EmptyVariant              type       src/components/states/index.ts:32:8                  
+DataStateProps            type       src/components/states/index.ts:34:26                 
+StateTone                 type       src/components/states/state-page.tsx:13:13           
+DraftSnapshot             interface  src/components/views/admin/editor-drafts.tsx:20:18   
+MarkdownInsertSpec        interface  src/components/views/admin/markdown-toolbar.tsx:49:18
+PresencePathCount         interface  src/hooks/use-presence.ts:27:18                      
+PresenceStats             interface  src/hooks/use-presence.ts:32:18                      
+SessionPayload            interface  src/hooks/use-session.ts:36:18                       
+TtsStatus                 type       src/hooks/use-tts.ts:102:13                          
+PreparedImage             interface  src/lib/image-tools.ts:18:18                         
+RouteGuard                type       src/router/routes.ts:9:13                            
+RouteEntry                interface  src/router/routes.ts:11:18                           
+ApiErrorCode              type       src/types/index.ts:17:13                             
+CategoryScope             type       src/types/index.ts:73:13                             
+PostStatus                type       src/types/index.ts:85:13                             
+PostAuthorSummary         interface  src/types/index.ts:87:18                             
+CategorySummary           interface  src/types/index.ts:119:18                            
+ProductStatus             type       src/types/index.ts:129:13                            
+InquiryStatus             type       src/types/index.ts:187:13                            
+InquiryPriority           type       src/types/index.ts:188:13                            
+NotificationType          type       src/types/index.ts:225:13                            
+JsonValue                 type       src/types/index.ts:276:13                            
+SocialsSettings           interface  src/types/index.ts:285:18                            
+FooterLink                interface  src/types/index.ts:303:18                            
+FooterColumn              interface  src/types/index.ts:308:18                            
+AdReviewStatus            type       src/types/index.ts:445:13                            
+PublicSettings            interface  src/types/index.ts:567:18                            
+AdminSettings             interface  src/types/index.ts:581:18                            
+Duplicate exports (3)
+SiteStickers|default  src/components/shared/site-stickers.tsx  
+AdminCharts|default   src/components/views/admin/_charts.tsx   
+SetupView|default     src/components/views/setup/setup-view.tsx
