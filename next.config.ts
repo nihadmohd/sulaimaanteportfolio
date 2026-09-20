@@ -37,6 +37,4 @@ export default withSentryConfig(nextConfig, {
   org: "mohdnihadkp",
   project: "mohdnihadkp-portfolio",
   widenClientFileUpload: true,
-  disableLogger: true,
-  automaticVercelMonitors: true,
 });
