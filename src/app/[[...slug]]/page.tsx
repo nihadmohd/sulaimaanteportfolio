@@ -65,11 +65,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {};
 }
 
-/**
- * MN.KP — Catch-all route to serve the SPA on standard paths.
- * The AppShell mounts the client-side router, which will be updated to read
- * window.location.pathname instead of hash.
- */
-export default function Page() {
-  return <AppShell />;
+export default async function Page({ params }: Props) {
+  const resolvedParams = await params;
+  const slug = resolvedParams.slug || [];
+  const initialPath = "/" + slug.join("/");
+  
+  return <AppShell initialPath={initialPath} />;
 }

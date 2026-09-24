@@ -80,18 +80,10 @@ function getSnapshot(): string {
   return window.location.pathname + window.location.search;
 }
 
-function getServerSnapshot(): string {
-  return "/";
-}
-
-/** Raw URL subscription — re-renders on popstate. */
-export function usePathLocation(): RouteLocation {
-  const url = React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  return React.useMemo(() => parsePath(url || "/"), [url]);
-}
-
-export function RouterProvider({ children }: { children: React.ReactNode }) {
-  const location = usePathLocation();
+export function RouterProvider({ initialPath = "/", children }: { initialPath?: string, children: React.ReactNode }) {
+  const url = React.useSyncExternalStore(subscribe, getSnapshot, () => initialPath);
+  const location = React.useMemo(() => parsePath(url || "/"), [url]);
+  
   const value = React.useMemo<RouterContextValue>(
     () => ({ ...location, navigate }),
     [location]

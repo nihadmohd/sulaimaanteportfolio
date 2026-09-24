@@ -120,10 +120,10 @@ function ShellInner() {
   );
 }
 
-export function AppShell() {
+export function AppShell({ initialPath }: { initialPath?: string }) {
   return (
     <AppProviders>
-      <RouterProvider>
+      <RouterProvider initialPath={initialPath}>
         <ShellInner />
       </RouterProvider>
     </AppProviders>

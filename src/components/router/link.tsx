@@ -34,7 +34,7 @@ function isInternalHref(href: string): boolean {
 }
 
 export function ALink({
-  href,
+  href: rawHref,
   exact,
   activeClassName,
   className,
@@ -42,6 +42,7 @@ export function ALink({
   ...props
 }: ALinkProps) {
   const { path } = useRouter();
+  const href = rawHref.startsWith("#") ? rawHref.slice(1) : rawHref;
   const internal = isInternalHref(href);
   const external = href.startsWith("http://") || href.startsWith("https://");
   const active = internal ? isPathActive(href, path, exact) : false;
